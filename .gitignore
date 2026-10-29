@@ -1,0 +1,17 @@
+# Dependencies and build output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.log
+
+# Local environment and tools
+.env
+.env.*
+!.env.example
+.DS_Store
+.openai/
+.sites-runtime/
+
+# Local planning documents
+/docs/
