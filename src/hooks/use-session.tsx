@@ -18,6 +18,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Session['status']>('loading')
   const [error, setError] = useState('')
   const controller = useRef<AbortController | null>(null)
+  const channel = useRef<BroadcastChannel | null>(null)
 
   const refresh = useCallback(async () => {
     controller.current?.abort()
@@ -45,12 +46,29 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => controller.current?.abort()
   }, [refresh])
 
+  useEffect(() => {
+    const check = () => { if (document.visibilityState === 'visible') void refresh() }
+    window.addEventListener('focus', check)
+    document.addEventListener('visibilitychange', check)
+    if (typeof BroadcastChannel !== 'undefined') {
+      channel.current = new BroadcastChannel('zello-session')
+      channel.current.onmessage = () => { void refresh() }
+    }
+    return () => {
+      window.removeEventListener('focus', check)
+      document.removeEventListener('visibilitychange', check)
+      channel.current?.close()
+      channel.current = null
+    }
+  }, [refresh])
+
   const logout = useCallback(async () => {
     await endSession()
     controller.current?.abort()
     setUser(null)
     setStatus('ready')
     setError('')
+    channel.current?.postMessage('signed-out')
   }, [])
 
   return <SessionContext.Provider value={{ user, status, error, refresh, logout }}>{children}</SessionContext.Provider>

@@ -129,3 +129,7 @@
   .landing-actions .public-text-link { font-size: 11px; }
   .preview-detail { padding-left: 17px; padding-right: 17px; }
 }
+
+.public-session-label { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted-foreground); }
+.public-session-dot { width: 6px; height: 6px; border-radius: 50%; background: #2da36a; }
+@media (max-width: 600px) { .public-session-label { max-width: 130px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } }

@@ -67,12 +67,13 @@ function ProjectPreview() {
 }
 
 export function LandingPage() {
+  const session = useSession()
   useEffect(() => { document.title = 'zello · 팀과 쉽게 일해요' }, [])
   return <div className="public-shell landing-page">
     <SkipLink />
-    <header className="public-header"><Brand /><nav aria-label="서비스 메뉴"><ThemeToggle /><Link to="/login" className="public-login-link">로그인</Link><Button asChild size="sm" variant="outline"><Link to="/signup">회원가입</Link></Button></nav></header>
+    <header className="public-header"><Brand /><nav aria-label="서비스 메뉴"><ThemeToggle />{session.status === 'loading' ? <span className="public-session-label" role="status">로그인 확인 중…</span> : session.user ? <><span className="public-session-label"><span className="public-session-dot" />{session.user.displayName}님 · 로그인됨</span><Button asChild size="sm" variant="outline"><Link to="/overview">워크스페이스로 이동</Link></Button></> : <><Link to="/login" className="public-login-link">로그인</Link><Button asChild size="sm" variant="outline"><Link to="/signup">회원가입</Link></Button></>}</nav></header>
     <main id="public-main" tabIndex={-1} className="landing-main">
-      <section className="landing-intro"><div><h1>Git에 익숙하지 않아도<br />괜찮아요.</h1><p>할 일을 나누고, 어디까지 됐는지 쉽게 확인해요.<br />복잡한 GitHub 기록도 팀이 이해하기 쉽게 모아봐요.</p></div><div className="landing-actions"><Button asChild size="lg"><Link to="/signup"><Github size={17} />GitHub로 시작하기</Link></Button><Link className="public-text-link" to="/overview">샘플 프로젝트 둘러보기<ArrowRight size={14} /></Link></div></section>
+      <section className="landing-intro"><div><h1>Git에 익숙하지 않아도<br />괜찮아요.</h1><p>할 일을 나누고, 어디까지 됐는지 쉽게 확인해요.<br />복잡한 GitHub 기록도 팀이 이해하기 쉽게 모아봐요.</p></div><div className="landing-actions"><Button asChild size="lg"><Link to={session.user ? '/settings?tab=repositories' : '/signup'}><Github size={17} />{session.user ? '프로젝트와 저장소 연결하기' : 'GitHub로 시작하기'}</Link></Button><Link className="public-text-link" to="/overview">샘플 프로젝트 둘러보기<ArrowRight size={14} /></Link></div></section>
       <ProjectPreview />
       <div className="landing-footnote"><p>회의에서 정한 일부터 담당자와 진행 상황까지, 한곳에서 확인해요.</p><Link to="/changes">무엇이 달라졌는지도 함께 살펴봐요<ArrowRight size={13} /></Link></div>
     </main><Footer />
@@ -87,10 +88,16 @@ const errorMessages: Record<string, string> = {
 }
 
 export function AuthPage({ signup = false }: { signup?: boolean }) {
+  const session = useSession()
+  const navigate = useNavigate()
   const location = useLocation()
   const error = new URLSearchParams(location.search).get('error')
+  const reauthorize = new URLSearchParams(location.search).get('reauth') === 'github'
   const [notice, setNotice] = useState('')
   const [pending, setPending] = useState(false)
+  useEffect(() => {
+    if (session.status === 'ready' && session.user && !error && !reauthorize) navigate('/overview', { replace: true })
+  }, [session.status, session.user, error, reauthorize, navigate])
   useEffect(() => {
     document.title = `${signup ? '회원가입' : '로그인'} · zello`
     setNotice(error ? errorMessages[error] ?? errorMessages.failed : '')
@@ -102,6 +109,7 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
     return () => window.removeEventListener('pageshow', reset)
   }, [])
   async function continueWithGithub() {
+    if (pending) return
     setNotice('')
     setPending(true)
     try {
