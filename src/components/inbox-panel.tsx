@@ -7,7 +7,7 @@ import type { Repo } from '@/data/mock'
 const icons = { review: GitPullRequest, meeting: MessageSquare, deployment: Rocket }
 function InboxRow({ item, repos, onOpen }: { item: InboxItem; repos: Repo[]; onOpen: (item: InboxItem) => void }) {
   const Icon = icons[item.kind]
-  return <button className={`inbox-open ${item.readAt ? 'is-read' : 'is-unread'}`} onClick={() => onOpen(item)}><span className={`inbox-event inbox-event-${item.kind}`}><Icon size={17} /></span><span className="inbox-copy"><strong>{item.title}</strong><span>{item.body}</span><small>모아 프로젝트 · {repos.find(repo => repo.id === item.repo)?.name ?? item.repo} · {item.createdAt.slice(5, 10).replace('-', '/')} {item.createdAt.slice(11, 16)}</small></span><span className="inbox-unread-dot" aria-label={item.readAt ? '읽음' : '미확인'} /><ChevronRight size={14} /></button>
+  return <button className={`inbox-open ${item.readAt ? 'is-read' : 'is-unread'}`} onClick={() => onOpen(item)}><span className={`inbox-event inbox-event-${item.kind}`}><Icon size={17} /></span><span className="inbox-copy"><strong>{item.title}</strong><span>{item.body}</span><small>샘플 프로젝트 · {repos.find(repo => repo.id === item.repo)?.name ?? item.repo} · {item.createdAt.slice(5, 10).replace('-', '/')} {item.createdAt.slice(11, 16)}</small></span><span className="inbox-unread-dot" aria-label={item.readAt ? '읽음' : '미확인'} /><ChevronRight size={14} /></button>
 }
 export function InboxPanel({ items, repos, onOpen, onRead, onReadAll }: {
   items: InboxItem[]; repos: Repo[]; onOpen: (item: InboxItem) => void; onRead: (id: string, read: boolean) => void; onReadAll: () => void;

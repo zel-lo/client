@@ -19,15 +19,15 @@ export const members = [
   { name: '최민준', initials: '민준', role: 'Frontend', color: '#dfe8e9' },
 ]
 export const initialRepos: Repo[] = [
-  { id: 'web', name: 'moa-web', description: '모아 서비스 웹 클라이언트', language: 'TypeScript', color: '#5d8ba8', branch: 'main', updated: '14:32', build: 'success', deployment: 'Production' },
-  { id: 'api', name: 'moa-api', description: '컬렉션 관리 및 공유 API 서버', language: 'Java', color: '#c68b58', branch: 'main', updated: '13:48', build: 'success', deployment: 'Production' },
-  { id: 'design', name: 'moa-design', description: '공통 UI 컴포넌트 라이브러리', language: 'TypeScript', color: '#5d8ba8', branch: 'main', updated: '11:20', build: 'failed', deployment: '배포 대기' },
+  { id: 'web', name: 'zello-web', description: 'zello 서비스 웹 클라이언트', language: 'TypeScript', color: '#5d8ba8', branch: 'main', updated: '14:32', build: 'success', deployment: 'Production' },
+  { id: 'api', name: 'zello-api', description: '컬렉션 관리 및 공유 API 서버', language: 'Java', color: '#c68b58', branch: 'main', updated: '13:48', build: 'success', deployment: 'Production' },
+  { id: 'design', name: 'zello-design', description: '공통 UI 컴포넌트 라이브러리', language: 'TypeScript', color: '#5d8ba8', branch: 'main', updated: '11:20', build: 'failed', deployment: '배포 대기' },
 ]
 export const activities: Activity[] = [
   { id: 128, type: 'merge', repo: 'web', title: '컬렉션을 링크 하나로 공유할 수 있어요', summary: '내가 모은 컬렉션을 링크로 공유할 수 있습니다. 링크를 받은 사람은 로그인하지 않아도 컬렉션을 둘러볼 수 있어요.', author: '김서연', date: '2026-10-27', time: '14:32', ref: '#128', branch: 'feat/collection-share', commits: 6, files: 12, additions: 284, deletions: 48, noteType: 'feature', deployed: true },
   { id: 127, type: 'pr', repo: 'api', title: '검색 결과를 더 빠르게 불러오는 작업', summary: '컬렉션 검색 응답을 개선하는 작업을 마치고 코드 검토를 기다리고 있어요. 아직 기본 브랜치에는 반영되지 않았습니다.', author: '박지훈', date: '2026-10-27', time: '13:48', ref: '#87', branch: 'perf/search-query', commits: 4, files: 8, additions: 136, deletions: 74 },
   { id: 126, type: 'commit', repo: 'design', title: '버튼과 입력창의 간격을 다듬었어요', summary: '좁은 화면에서도 버튼을 누르기 쉽도록 터치 영역과 입력창의 여백을 조정했어요.', author: '최민준', date: '2026-10-27', time: '11:20', ref: 'a83f2c1', branch: 'fix/input-spacing', commits: 3, files: 5, additions: 42, deletions: 28 },
-  { id: 125, type: 'deploy', repo: 'web', title: '새로운 모아가 서비스에 반영됐어요', summary: '컬렉션 링크 공유와 모바일 화면 개선이 실제 서비스에 배포됐어요. 지금부터 새로운 기능을 사용할 수 있습니다.', author: '김서연', date: '2026-10-27', time: '14:40', ref: 'v0.8.2', branch: 'main', commits: 0, files: 0, additions: 0, deletions: 0, deployed: true },
+  { id: 125, type: 'deploy', repo: 'web', title: '새로운 zello가 서비스에 반영됐어요', summary: '컬렉션 링크 공유와 모바일 화면 개선이 실제 서비스에 배포됐어요. 지금부터 새로운 기능을 사용할 수 있습니다.', author: '김서연', date: '2026-10-27', time: '14:40', ref: 'v0.8.2', branch: 'main', commits: 0, files: 0, additions: 0, deletions: 0, deployed: true },
   { id: 124, type: 'issue', repo: 'web', title: '다음으로, 컬렉션을 함께 편집해요', summary: '팀원이 같은 컬렉션에 자료를 추가하고 정리할 수 있는 공동 편집 기능을 기획하고 있어요.', author: '이수빈', date: '2026-10-26', time: '17:05', ref: '#132', branch: '기획 중', commits: 0, files: 0, additions: 0, deletions: 0 },
   { id: 123, type: 'merge', repo: 'api', title: '저장한 링크가 사라지는 문제를 고쳤어요', summary: '같은 링크를 여러 번 저장했을 때 기존 항목이 보이지 않던 문제를 수정했습니다. 저장한 자료를 안정적으로 확인할 수 있어요.', author: '박지훈', date: '2026-10-26', time: '15:26', ref: '#85', branch: 'fix/duplicate-link', commits: 5, files: 6, additions: 98, deletions: 32, noteType: 'fix', deployed: true },
   { id: 122, type: 'merge', repo: 'web', title: '모바일에서도 컬렉션을 편하게 둘러봐요', summary: '모바일 컬렉션 목록의 카드 간격과 썸네일 크기를 조정했어요. 작은 화면에서도 더 많은 자료를 편하게 확인할 수 있습니다.', author: '최민준', date: '2026-10-25', time: '16:18', ref: '#125', branch: 'improve/mobile-collection', commits: 4, files: 7, additions: 115, deletions: 62, noteType: 'improve', deployed: true },

@@ -3,6 +3,9 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import App from '../src/App'
+import { initialRepos } from '../src/data/mock'
+import { createInitialInbox } from '../src/data/inbox'
+import { initialIssues } from '../src/data/work-items'
 
 vi.mock('../src/components/ui/contribution-skyline', async importOriginal => {
   const original = await importOriginal<typeof import('../src/components/ui/contribution-skyline')>()
@@ -13,6 +16,22 @@ function mount(route = '/') {
 }
 
 describe('목데이터 대시보드의 주요 사용자 흐름', () => {
+  it('기존 프로젝트 이름을 바꾸면서 저장한 편집 내용과 알림의 이슈 연결을 유지한다', async () => {
+    const user = userEvent.setup()
+    const legacy = (value: unknown) => JSON.stringify(value).replaceAll('zello', 'moa').replaceAll('ZELLO', 'MOA')
+    localStorage.setItem('gyeol.repositories.v1', legacy(initialRepos))
+    localStorage.setItem('gyeol.issues.v1', legacy(initialIssues.map(issue => issue.id === 'ZELLO-44' ? { ...issue, description: '직접 수정한 설명' } : issue)))
+    localStorage.setItem('gyeol.inbox.isu-bin.v1', legacy(createInitialInbox()))
+    mount('/inbox')
+    const inbox = screen.getByRole('region', { name: '개인 알림함' })
+    await user.click(within(inbox).getByRole('button', { name: /주간 회의에서 다음 작업/ }))
+    const editor = screen.getByRole('dialog', { name: '이슈 상세' })
+    expect(within(editor).getByLabelText('설명')).toHaveValue('직접 수정한 설명')
+    expect(JSON.parse(localStorage.getItem('gyeol.issues.v1')!).find((issue: { id: string }) => issue.id === 'ZELLO-44')).toBeDefined()
+    expect(JSON.parse(localStorage.getItem('gyeol.repositories.v1')!)[0].name).toBe('zello-web')
+    expect(JSON.parse(localStorage.getItem('gyeol.inbox.isu-bin.v1')!).find((item: { id: string }) => item.id === 'meeting-web-132').target.id).toBe('ZELLO-44')
+  })
+
   it('사이드바에서 PR 검토와 이슈 관리 화면으로 이동한다', async () => {
     const user = userEvent.setup()
     mount()
@@ -28,7 +47,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(issuesLink).toHaveAttribute('aria-current', 'page')
     expect(prLink).not.toHaveAttribute('aria-current')
     expect(screen.getByRole('heading', { name: /^팀 작업/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /MOA-44.*컬렉션 공동 편집/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /ZELLO-44.*컬렉션 공동 편집/ })).toBeInTheDocument()
     expect(screen.queryByLabelText('조회 기간')).not.toBeInTheDocument()
   })
 
@@ -47,7 +66,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     await user.click(within(editor).getByRole('checkbox', { name: /#87/ }))
     await user.click(create)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /MOA-46.*검색 응답 모니터링/ }))
+    await user.click(screen.getByRole('button', { name: /ZELLO-46.*검색 응답 모니터링/ }))
     editor = screen.getByRole('dialog', { name: '이슈 상세' })
     expect(within(editor).getByLabelText('담당자')).toHaveValue('박지훈')
     expect(within(editor).getByRole('checkbox', { name: /#87/ })).toBeChecked()
@@ -55,13 +74,13 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     const pr = screen.getByRole('dialog', { name: 'Pull request 상세' })
     expect(within(pr).getByText('검사 통과')).toBeInTheDocument()
     expect(within(pr).getByText('아직 배포되지 않았어요')).toBeInTheDocument()
-    await user.click(within(pr).getByRole('button', { name: /MOA-46.*검색 응답 모니터링/ }))
+    await user.click(within(pr).getByRole('button', { name: /ZELLO-46.*검색 응답 모니터링/ }))
     editor = screen.getByRole('dialog', { name: '이슈 상세' })
     await user.selectOptions(within(editor).getByLabelText('우선순위'), 'high')
     await user.click(within(editor).getByRole('button', { name: '이슈 저장' }))
     view.unmount()
     mount('/issues')
-    await user.click(screen.getByRole('button', { name: /MOA-46.*검색 응답 모니터링/ }))
+    await user.click(screen.getByRole('button', { name: /ZELLO-46.*검색 응답 모니터링/ }))
     editor = screen.getByRole('dialog', { name: '이슈 상세' })
     expect(within(editor).getByLabelText('우선순위')).toHaveValue('high')
     expect(within(editor).getByLabelText('상태')).toHaveValue('in_review')
@@ -70,7 +89,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(within(editor).queryByRole('checkbox', { name: /#87/ })).not.toBeInTheDocument()
     await user.click(within(editor).getByRole('button', { name: '이슈 저장' }))
     const stored = JSON.parse(localStorage.getItem('gyeol.issues.v1')!)
-    expect(stored.find((issue: { id: string }) => issue.id === 'MOA-46').pullRequestIds).toEqual([])
+    expect(stored.find((issue: { id: string }) => issue.id === 'ZELLO-46').pullRequestIds).toEqual([])
   })
 
   it('상단에서 저장소 범위를 바꾸고 현재 화면에서 전체 저장소로 복귀한다', async () => {
@@ -152,16 +171,16 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     await user.click(within(dialog).getByRole('button', { name: '저장소 추가' }))
     expect(within(dialog).getByText(/형식으로 입력해 주세요/)).toBeInTheDocument()
     await user.clear(url)
-    await user.type(url, 'https://github.com/moa-team/moa-web')
+    await user.type(url, 'https://github.com/zello-team/zello-web')
     await user.click(within(dialog).getByRole('button', { name: '저장소 추가' }))
     expect(within(dialog).getByText(/이미 연결되어 있어요/)).toBeInTheDocument()
     await user.clear(url)
-    await user.type(url, 'https://github.com/moa-team/moa-mobile.git')
+    await user.type(url, 'https://github.com/zello-team/zello-mobile.git')
     await user.click(within(dialog).getByRole('button', { name: '저장소 추가' }))
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     const stored = JSON.parse(localStorage.getItem('gyeol.repositories.v1')!)
-    expect(stored.find((r: { name: string }) => r.name === 'moa-mobile')).toMatchObject({ build: 'unknown' })
-    expect(screen.getByRole('button', { name: /moa-mobile.*미확인/ })).toBeInTheDocument()
+    expect(stored.find((r: { name: string }) => r.name === 'zello-mobile')).toMatchObject({ build: 'unknown' })
+    expect(screen.getByRole('button', { name: /zello-mobile.*미확인/ })).toBeInTheDocument()
   })
 
   it('PR 요약으로 초안을 만들고 편집·공개하며 새로 열어도 유지한다', async () => {
@@ -236,14 +255,14 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     await user.selectOptions(within(editor).getByLabelText('담당자'), '박지훈')
     await user.type(within(editor).getByLabelText('완료 조건'), '팀이 검색 응답 시간을 확인할 수 있다.')
     await user.click(within(editor).getByRole('button', { name: '이슈 만들기' }))
-    const issueRow = screen.getByRole('button', { name: /MOA-46.*검색 시간 확인 기능/ }).closest('tr')!
-    expect(within(issueRow).getByText(/moa-api#88.*주간 회의/)).toBeInTheDocument()
+    const issueRow = screen.getByRole('button', { name: /ZELLO-46.*검색 시간 확인 기능/ }).closest('tr')!
+    expect(within(issueRow).getByText(/zello-api#88.*주간 회의/)).toBeInTheDocument()
     expect(within(issueRow).getByText('박지훈')).toBeInTheDocument()
     await user.click(within(issueRow).getByRole('button', { name: 'PR 작성' }))
     const create = screen.getByRole('dialog', { name: '새 Pull request' })
     const submit = within(create).getByRole('button', { name: '코드 검토 요청' })
     expect(submit).toBeDisabled()
-    expect(within(create).getByRole('checkbox', { name: /검색 시간 확인 기능.*moa-api#88/ })).toBeChecked()
+    expect(within(create).getByRole('checkbox', { name: /검색 시간 확인 기능.*zello-api#88/ })).toBeChecked()
     await user.type(within(create).getByLabelText('팀을 위한 변경 요약'), '팀이 검색 응답 시간을 확인할 수 있어요.')
     const branch = within(create).getByLabelText('작업 브랜치')
     await user.clear(branch)
@@ -254,11 +273,11 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     await user.type(branch, 'feat/search-timing')
     await user.click(submit)
     let detail = screen.getByRole('dialog', { name: 'Pull request 상세' })
-    expect(within(detail).getByText('moa-api#89')).toBeInTheDocument()
+    expect(within(detail).getByText('zello-api#89')).toBeInTheDocument()
     expect(within(detail).getByText('팀이 검색 응답 시간을 확인할 수 있어요.')).toBeInTheDocument()
     expect(within(detail).getByText('검사 중')).toBeInTheDocument()
     expect(within(detail).getByText('아직 병합되지 않았어요')).toBeInTheDocument()
-    await user.click(within(detail).getByRole('button', { name: /MOA-46.*moa-api#88.*검색 시간 확인 기능/ }))
+    await user.click(within(detail).getByRole('button', { name: /ZELLO-46.*zello-api#88.*검색 시간 확인 기능/ }))
     editor = screen.getByRole('dialog', { name: '이슈 상세' })
     expect(within(editor).getByLabelText('상태')).toHaveValue('in_review')
     expect(within(editor).getByLabelText('작업이 나온 곳')).toHaveValue('weekly')
@@ -267,10 +286,10 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(within(editor).getByLabelText('담당자')).toHaveValue('박지훈')
     view.unmount()
     view = mount('/pull-requests')
-    await user.click(screen.getByRole('button', { name: /검색 시간 확인 기능.*moa-api#89/ }))
+    await user.click(screen.getByRole('button', { name: /검색 시간 확인 기능.*zello-api#89/ }))
     detail = screen.getByRole('dialog', { name: 'Pull request 상세' })
     expect(within(detail).getByText('팀이 검색 응답 시간을 확인할 수 있어요.')).toBeInTheDocument()
-    expect(within(detail).getByRole('button', { name: /moa-api#88/ })).toBeInTheDocument()
+    expect(within(detail).getByRole('button', { name: /zello-api#88/ })).toBeInTheDocument()
   })
 
   it('홈의 확인 필요 항목에서 담당자·회의·PR 필터를 적용하고 초기화한다', async () => {
@@ -278,24 +297,24 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     mount()
     await user.click(screen.getByRole('button', { name: /누가 맡을지 정해 주세요/ }))
     expect(screen.getByLabelText('작업 확인 필터')).toHaveValue('unassigned')
-    expect(screen.getByRole('button', { name: /MOA-44.*컬렉션 공동 편집/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /MOA-42/ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /ZELLO-44.*컬렉션 공동 편집/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /ZELLO-42/ })).not.toBeInTheDocument()
     await user.selectOptions(screen.getByLabelText('회의 구분 필터'), 'daily')
     expect(screen.getByText('표시할 이슈가 없어요')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '필터 초기화' }))
     await user.selectOptions(screen.getByLabelText('담당자 필터'), '박지훈')
-    expect(screen.getByRole('button', { name: /MOA-42.*컬렉션 검색/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /MOA-44/ })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'moa-api#87', exact: true }))
+    expect(screen.getByRole('button', { name: /ZELLO-42.*컬렉션 검색/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /ZELLO-44/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'zello-api#87', exact: true }))
     expect(screen.getByRole('dialog', { name: 'Pull request 상세' })).toBeInTheDocument()
   })
 
   it('기존에 편집한 이슈의 값과 저장소를 유지하며 잘못된 샘플 번호를 붙이지 않는다', async () => {
     const user = userEvent.setup()
-    localStorage.setItem('gyeol.issues.v1', JSON.stringify([{ id: 'MOA-44', title: '회의에서 수정한 작업', description: '기존 설명', repo: 'api', assignee: '김서연', priority: 'high', status: 'todo', pullRequestIds: [] }]))
+    localStorage.setItem('gyeol.issues.v1', JSON.stringify([{ id: 'ZELLO-44', title: '회의에서 수정한 작업', description: '기존 설명', repo: 'api', assignee: '김서연', priority: 'high', status: 'todo', pullRequestIds: [] }]))
     mount('/issues')
-    const row = screen.getByRole('button', { name: /MOA-44.*회의에서 수정한 작업/ })
-    expect(row).toHaveTextContent('moa-api')
+    const row = screen.getByRole('button', { name: /ZELLO-44.*회의에서 수정한 작업/ })
+    expect(row).toHaveTextContent('zello-api')
     expect(row).not.toHaveTextContent('#132')
     await user.click(row)
     const editor = screen.getByRole('dialog', { name: '이슈 상세' })
@@ -323,7 +342,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     await user.click(screen.getByRole('link', { name: /^내 작업/ }))
     const work = screen.getByRole('region', { name: '내 작업 목록' })
     await user.click(within(work).getByRole('button', { name: /^검토 요청/ }))
-    expect(within(work).getByRole('button', { name: /검색 결과를 더 빠르게.*moa-api#87/ })).toBeInTheDocument()
+    expect(within(work).getByRole('button', { name: /검색 결과를 더 빠르게.*zello-api#87/ })).toBeInTheDocument()
     view.unmount()
     mount('/inbox')
     inbox = screen.getByRole('region', { name: '개인 알림함' })
@@ -353,7 +372,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(screen.getByRole('button', { name: /주간 회의에서 다음 작업/ })).toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: /^팀 작업/ }))
     expect(screen.getByLabelText('저장소 필터')).toHaveValue('api')
-    expect(screen.getByRole('button', { name: /MOA-42.*컬렉션 검색/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /ZELLO-42.*컬렉션 검색/ })).toBeInTheDocument()
   })
 
   it('변경 소식은 업데이트와 개발 기록을 묶고 저장소 관리는 설정으로 이동한다', async () => {
@@ -372,16 +391,16 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(screen.getByRole('heading', { name: '함께하는 멤버' })).toBeInTheDocument()
     expect(screen.queryByLabelText('저장소 필터')).not.toBeInTheDocument()
     await user.click(within(settings).getByRole('link', { name: '저장소 연결' }))
-    expect(screen.getByRole('button', { name: /^moa-web/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^moa-api/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^moa-design/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^zello-web/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^zello-api/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^zello-design/ })).toBeInTheDocument()
   })
 
   it('개인 알림은 다른 수신자와 분리하고 연결 대상이 없으면 미확인으로 유지한다', async () => {
     const user = userEvent.setup()
     localStorage.setItem('gyeol.inbox.isu-bin.v1', JSON.stringify([
       { id: 'missing', recipient: '이수빈', title: '없는 PR 요청', body: '확인', repo: 'api', kind: 'review', createdAt: '2026-10-27T13:00:00+09:00', readAt: null, target: { type: 'pr', id: 'missing' } },
-      { id: 'other', recipient: '박지훈', title: '다른 사람 알림', body: '확인', repo: 'web', kind: 'meeting', createdAt: '2026-10-27T13:00:00+09:00', readAt: null, target: { type: 'issue', id: 'MOA-44' } },
+      { id: 'other', recipient: '박지훈', title: '다른 사람 알림', body: '확인', repo: 'web', kind: 'meeting', createdAt: '2026-10-27T13:00:00+09:00', readAt: null, target: { type: 'issue', id: 'ZELLO-44' } },
     ]))
     mount('/inbox')
     expect(screen.queryByText('다른 사람 알림')).not.toBeInTheDocument()
