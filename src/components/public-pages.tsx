@@ -124,6 +124,7 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
     <header className="public-header"><Brand /><nav aria-label="서비스 메뉴"><ThemeToggle /><Link className="public-login-link" to={signup ? '/login' : '/signup'}>{signup ? '로그인' : '회원가입'}</Link></nav></header>
     <main id="public-main" tabIndex={-1} className="auth-main"><section className="auth-form-content" aria-labelledby="auth-title"><h1 id="auth-title">{signup ? 'zello 시작하기' : 'zello에 로그인'}</h1><p className="auth-description">{signup ? 'GitHub 계정 하나로 팀과 함께 일해요.' : '함께하던 작업을 이어서 확인해요.'}</p><Button className="github-auth-button" size="lg" onClick={continueWithGithub} disabled={pending} aria-busy={pending}>{pending ? <LoaderCircle size={18} className="auth-spinner" /> : <Github size={18} />}<span>{pending ? 'GitHub로 이동 중' : signup ? 'GitHub로 시작하기' : 'GitHub로 로그인'}</span></Button>
       <p className="auth-account-note">{signup ? '처음 로그인하면 계정이 만들어져요.' : '가입할 때 사용한 GitHub 계정으로 로그인해요.'}</p>
+      <p className="help-text">프로필·조직 조회와 공개·비공개 저장소 접근을 승인합니다. GitHub의 저장소 권한에는 읽기와 쓰기가 함께 포함됩니다.</p>
       {notice && <div className="auth-notice" role="status"><p>{notice}</p></div>}
       <div className="auth-switch-account"><span>{signup ? '이미 계정이 있나요?' : '계정이 없나요?'}</span><Link to={signup ? '/login' : '/signup'}>{signup ? '로그인' : '회원가입'}</Link></div>
       <div className="auth-preview"><Link className="public-text-link" to="/overview">샘플 프로젝트 둘러보기<ArrowRight size={14} /></Link><p>저장소 연결은 가입 후 선택하면 돼요.</p></div>

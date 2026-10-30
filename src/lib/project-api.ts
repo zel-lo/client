@@ -1,10 +1,10 @@
 import { request } from './session-api'
 
 export type Project = { id: string; name: string; description: string | null; role: string; canManageRepositories: boolean }
-export type Installation = { id: string; owner: string; ownerType: 'User' | 'Organization' }
-export type RepositoryOption = { id: string; fullName: string; privateRepository: boolean; archived: boolean }
+export type GitHubAccount = { id: string; login: string; type: 'USER' | 'ORGANIZATION' }
+export type RepositoryOption = { id: string; fullName: string; owner: string; ownerType: string; privateRepository: boolean; archived: boolean }
 export type ConnectedRepository = {
-  id: string; projectId: string; githubRepositoryId: string; installationId: string
+  id: string; projectId: string; githubRepositoryId: string; installationId: string | null
   owner: string; name: string; htmlUrl: string; description: string | null; language: string | null
   defaultBranch: string; privateRepository: boolean; status: string; initialSyncCompleted: boolean
 }
@@ -31,22 +31,16 @@ async function mutate<T>(path: string, method: 'POST' | 'DELETE', body?: unknown
 
 export const listProjects = (signal?: AbortSignal) => json<Project[]>('/api/projects', { signal })
 export const createProject = (name: string) => mutate<Project>('/api/projects', 'POST', { name })
-export const githubConfiguration = (signal?: AbortSignal) => json<{ installUrl: string | null }>('/api/github/config', { signal })
-export const getInstallation = (id: string, signal?: AbortSignal) => json<Installation>(`/api/github/installations/${encodeURIComponent(id)}`, { signal })
-export async function beginRepositoryConnection(projectId: string, redirect: (url: string) => void = url => window.location.assign(url)) {
-  const result = await mutate<{ authorizationUrl: string }>(`/api/projects/${encodeURIComponent(projectId)}/github/connection`, 'POST')
-  const destination = new URL(result.authorizationUrl)
-  if (destination.origin !== 'https://github.com' || !destination.pathname.startsWith('/apps/') || destination.username || destination.password) {
-    throw new Error('GitHub 연결 주소를 확인하지 못했어요.')
-  }
-  redirect(destination.href)
+export const listGitHubAccounts = (page: number, signal?: AbortSignal) =>
+  json<Page<GitHubAccount>>(`/api/github/accounts?page=${page}`, { signal })
+export const listAvailableRepositories = (account: string, page: number, signal?: AbortSignal) => {
+  const params = new URLSearchParams({ page: String(page), scope: account.startsWith('organization:') ? 'organization' : account })
+  if (account.startsWith('organization:')) params.set('organization', account.slice('organization:'.length))
+  return json<Page<RepositoryOption>>(`/api/github/repositories?${params}`, { signal })
 }
-export const listInstallations = (page: number, signal?: AbortSignal) => json<Page<Installation>>(`/api/github/installations?page=${page}`, { signal })
-export const listAvailableRepositories = (installationId: string, page: number, signal?: AbortSignal) =>
-  json<Page<RepositoryOption>>(`/api/github/installations/${encodeURIComponent(installationId)}/repositories?page=${page}`, { signal })
 export const listConnectedRepositories = (projectId: string, signal?: AbortSignal) =>
   json<ConnectedRepository[]>(`/api/projects/${encodeURIComponent(projectId)}/repositories`, { signal })
-export const connectRepository = (projectId: string, githubInstallationId: string, githubRepositoryId: string) =>
-  mutate<ConnectedRepository>(`/api/projects/${encodeURIComponent(projectId)}/repositories`, 'POST', { githubInstallationId, githubRepositoryId })
+export const connectRepository = (projectId: string, githubRepositoryId: string) =>
+  mutate<ConnectedRepository>(`/api/projects/${encodeURIComponent(projectId)}/repositories`, 'POST', { githubRepositoryId })
 export const disconnectRepository = (projectId: string, repositoryId: string) =>
   mutate<void>(`/api/projects/${encodeURIComponent(projectId)}/repositories/${encodeURIComponent(repositoryId)}`, 'DELETE')

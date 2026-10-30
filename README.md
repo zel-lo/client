@@ -47,6 +47,6 @@ React 19, TypeScript, Vite, Tailwind CSS 4, shadcn/ui, React Router, Vitest 및 
 
 ## 실제 저장소 연결과 로그인 상태
 
-로그인한 사용자의 **프로젝트 설정 → 저장소 연결**은 서버 API를 사용합니다. 프로젝트를 생성하고 GitHub App에 설치·승인한 개인/Organization 저장소를 선택해 연결·해제할 수 있습니다. ‘GitHub 연결’에서 사용할 개인·팀 계정과 저장소를 승인하면 원래 프로젝트 화면으로 자동 복귀하며 목록을 불러옵니다. 이미 승인한 저장소는 zello 목록에서 검색·선택할 수 있습니다. 자세한 서버 설정은 서버 저장소의 `zello/REPOSITORY_CONNECTION.md`를 참고하세요. 이슈·PR 등 나머지 업무 화면은 샘플 데이터입니다.
+GitHub OAuth 로그인 후 **프로젝트 설정 → 저장소 연결**에서 개인·Organization 저장소를 검색·선택·연결합니다. GitHub App 설치 화면으로 이동하거나 PAT를 입력하지 않습니다. 서버에 별도 OAuth App Client ID·Secret과 GITHUB_APP_TYPE=OAUTH 설정이 필요합니다. 로그인 때 read:user·repo·read:org 권한을 승인받으며 repo에는 읽기와 쓰기가 함께 포함됩니다. Organization 정책에 따라 관리자 승인이나 SSO가 필요할 수 있습니다.
 
-홈에는 실제 사용자 이름과 로그인 상태, 워크스페이스 이동 버튼을 표시합니다. 익명 샘플 화면은 ‘샘플 방문자’로 표시합니다. 로그인 상태는 `/api/me`로 확인하며 탭 재활성화와 다른 탭의 로그아웃을 반영합니다. 브라우저에는 HttpOnly 세션 쿠키만 두며 GitHub 토큰은 localStorage에 넣지 않습니다. 서버는 MySQL에 암호화한 세션을 저장하여 서버 재시작 후에도 유효한 로그인을 유지합니다.
+홈과 사이드바에는 실제 사용자와 로그인 상태를 표시합니다. HttpOnly 쿠키와 서버의 MySQL 암호화 세션을 사용하며 GitHub 토큰은 localStorage에 넣지 않습니다. 이슈·PR 등 나머지 작업 화면은 아직 샘플 데이터입니다. 설정과 API는 서버의 AUTHENTICATION.md, REPOSITORY_CONNECTION.md를 참고하세요.

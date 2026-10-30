@@ -4,12 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { RepositoryConnections } from '../src/components/repository-connections'
 import type { ConnectedRepository, Project } from '../src/lib/project-api'
-import { beginRepositoryConnection } from '../src/lib/project-api'
 
 const project: Project = { id: '1', name: '실제 프로젝트', description: null, role: 'OWNER', canManageRepositories: true }
-const connected: ConnectedRepository = { id: '40', projectId: '1', githubRepositoryId: '30', installationId: '20', owner: 'team', name: 'server', htmlUrl: 'https://github.com/team/server', description: null, language: 'Java', defaultBranch: 'main', privateRepository: true, status: 'CONNECTED', initialSyncCompleted: false }
+const connected: ConnectedRepository = { id: '40', projectId: '1', githubRepositoryId: '30', installationId: null, owner: 'team', name: 'server', htmlUrl: 'https://github.com/team/server', description: null, language: 'Java', defaultBranch: 'main', privateRepository: true, status: 'CONNECTED', initialSyncCompleted: false }
+const source = { id: '30', fullName: 'team/server', owner: 'team', ownerType: 'Organization', privateRepository: true, archived: false }
+const personalSource = { ...source, id: '31', fullName: 'octocat/client', owner: 'octocat', ownerType: 'User', privateRepository: false }
 
-function backend({ projects = [project], installed = true, failure = '' }: { projects?: Project[]; installed?: boolean; failure?: string } = {}) {
+function backend({ projects = [project], failure = '', expired = false }: { projects?: Project[]; failure?: string; expired?: boolean } = {}) {
   let repositories: ConnectedRepository[] = []
   const fetcher = vi.fn(async (path: string, init?: RequestInit) => {
     if (path === '/api/projects' && init?.method === 'POST') {
@@ -18,11 +19,12 @@ function backend({ projects = [project], installed = true, failure = '' }: { pro
       return Response.json(created, { status: 201 })
     }
     if (path === '/api/projects') return Response.json(projects)
-    if (path === '/api/github/config') return Response.json({ installUrl: 'https://github.com/apps/zello-dev/installations/new' })
-    if (path === '/api/github/installations/20') return Response.json({ id: '20', owner: 'team', ownerType: 'Organization' })
-    if (path.endsWith('/github/connection') && init?.method === 'POST') return Response.json({ authorizationUrl: 'https://github.com/apps/zello-dev/installations/new?state=server-generated' })
-    if (path.startsWith('/api/github/installations?')) return Response.json({ items: installed ? [{ id: '20', owner: 'team', ownerType: 'Organization' }] : [], hasNext: false, page: 1 })
-    if (path.startsWith('/api/github/installations/20/repositories')) return Response.json({ items: [{ id: '30', fullName: 'team/server', privateRepository: true, archived: false }], hasNext: false, page: 1 })
+    if (path.startsWith('/api/github/accounts')) return Response.json({ items: [{ id: '10', login: 'octocat', type: 'USER' }, { id: '20', login: 'team', type: 'ORGANIZATION' }], page: 1, hasNext: false })
+    if (path.startsWith('/api/github/repositories')) {
+      if (expired) return Response.json({ code: 'GITHUB_REAUTH_REQUIRED', message: 'GitHub에 다시 로그인해 주세요.' }, { status: 401 })
+      const scope = new URL(path, 'http://127.0.0.1').searchParams.get('scope')
+      return Response.json({ items: scope === 'personal' ? [personalSource] : scope === 'organization' ? [source] : [source, personalSource], page: 1, hasNext: false })
+    }
     if (path === '/api/auth/csrf') return Response.json({ headerName: 'X-CSRF-TOKEN', token: 'csrf-value' })
     if (path.endsWith('/repositories/40') && init?.method === 'DELETE') { repositories = []; return new Response(null, { status: 204 }) }
     if (path.endsWith('/repositories') && init?.method === 'POST') {
@@ -39,30 +41,30 @@ function backend({ projects = [project], installed = true, failure = '' }: { pro
 
 function mount(url = '/settings?tab=repositories') { render(<MemoryRouter initialEntries={[url]}><RepositoryConnections /></MemoryRouter>) }
 
-describe('실제 프로젝트 저장소 연결', () => {
-  it('승인된 Organization 저장소를 CSRF와 세션 쿠키로 연결하고 서버 목록에서 복구한다', async () => {
+describe('사이트 안에서 GitHub 저장소 연결', () => {
+  it('저장소 ID만 CSRF와 세션 쿠키로 연결하고 새로고침·해제를 처리한다', async () => {
     const fetcher = backend()
     mount()
     const user = userEvent.setup()
     const button = await screen.findByRole('button', { name: '선택한 저장소 연결' })
     await waitFor(() => expect(button).toBeEnabled())
     await user.click(button)
-    const link = await screen.findByRole('link', { name: 'team/server' })
-    expect(link).toHaveAttribute('href', 'https://github.com/team/server')
-    expect(screen.getByText('접근 확인 완료 · 작업 데이터 수집 전')).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'team/server' })).toHaveAttribute('href', 'https://github.com/team/server')
+    expect(screen.getByText('연결 완료 · 작업 데이터 수집 전')).toBeInTheDocument()
     expect(fetcher).toHaveBeenCalledWith('/api/projects/1/repositories', expect.objectContaining({
       method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'csrf-value' },
-      body: JSON.stringify({ githubInstallationId: '20', githubRepositoryId: '30' }),
+      body: JSON.stringify({ githubRepositoryId: '30' }),
     }))
-    await user.click(screen.getByRole('button', { name: '연결 목록 새로고침' }))
+    await user.click(screen.getByRole('button', { name: '목록 새로고침' }))
     await screen.findByRole('link', { name: 'team/server' })
     await user.click(screen.getByRole('button', { name: '연결 해제' }))
     await screen.findByText('저장소 연결을 해제했어요. GitHub 저장소는 유지됩니다.')
     expect(screen.queryByRole('link', { name: 'team/server' })).not.toBeInTheDocument()
+    expect(fetcher.mock.calls.every(([path]) => !path.includes('/installations'))).toBe(true)
     expect(localStorage.length).toBe(0)
   })
 
-  it('프로젝트가 없으면 생성한 프로젝트 ID로 저장소 연결을 준비한다', async () => {
+  it('프로젝트가 없으면 만든 프로젝트 ID로 저장소를 연결한다', async () => {
     const fetcher = backend({ projects: [] })
     mount()
     const user = userEvent.setup()
@@ -77,7 +79,44 @@ describe('실제 프로젝트 저장소 연결', () => {
     await waitFor(() => expect(fetcher).toHaveBeenCalledWith('/api/projects/2/repositories', expect.objectContaining({ method: 'POST' })))
   })
 
-  it('GitHub 검증에 실패한 저장소를 연결 완료로 표시하지 않는다', async () => {
+  it('개인·Organization 저장소를 사이트의 선택기로 조회한다', async () => {
+    const fetcher = backend()
+    mount()
+    const user = userEvent.setup()
+    await screen.findByRole('option', { name: 'team · Organization' })
+    const account = screen.getByRole('combobox', { name: 'GitHub 계정 또는 Organization' })
+    await user.selectOptions(account, 'personal')
+    await screen.findByRole('option', { name: 'octocat/client' })
+    expect(fetcher).toHaveBeenCalledWith('/api/github/repositories?page=1&scope=personal', expect.anything())
+    await user.selectOptions(account, 'organization:team')
+    await screen.findByRole('option', { name: 'team/server · 비공개' })
+    expect(fetcher).toHaveBeenCalledWith('/api/github/repositories?page=1&scope=organization&organization=team', expect.anything())
+    expect(screen.queryByRole('button', { name: /GitHub 연결|권한 변경/ })).not.toBeInTheDocument()
+  })
+
+  it('승인된 목록을 검색하고 검색 결과가 없으면 연결하지 않는다', async () => {
+    backend()
+    mount()
+    const user = userEvent.setup()
+    const search = await screen.findByRole('searchbox', { name: '목록에서 저장소 검색' })
+    await waitFor(() => expect(search).toBeEnabled())
+    await user.type(search, '없는-저장소')
+    expect(screen.getByRole('button', { name: '선택한 저장소 연결' })).toBeDisabled()
+    await user.clear(search)
+    await user.type(search, 'server')
+    expect(screen.getByRole('button', { name: '선택한 저장소 연결' })).toBeEnabled()
+    expect(screen.queryByRole('option', { name: 'octocat/client' })).not.toBeInTheDocument()
+  })
+
+  it('검증 실패를 연결 완료로 표시하지 않고 재로그인이 필요하면 로그인으로 안내한다', async () => {
+    backend({ expired: true })
+    mount()
+    await screen.findByRole('alert')
+    expect(screen.getByRole('link', { name: 'GitHub 다시 로그인' })).toHaveAttribute('href', '/login?reauth=github')
+    expect(screen.getByRole('button', { name: '선택한 저장소 연결' })).toBeDisabled()
+  })
+
+  it('GitHub 접근이 취소된 저장소를 로컬 목록에 추가하지 않는다', async () => {
     backend({ failure: '접근할 수 없는 저장소입니다.' })
     mount()
     const button = await screen.findByRole('button', { name: '선택한 저장소 연결' })
@@ -88,59 +127,13 @@ describe('실제 프로젝트 저장소 연결', () => {
     expect(screen.queryByRole('link', { name: 'team/server' })).not.toBeInTheDocument()
   })
 
-  it('설치가 없을 때 설치 링크와 새로고침을 제공하며 연결을 허용하지 않는다', async () => {
-    backend({ installed: false })
-    mount()
-    await screen.findByText(/아직 연결된 GitHub 계정이 없어요/)
-    const refresh = screen.getByRole('button', { name: '연결 목록 새로고침' })
-    await waitFor(() => expect(refresh).toBeEnabled())
-    await userEvent.setup().click(refresh)
-    await waitFor(() => expect(refresh).toBeEnabled())
-    expect(screen.getByRole('button', { name: '선택한 저장소 연결' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'GitHub 연결' })).toBeEnabled()
-  })
-
-  it('GitHub 연결은 현재 프로젝트와 CSRF로 서버에서 준비한 주소를 사용한다', async () => {
+  it('탭을 다시 활성화하면 사용자 토큰으로 목록을 갱신한다', async () => {
     const fetcher = backend()
-    const redirect = vi.fn()
-    await beginRepositoryConnection('1', redirect)
-    expect(fetcher).toHaveBeenCalledWith('/api/projects/1/github/connection', expect.objectContaining({
-      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'csrf-value' },
-    }))
-    expect(redirect).toHaveBeenCalledWith('https://github.com/apps/zello-dev/installations/new?state=server-generated')
-  })
-
-  it('승인 후 돌아오면 원래 프로젝트와 승인한 계정을 선택한다', async () => {
-    const fetcher = backend({ projects: [project, { ...project, id: '2', name: '두 번째 프로젝트' }] })
-    mount('/settings?tab=repositories&github_connection=ready&project=2&installation=20')
-    await screen.findByText('GitHub 연결을 확인했어요. 아래에서 프로젝트에 연결할 저장소를 선택하세요.')
-    await waitFor(() => expect(screen.getByRole('combobox', { name: '연결할 프로젝트' })).toHaveValue('2'))
-    await waitFor(() => expect(screen.getByRole('combobox', { name: 'GitHub 계정 또는 Organization' })).toHaveValue('20'))
-    expect(fetcher).toHaveBeenCalledWith('/api/github/installations/20', expect.objectContaining({ credentials: 'include' }))
-  })
-
-  it('승인된 목록을 검색하고 결과가 없을 때 다른 저장소를 잘못 연결하지 않는다', async () => {
-    backend()
     mount()
-    const user = userEvent.setup()
-    const search = await screen.findByRole('searchbox', { name: '목록에서 저장소 검색' })
-    await waitFor(() => expect(search).toBeEnabled())
-    await user.type(search, '없는-저장소')
-    expect(screen.getByRole('button', { name: '선택한 저장소 연결' })).toBeDisabled()
-    expect(screen.getByText('현재 페이지에서 0개를 찾았어요.')).toBeInTheDocument()
-    await user.clear(search)
-    await user.type(search, 'server')
-    expect(screen.getByRole('button', { name: '선택한 저장소 연결' })).toBeEnabled()
-  })
-
-  it('GitHub에서 권한을 승인하고 돌아오면 계정과 저장소를 자동으로 갱신한다', async () => {
-    backend({ installed: false })
-    mount()
-    await screen.findByText(/아직 연결된 GitHub 계정이 없어요/)
-    backend({ installed: true })
+    await screen.findByRole('option', { name: 'team/server · 비공개' })
+    const count = fetcher.mock.calls.filter(([path]) => path.startsWith('/api/github/repositories')).length
     fireEvent(window, new Event('focus'))
-    await screen.findByRole('option', { name: 'team · Organization' })
-    await waitFor(() => expect(screen.getByRole('button', { name: '선택한 저장소 연결' })).toBeEnabled())
+    await waitFor(() => expect(fetcher.mock.calls.filter(([path]) => path.startsWith('/api/github/repositories')).length).toBeGreaterThan(count))
   })
 
   it('조회 권한의 멤버에게 연결 변경 폼을 표시하지 않는다', async () => {
