@@ -1,16 +1,31 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Github, RefreshCw, Plus, ExternalLink } from 'lucide-react'
 import {
-  connectRepository, createProject, disconnectRepository, githubConfiguration, listAvailableRepositories,
+  beginRepositoryConnection, connectRepository, createProject, disconnectRepository, getInstallation, githubConfiguration, listAvailableRepositories,
   listConnectedRepositories, listInstallations, listProjects, ProjectApiError,
 } from '../lib/project-api'
 import type { ConnectedRepository, Installation, Page, Project, RepositoryOption } from '../lib/project-api'
 
 const emptyPage = <T,>(): Page<T> => ({ items: [], page: 1, hasNext: false })
+const returnErrors: Record<string, string> = {
+  expired: 'GitHub 연결 요청이 만료됐어요. 연결을 다시 시작해 주세요.',
+  invalid: 'GitHub에서 저장소 선택을 완료하지 못했어요. 선택 내용과 팀의 승인 상태를 확인해 주세요.',
+  reauth: 'GitHub 로그인이 만료됐어요. 다시 로그인한 뒤 연결해 주세요.',
+  project_access: '이 프로젝트의 저장소 연결을 관리할 권한이 없어요.',
+  access: '현재 계정으로 승인한 GitHub 연결을 확인하지 못했어요.',
+  failed: 'GitHub 연결을 확인하지 못했어요. 잠시 후 다시 시도해 주세요.',
+}
 
 export function RepositoryConnections() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [returned] = useState(() => {
+    const params = new URLSearchParams(location.search)
+    const numeric = (value: string | null) => value && /^[1-9]\d{0,18}$/.test(value) ? value : ''
+    return { code: params.get('github_connection'), project: numeric(params.get('project')), installation: numeric(params.get('installation')) }
+  })
   const [projects, setProjects] = useState<Project[]>([])
   const [projectId, setProjectId] = useState('')
   const [projectName, setProjectName] = useState('')
@@ -21,6 +36,7 @@ export function RepositoryConnections() {
   const [options, setOptions] = useState<Page<RepositoryOption>>(emptyPage)
   const [repositoryPage, setRepositoryPage] = useState(1)
   const [repositoryId, setRepositoryId] = useState('')
+  const [repositorySearch, setRepositorySearch] = useState('')
   const [installUrl, setInstallUrl] = useState<string | null>(null)
   const [refresh, setRefresh] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -28,11 +44,17 @@ export function RepositoryConnections() {
   const [loadingInstallations, setLoadingInstallations] = useState(false)
   const [loadingOptions, setLoadingOptions] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const [reauth, setReauth] = useState(false)
-  const [notice, setNotice] = useState('')
+  const [error, setError] = useState(returned.code && returned.code !== 'ready' ? returnErrors[returned.code] ?? returnErrors.failed : '')
+  const [reauth, setReauth] = useState(returned.code === 'reauth')
+  const [notice, setNotice] = useState(returned.code === 'ready' ? 'GitHub 연결을 확인했어요. 아래에서 프로젝트에 연결할 저장소를 선택하세요.' : '')
   const lastReturn = useRef(0)
+  const preferredInstallation = useRef(returned.code === 'ready' ? returned.installation : '')
   const project = projects.find(item => item.id === projectId)
+  const visibleOptions = options.items.filter(item => item.fullName.toLocaleLowerCase().includes(repositorySearch.trim().toLocaleLowerCase()))
+
+  useEffect(() => {
+    if (returned.code) navigate('/settings?tab=repositories', { replace: true })
+  }, [navigate, returned.code])
 
   useEffect(() => {
     const returnedFromGithub = () => {
@@ -48,6 +70,12 @@ export function RepositoryConnections() {
     }
   }, [busy])
 
+  useEffect(() => {
+    const reset = () => { setBusy(false); setRefresh(value => value + 1) }
+    window.addEventListener('pageshow', reset)
+    return () => window.removeEventListener('pageshow', reset)
+  }, [])
+
   function report(cause: unknown) {
     setError(cause instanceof Error ? cause.message : '요청을 처리하지 못했어요.')
     setReauth(cause instanceof ProjectApiError && ['AUTHENTICATION_REQUIRED', 'GITHUB_REAUTH_REQUIRED', 'ACCOUNT_INACTIVE'].includes(cause.code))
@@ -56,17 +84,17 @@ export function RepositoryConnections() {
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true)
-    setError('')
+    if (refresh) setError('')
     void Promise.all([listProjects(controller.signal), githubConfiguration(controller.signal)])
       .then(([items, config]) => {
         if (controller.signal.aborted) return
         setProjects(items)
-        setProjectId(current => items.some(item => item.id === current) ? current : items[0]?.id ?? '')
+        setProjectId(current => items.some(item => item.id === current) ? current : items.find(item => item.id === returned.project)?.id ?? items[0]?.id ?? '')
         setInstallUrl(config.installUrl)
       }).catch(cause => { if (!controller.signal.aborted) report(cause) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [refresh])
+  }, [refresh, returned.project])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -85,8 +113,16 @@ export function RepositoryConnections() {
     setInstallations(emptyPage())
     setInstallationId('')
     setLoadingInstallations(true)
-    void listInstallations(installationPage, controller.signal)
-      .then(items => { if (!controller.signal.aborted) { setInstallations(items); setRepositoryPage(1); setInstallationId(items.items[0]?.id ?? '') } })
+    const preferred = preferredInstallation.current
+    void Promise.all([listInstallations(installationPage, controller.signal),
+      preferred && installationPage === 1 ? getInstallation(preferred, controller.signal) : Promise.resolve(null)])
+      .then(([items, verified]) => {
+        if (controller.signal.aborted) return
+        const choices = verified && !items.items.some(item => item.id === verified.id) ? [verified, ...items.items] : items.items
+        setInstallations({ ...items, items: choices }); setRepositoryPage(1)
+        const selected = choices.find(item => item.id === preferred)?.id ?? choices[0]?.id ?? ''
+        setInstallationId(selected); preferredInstallation.current = selected
+      })
       .catch(cause => { if (!controller.signal.aborted) report(cause) })
       .finally(() => { if (!controller.signal.aborted) setLoadingInstallations(false) })
     return () => controller.abort()
@@ -96,6 +132,7 @@ export function RepositoryConnections() {
     const controller = new AbortController()
     setOptions(emptyPage())
     setRepositoryId('')
+    setRepositorySearch('')
     if (!installationId) { setLoadingOptions(false); return () => controller.abort() }
     setLoadingOptions(true)
     void listAvailableRepositories(installationId, repositoryPage, controller.signal)
@@ -118,12 +155,19 @@ export function RepositoryConnections() {
 
   async function connect(event: FormEvent) {
     event.preventDefault()
-    if (busy || !projectId || !installationId || !repositoryId) return
+    if (busy || !projectId || !installationId || !visibleOptions.some(item => item.id === repositoryId)) return
     setBusy(true); setError(''); setNotice('')
     try {
       const item = await connectRepository(projectId, installationId, repositoryId)
       setConnected(current => [...current, item]); setNotice(`${item.owner}/${item.name} 저장소를 연결했어요.`)
     } catch (cause) { report(cause) } finally { setBusy(false) }
+  }
+
+  async function authorizeGithub() {
+    if (busy || !projectId) return
+    setBusy(true); setError(''); setNotice('')
+    try { await beginRepositoryConnection(projectId) }
+    catch (cause) { report(cause); setBusy(false) }
   }
 
   async function disconnect(item: ConnectedRepository) {
@@ -158,16 +202,18 @@ export function RepositoryConnections() {
       </article>)}</div>}
       {!loadingConnected && !connected.length && <p className="help-text">현재 GitHub 계정으로 볼 수 있는 연결된 저장소가 없어요.</p>}
       {project.canManageRepositories ? <div className="connection-picker">
-        <div className="section-heading"><h3>저장소 연결</h3>{installUrl && <a className="button" href={installUrl} target="_blank" rel="noopener noreferrer"><Github size={14} />GitHub 저장소 선택<ExternalLink size={13} /></a>}</div>
-        <p className="help-text">GitHub에서 사용할 개인·팀 계정과 저장소를 선택하세요. 이 화면으로 돌아오면 목록을 자동으로 갱신해요. Organization은 관리자 승인이 필요할 수 있어요.</p>
+        <div className="section-heading"><h3>저장소 연결</h3>{installUrl && <button className="button" disabled={busy || loading} onClick={() => void authorizeGithub()}><Github size={14} />{busy ? 'GitHub로 이동 중…' : installations.items.length ? 'GitHub 저장소 권한 변경' : 'GitHub 연결'}</button>}</div>
+        <p className="help-text">이미 승인한 저장소는 아래에서 바로 선택할 수 있어요. 다른 저장소를 추가하려면 GitHub에서 접근을 승인하세요. 승인 후 이 프로젝트 화면으로 돌아옵니다.</p>
         {!installUrl && <p className="help-text">서버의 GitHub App 설치 주소 설정이 필요해요.</p>}
-        {loadingInstallations ? <p role="status">GitHub 계정을 확인하는 중…</p> : !installations.items.length && <p className="help-text">아직 연결된 GitHub 계정이 없어요. ‘GitHub 저장소 선택’에서 사용할 저장소에 접근을 허용해 주세요.</p>}
+        {loadingInstallations ? <p role="status">GitHub 계정을 확인하는 중…</p> : !installations.items.length && <p className="help-text">아직 연결된 GitHub 계정이 없어요. ‘GitHub 연결’에서 개인 또는 팀 계정을 선택해 주세요.</p>}
         <form onSubmit={event => void connect(event)}>
-          <label>GitHub 계정 또는 Organization<select value={installationId} disabled={busy || loadingInstallations || !installations.items.length} onChange={event => { setInstallationId(event.target.value); setRepositoryPage(1) }}><option value="">계정 선택</option>{installations.items.map(item => <option key={item.id} value={item.id}>{item.owner} · {item.ownerType === 'Organization' ? 'Organization' : '개인 계정'}</option>)}</select></label>
+          <label>GitHub 계정 또는 Organization<select value={installationId} disabled={busy || loadingInstallations || !installations.items.length} onChange={event => { setInstallationId(event.target.value); preferredInstallation.current = event.target.value; setRepositoryPage(1) }}><option value="">계정 선택</option>{installations.items.map(item => <option key={item.id} value={item.id}>{item.owner} · {item.ownerType === 'Organization' ? 'Organization' : '개인 계정'}</option>)}</select></label>
           <Pagination page={installationPage} hasNext={installations.hasNext} disabled={busy || loadingInstallations} onChange={page => { setRepositoryPage(1); setInstallationPage(page) }} label="계정" />
-          <label>연결할 GitHub 저장소<select value={repositoryId} disabled={busy || loadingOptions || !options.items.length} onChange={event => setRepositoryId(event.target.value)}><option value="">저장소 선택</option>{options.items.map(item => <option key={item.id} value={item.id}>{item.fullName}{item.privateRepository ? ' · 비공개' : ''}{item.archived ? ' · 보관됨' : ''}</option>)}</select></label>
+          <label>목록에서 저장소 검색<input type="search" value={repositorySearch} disabled={busy || loadingOptions || !options.items.length} placeholder="계정/저장소 이름으로 검색" onChange={event => { const search = event.target.value; setRepositorySearch(search); setRepositoryId(options.items.find(item => item.fullName.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))?.id ?? '') }} /></label>
+          <label>연결할 GitHub 저장소<select value={repositoryId} disabled={busy || loadingOptions || !visibleOptions.length} onChange={event => setRepositoryId(event.target.value)}><option value="">저장소 선택</option>{visibleOptions.map(item => <option key={item.id} value={item.id}>{item.fullName}{item.privateRepository ? ' · 비공개' : ''}{item.archived ? ' · 보관됨' : ''}</option>)}</select></label>
+          {repositorySearch && <p className="help-text">현재 페이지에서 {visibleOptions.length}개를 찾았어요.</p>}
           {loadingOptions && <p role="status">연결 가능한 저장소를 불러오는 중…</p>}
-          {!loadingOptions && installationId && !options.items.length && <p className="help-text">이 계정에서 연결할 수 있는 저장소가 없어요. ‘GitHub 저장소 선택’에서 사용할 저장소에 접근을 허용해 주세요.</p>}
+          {!loadingOptions && installationId && !options.items.length && <p className="help-text">이 계정에서 연결할 수 있는 저장소가 없어요. ‘GitHub 저장소 권한 변경’에서 사용할 저장소에 접근을 허용해 주세요.</p>}
           <Pagination page={repositoryPage} hasNext={options.hasNext} disabled={busy || loadingOptions} onChange={setRepositoryPage} label="저장소" />
           <button className="button button-dark" disabled={busy || loading || loadingConnected || loadingOptions || loadingInstallations || !repositoryId || !installationId}><Plus size={14} />{busy ? '처리 중…' : '선택한 저장소 연결'}</button>
         </form>

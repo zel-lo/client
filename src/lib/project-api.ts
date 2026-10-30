@@ -32,6 +32,15 @@ async function mutate<T>(path: string, method: 'POST' | 'DELETE', body?: unknown
 export const listProjects = (signal?: AbortSignal) => json<Project[]>('/api/projects', { signal })
 export const createProject = (name: string) => mutate<Project>('/api/projects', 'POST', { name })
 export const githubConfiguration = (signal?: AbortSignal) => json<{ installUrl: string | null }>('/api/github/config', { signal })
+export const getInstallation = (id: string, signal?: AbortSignal) => json<Installation>(`/api/github/installations/${encodeURIComponent(id)}`, { signal })
+export async function beginRepositoryConnection(projectId: string, redirect: (url: string) => void = url => window.location.assign(url)) {
+  const result = await mutate<{ authorizationUrl: string }>(`/api/projects/${encodeURIComponent(projectId)}/github/connection`, 'POST')
+  const destination = new URL(result.authorizationUrl)
+  if (destination.origin !== 'https://github.com' || !destination.pathname.startsWith('/apps/') || destination.username || destination.password) {
+    throw new Error('GitHub 연결 주소를 확인하지 못했어요.')
+  }
+  redirect(destination.href)
+}
 export const listInstallations = (page: number, signal?: AbortSignal) => json<Page<Installation>>(`/api/github/installations?page=${page}`, { signal })
 export const listAvailableRepositories = (installationId: string, page: number, signal?: AbortSignal) =>
   json<Page<RepositoryOption>>(`/api/github/installations/${encodeURIComponent(installationId)}/repositories?page=${page}`, { signal })

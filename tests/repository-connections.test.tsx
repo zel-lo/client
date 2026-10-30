@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { RepositoryConnections } from '../src/components/repository-connections'
 import type { ConnectedRepository, Project } from '../src/lib/project-api'
+import { beginRepositoryConnection } from '../src/lib/project-api'
 
 const project: Project = { id: '1', name: '실제 프로젝트', description: null, role: 'OWNER', canManageRepositories: true }
 const connected: ConnectedRepository = { id: '40', projectId: '1', githubRepositoryId: '30', installationId: '20', owner: 'team', name: 'server', htmlUrl: 'https://github.com/team/server', description: null, language: 'Java', defaultBranch: 'main', privateRepository: true, status: 'CONNECTED', initialSyncCompleted: false }
@@ -18,6 +19,8 @@ function backend({ projects = [project], installed = true, failure = '' }: { pro
     }
     if (path === '/api/projects') return Response.json(projects)
     if (path === '/api/github/config') return Response.json({ installUrl: 'https://github.com/apps/zello-dev/installations/new' })
+    if (path === '/api/github/installations/20') return Response.json({ id: '20', owner: 'team', ownerType: 'Organization' })
+    if (path.endsWith('/github/connection') && init?.method === 'POST') return Response.json({ authorizationUrl: 'https://github.com/apps/zello-dev/installations/new?state=server-generated' })
     if (path.startsWith('/api/github/installations?')) return Response.json({ items: installed ? [{ id: '20', owner: 'team', ownerType: 'Organization' }] : [], hasNext: false, page: 1 })
     if (path.startsWith('/api/github/installations/20/repositories')) return Response.json({ items: [{ id: '30', fullName: 'team/server', privateRepository: true, archived: false }], hasNext: false, page: 1 })
     if (path === '/api/auth/csrf') return Response.json({ headerName: 'X-CSRF-TOKEN', token: 'csrf-value' })
@@ -34,7 +37,7 @@ function backend({ projects = [project], installed = true, failure = '' }: { pro
   return fetcher
 }
 
-function mount() { render(<MemoryRouter><RepositoryConnections /></MemoryRouter>) }
+function mount(url = '/settings?tab=repositories') { render(<MemoryRouter initialEntries={[url]}><RepositoryConnections /></MemoryRouter>) }
 
 describe('실제 프로젝트 저장소 연결', () => {
   it('승인된 Organization 저장소를 CSRF와 세션 쿠키로 연결하고 서버 목록에서 복구한다', async () => {
@@ -94,7 +97,40 @@ describe('실제 프로젝트 저장소 연결', () => {
     await userEvent.setup().click(refresh)
     await waitFor(() => expect(refresh).toBeEnabled())
     expect(screen.getByRole('button', { name: '선택한 저장소 연결' })).toBeDisabled()
-    expect(screen.getByRole('link', { name: 'GitHub 저장소 선택' })).toHaveAttribute('href', 'https://github.com/apps/zello-dev/installations/new')
+    expect(screen.getByRole('button', { name: 'GitHub 연결' })).toBeEnabled()
+  })
+
+  it('GitHub 연결은 현재 프로젝트와 CSRF로 서버에서 준비한 주소를 사용한다', async () => {
+    const fetcher = backend()
+    const redirect = vi.fn()
+    await beginRepositoryConnection('1', redirect)
+    expect(fetcher).toHaveBeenCalledWith('/api/projects/1/github/connection', expect.objectContaining({
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'csrf-value' },
+    }))
+    expect(redirect).toHaveBeenCalledWith('https://github.com/apps/zello-dev/installations/new?state=server-generated')
+  })
+
+  it('승인 후 돌아오면 원래 프로젝트와 승인한 계정을 선택한다', async () => {
+    const fetcher = backend({ projects: [project, { ...project, id: '2', name: '두 번째 프로젝트' }] })
+    mount('/settings?tab=repositories&github_connection=ready&project=2&installation=20')
+    await screen.findByText('GitHub 연결을 확인했어요. 아래에서 프로젝트에 연결할 저장소를 선택하세요.')
+    await waitFor(() => expect(screen.getByRole('combobox', { name: '연결할 프로젝트' })).toHaveValue('2'))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'GitHub 계정 또는 Organization' })).toHaveValue('20'))
+    expect(fetcher).toHaveBeenCalledWith('/api/github/installations/20', expect.objectContaining({ credentials: 'include' }))
+  })
+
+  it('승인된 목록을 검색하고 결과가 없을 때 다른 저장소를 잘못 연결하지 않는다', async () => {
+    backend()
+    mount()
+    const user = userEvent.setup()
+    const search = await screen.findByRole('searchbox', { name: '목록에서 저장소 검색' })
+    await waitFor(() => expect(search).toBeEnabled())
+    await user.type(search, '없는-저장소')
+    expect(screen.getByRole('button', { name: '선택한 저장소 연결' })).toBeDisabled()
+    expect(screen.getByText('현재 페이지에서 0개를 찾았어요.')).toBeInTheDocument()
+    await user.clear(search)
+    await user.type(search, 'server')
+    expect(screen.getByRole('button', { name: '선택한 저장소 연결' })).toBeEnabled()
   })
 
   it('GitHub에서 권한을 승인하고 돌아오면 계정과 저장소를 자동으로 갱신한다', async () => {
