@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { AuthPage, LandingPage } from './components/public-pages'
 import { useTheme } from './hooks/use-theme'
 import { BrandMark } from './components/brand-mark'
 import type { FormEvent, ReactNode, CSSProperties } from 'react'
@@ -36,7 +37,7 @@ import type { Activity, PatchNote, Period, Repo } from './data/mock'
 const navItems: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/inbox', label: '알림함', icon: Bell },
   { to: '/my-work', label: '내 작업', icon: CircleDot },
-  { to: '/', label: '전체 현황', icon: LayoutDashboard },
+  { to: '/overview', label: '전체 현황', icon: LayoutDashboard },
   { to: '/issues', label: '팀 작업', icon: CircleDot },
   { to: '/pull-requests', label: '코드 검토', icon: GitPullRequest },
   { to: '/changes', label: '변경 소식', icon: BookOpen },
@@ -136,6 +137,17 @@ function PatchPreview({ note, onRead }: { note: PatchNote; onRead: () => void })
 }
 
 export default function App() {
+  const { pathname } = useLocation()
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [pathname])
+  return <Routes>
+    <Route path="/" element={<LandingPage />} />
+    <Route path="/login" element={<AuthPage />} />
+    <Route path="/signup" element={<AuthPage signup />} />
+    <Route path="*" element={<WorkspaceApp />} />
+  </Routes>
+}
+
+function WorkspaceApp() {
   const navigate = useNavigate()
   const location = useLocation()
   const [repos, setRepos] = useStored<Repo[]>('gyeol.repositories.v1', initialRepos)
@@ -294,7 +306,7 @@ export default function App() {
   }
   const repositoryControl = <label className="select-wrap header-scope"><Github size={14} /><select aria-label="저장소 필터" value={repoFilter} onChange={e => setRepoFilter(e.target.value)}><option value="all">모든 저장소</option>{repos.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select><ChevronDown size={13} /></label>
   const filterControls = <div className="filter-controls">{!isWorkPage && <label className="select-wrap period-select"><CalendarDays size={14} /><select aria-label="조회 기간" value={period} onChange={e => setPeriod(e.target.value as Period)}>{Object.entries(periods).map(([value, p]) => <option key={value} value={value}>{p.range}</option>)}</select><ChevronDown size={13} /></label>}</div>
-  const subtitle = location.pathname === '/' ? '회의에서 정한 일부터 코드 검토와 변경 사항까지, 프로젝트의 흐름을 확인하세요.' : location.pathname === '/inbox' ? '내게 온 요청과 소식이에요. 내용을 열거나 읽음으로 표시하면 미확인 목록에서 사라집니다.' : location.pathname === '/my-work' ? '내가 맡은 작업, 요청받은 코드 검토와 내가 올린 PR을 모았어요.' : location.pathname === '/issues' ? '회의에서 정한 팀의 작업, 담당자와 연결된 PR을 함께 확인하세요.' : location.pathname === '/pull-requests' ? '어떤 작업을 해결하는 PR인지, 검토와 자동 검사 상태를 확인하세요.' : location.pathname === '/changes' ? '팀 업데이트로 결과를 공유하고, 개발 기록에서 변경 과정을 확인하세요.' : location.pathname === '/deployments' ? '빌드 결과와 서비스 배포 상태를 구분해서 확인하세요.' : '프로젝트 정보, 멤버, 연결된 저장소와 동기화 설정을 관리하세요.'
+  const subtitle = location.pathname === '/overview' ? '회의에서 정한 일부터 코드 검토와 변경 사항까지, 프로젝트의 흐름을 확인하세요.' : location.pathname === '/inbox' ? '내게 온 요청과 소식이에요. 내용을 열거나 읽음으로 표시하면 미확인 목록에서 사라집니다.' : location.pathname === '/my-work' ? '내가 맡은 작업, 요청받은 코드 검토와 내가 올린 PR을 모았어요.' : location.pathname === '/issues' ? '회의에서 정한 팀의 작업, 담당자와 연결된 PR을 함께 확인하세요.' : location.pathname === '/pull-requests' ? '어떤 작업을 해결하는 PR인지, 검토와 자동 검사 상태를 확인하세요.' : location.pathname === '/changes' ? '팀 업데이트로 결과를 공유하고, 개발 기록에서 변경 과정을 확인하세요.' : location.pathname === '/deployments' ? '빌드 결과와 서비스 배포 상태를 구분해서 확인하세요.' : '프로젝트 정보, 멤버, 연결된 저장소와 동기화 설정을 관리하세요.'
 
   return <SidebarProvider className="app-shell" style={{ '--sidebar-width': '256px' } as CSSProperties}>
     <a className="skip-link" href="#main-content" onClick={e => { e.preventDefault(); document.getElementById('main-content')?.focus() }}>본문으로 이동</a>
@@ -302,10 +314,10 @@ export default function App() {
     <SidebarInset className="app-body">
       <header className="topbar"><SidebarTrigger className="sidebar-trigger" aria-label="메뉴 열기 또는 닫기" /><div className="breadcrumb"><span className="project-mini"><BrandMark /></span><span>zello</span><ChevronRight size={12} /><strong>{heading}</strong></div>{showScope && repositoryControl}<div className="topbar-actions"><button className="search-trigger" onClick={() => setModal('search')}><Search size={16} /><span>검색 및 빠른 이동</span><kbd>⌘ K</kbd></button><span className="topbar-divider" /><Button variant="ghost" size="icon-sm" className="theme-toggle" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={theme === 'light' ? '어두운 테마로 전환' : '밝은 테마로 전환'} title={theme === 'light' ? 'Dark mode' : 'Light mode'}>{theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}</Button><div className="notification-anchor"><button className="icon-button notification-button" aria-label="알림" aria-expanded={notifications} onClick={() => setNotifications(v => !v)}><Bell size={18} />{unreadCount > 0 && <span className="unread-badge" aria-hidden="true">{unreadCount}</span>}</button>{notifications && <InboxPreview items={myInbox} repos={repos} onOpen={openNotification} />}</div><div className="top-avatar"><Avatar name={CURRENT_USER} small /></div></div></header>
       <div id="main-content" tabIndex={-1} className="main-content">
-        <div className="page-heading"><div><div className="page-eyebrow">샘플 프로젝트 <span className="badge badge-neutral">팀 워크스페이스</span></div><h1>{heading}<span className="heading-dot">.</span></h1><p>{subtitle}</p></div><div className="heading-actions">{location.pathname === '/pull-requests' ? <button className="button button-dark" onClick={() => openPr()}><Plus size={15} />PR 작성</button> : ['/', '/issues'].includes(location.pathname) ? <button className="button button-dark" onClick={() => openIssue(null)}><Plus size={15} />이슈 만들기</button> : location.pathname === '/settings' && settingsTab === 'repositories' ? <button className="button button-dark" onClick={() => setModal('repo')}><Plus size={15} />저장소 연결</button> : location.pathname === '/changes' && changesView === 'updates' ? <button className="button button-dark" onClick={() => setModal('note')}><Plus size={15} />패치노트 작성</button> : null}</div></div>
+        <div className="page-heading"><div><div className="page-eyebrow">샘플 프로젝트 <span className="badge badge-neutral">팀 워크스페이스</span></div><h1>{heading}<span className="heading-dot">.</span></h1><p>{subtitle}</p></div><div className="heading-actions">{location.pathname === '/pull-requests' ? <button className="button button-dark" onClick={() => openPr()}><Plus size={15} />PR 작성</button> : ['/overview', '/issues'].includes(location.pathname) ? <button className="button button-dark" onClick={() => openIssue(null)}><Plus size={15} />이슈 만들기</button> : location.pathname === '/settings' && settingsTab === 'repositories' ? <button className="button button-dark" onClick={() => setModal('repo')}><Plus size={15} />저장소 연결</button> : location.pathname === '/changes' && changesView === 'updates' ? <button className="button button-dark" onClick={() => setModal('note')}><Plus size={15} />패치노트 작성</button> : null}</div></div>
         {showScope && <div className="page-toolbar">{filterControls}<div className="sync-status"><span><i className="status-dot" />{lastSync === '방금' ? '방금 확인' : `${lastSync} 마지막 확인`}</span><button className={`icon-button ${syncing ? 'is-syncing' : ''}`} disabled={syncing} aria-label="데이터 새로고침" onClick={sync}><RefreshCw size={15} /></button></div></div>}
         <Routes>
-          <Route path="/" element={<>
+          <Route path="/overview" element={<>
             <SectionCards unassigned={unassigned} unlinked={unlinked} reviewing={reviewing} merged={merged} period={periods[period].label} onNavigate={navigate} />
             <div className="overview-grid"><section className="team-summary"><div className="section-heading"><h2>확인이 필요한 작업</h2><NavLink to="/issues" className="subtle-link">팀 작업 보기 <ArrowUpRight size={14} /></NavLink></div><p className="section-subheading">담당자, 연결된 PR과 다음 확인 사항을 함께 살펴보세요.</p><div className="team-task-list">{[...activeIssues].sort((a, b) => Number(Boolean(a.assignee)) - Number(Boolean(b.assignee))).slice(0, 4).map(issue => <button key={issue.id} onClick={() => openIssue(issue)}><span className={`task-status task-status-${issue.status}`}><CircleDot size={16} /></span><span><strong>{issue.title}</strong><small>{repositoryRef(issue.repo, issue.githubNumber, repos, issue.id)} · {issueAttention(issue, pullRequests)}</small></span><span className="task-assignee">{issue.assignee || '지정 필요'}</span><ChevronRight size={14} /></button>)}{!issues.some(issue => (repoFilter === 'all' || issue.repo === repoFilter) && issue.status !== 'done') && <Empty title="진행할 작업이 없어요" description="새 이슈를 만들어 다음 작업을 정리해 보세요." />}</div><button className="button full-width" onClick={() => openIssue(null)}><Plus size={14} />회의에서 할 일 등록</button></section><section className="weekly-section"><div className="section-heading"><h2>최신 팀 업데이트</h2><NavLink to="/patches" className="subtle-link">전체 보기 <ArrowUpRight size={14} /></NavLink></div>{visibleNotes.find(n => n.status === 'published') ? <PatchPreview note={visibleNotes.find(n => n.status === 'published')!} onRead={() => setNoteDetail(visibleNotes.find(n => n.status === 'published')!)} /> : <div className="patch-preview patch-empty"><Empty title="아직 공개된 패치노트가 없어요" description="반영된 PR을 선택해 패치노트를 작성하세요." action={<button className="button" onClick={() => setModal('note')}>패치노트 작성</button>} /></div>}</section></div>
             <ActivityChart activities={repoActivities} period={period} onPeriod={setPeriod} />
@@ -323,7 +335,7 @@ export default function App() {
           <Route path="/patches" element={<Navigate replace to="/changes?view=updates" />} />
           <Route path="/repositories" element={<Navigate replace to="/settings?tab=repositories" />} />
           <Route path="/settings" element={<><nav className="page-subnav" aria-label="프로젝트 설정 메뉴">{[['general', '일반'], ['members', '멤버'], ['repositories', '저장소 연결'], ['sync', '동기화']].map(([tab, label]) => <Link key={tab} to={`/settings?tab=${tab}`} className={settingsTab === tab ? 'selected' : ''} aria-current={settingsTab === tab ? 'page' : undefined}>{label}</Link>)}</nav>{settingsTab === 'repositories' ? <section><div className="section-heading repo-list-heading"><h2>연결된 저장소 <span className="count-text">{repos.length}</span></h2><span className="muted small">zello-team / 프로젝트 통합 보기</span></div><div className="repo-grid repo-grid-page">{repos.map(r => <RepoCard key={r.id} repo={r} activityCount={activities.filter(a => a.repo === r.id).length} onClick={() => openRepo(r)} />)}<button className="add-repo-card" onClick={() => setModal('repo')}><Plus size={23} strokeWidth={1.3} /><strong>새로운 저장소 연결</strong><span>GitHub URL로 저장소 추가</span></button></div><div className="info-line"><Github size={16} /><p>지금은 프로토타입이에요. 추가한 저장소는 이 브라우저에 저장되며, 실제 GitHub 데이터는 수집하지 않습니다.</p></div></section> : settingsTab === 'sync' ? <section className="settings-sync"><div className="section-heading"><h2>데이터 동기화</h2><button className="button" onClick={sync} disabled={syncing}><RefreshCw size={14} className={syncing ? 'is-syncing' : ''} />{syncing ? '확인 중…' : '데모 데이터 새로고침'}</button></div><p className="section-subheading">연결한 저장소의 데이터 수집 상태를 확인하는 공간입니다.</p><div className="data-frame">{repos.map(repo => <div className="sync-repo-row" key={repo.id}><Github size={17} /><strong>{repo.name}</strong><span className="badge">{repo.build === 'unknown' ? '연동 전' : '샘플 데이터'}</span><span className="muted small">{lastSync === '방금' ? '방금 확인' : `${lastSync} 마지막 확인`}</span></div>)}</div><div className="info-line"><CircleDot size={16} /><p>현재는 데모 데이터로 동작합니다. 실제 GitHub 인증, 데이터 수집 및 자동 동기화는 아직 연결되지 않았어요.</p></div></section> : <Settings key={settingsTab} section={settingsTab === 'members' ? 'members' : 'general'} onSave={notify} />}</>} />
-          <Route path="*" element={<Empty title="이 페이지를 찾지 못했어요" description="프로젝트 홈에서 팀의 기록을 이어서 확인해 주세요." action={<button className="button" onClick={() => navigate('/')}>한눈에 보기로 이동</button>} />} />
+          <Route path="*" element={<Empty title="이 페이지를 찾지 못했어요" description="프로젝트 홈에서 팀의 기록을 이어서 확인해 주세요." action={<button className="button" onClick={() => navigate('/overview')}>한눈에 보기로 이동</button>} />} />
         </Routes>
         <footer className="page-footer"><span><span className="footer-brand"><GitBranch size={12} />zello</span></span><span><i className="demo-dot" /> 목데이터 프로토타입 <span className="footer-separator">/</span> 2026.10.27 기준</span></footer>
       </div>

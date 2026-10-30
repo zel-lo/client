@@ -11,7 +11,7 @@ vi.mock('../src/components/ui/contribution-skyline', async importOriginal => {
   const original = await importOriginal<typeof import('../src/components/ui/contribution-skyline')>()
   return { ...original, default: () => <div aria-label="활동 시각화" /> }
 })
-function mount(route = '/') {
+function mount(route = '/overview') {
   return render(<MemoryRouter initialEntries={[route]}><App /></MemoryRouter>)
 }
 

@@ -20,7 +20,7 @@ export function WorkspaceSidebar({ unreadCount, myWorkCount, issueCount, pullReq
     { to: '/my-work', label: '내 작업', icon: UserRound, count: myWorkCount, selected: location.pathname === '/my-work' },
   ]
   const project: NavigationItem[] = [
-    { to: '/', label: '전체 현황', icon: LayoutDashboard, selected: location.pathname === '/' },
+    { to: '/overview', label: '전체 현황', icon: LayoutDashboard, selected: location.pathname === '/overview' },
     { to: '/issues', label: '팀 작업', icon: CircleDot, count: issueCount, selected: location.pathname === '/issues' },
     { to: '/pull-requests', label: '코드 검토', icon: GitPullRequest, count: pullRequestCount, selected: location.pathname === '/pull-requests' },
     { to: '/changes', label: '변경 소식', icon: BookOpen, selected: changesActive },
@@ -36,7 +36,7 @@ export function WorkspaceSidebar({ unreadCount, myWorkCount, issueCount, pullReq
   }
   return <Sidebar variant="inset" collapsible="offcanvas" className="workspace-sidebar" aria-label="메인 메뉴"><SidebarHeader className="workspace-sidebar-header">
     <Link to="/" className="sidebar-app-label" aria-label="zello 홈"><BrandMark /><span>zello</span></Link>
-    <details ref={projectMenu} className="project-switch"><summary><span className="workspace-logo">P</span><span><strong>샘플 프로젝트</strong><small>협업 기능을 살펴보는 샘플 공간</small></span><ChevronDown size={14} /></summary><div className="project-switch-menu"><span className="search-hint">현재 프로젝트</span><Link to="/" onClick={() => { if (projectMenu.current) projectMenu.current.open = false }}>샘플 프로젝트<Check size={14} /></Link><Link to="/settings" onClick={() => { if (projectMenu.current) projectMenu.current.open = false }}>프로젝트 설정<Settings size={14} /></Link><small>프로젝트 1개로 구성된 데모예요.</small></div></details>
+    <details ref={projectMenu} className="project-switch"><summary><span className="workspace-logo">P</span><span><strong>샘플 프로젝트</strong><small>협업 기능을 살펴보는 샘플 공간</small></span><ChevronDown size={14} /></summary><div className="project-switch-menu"><span className="search-hint">현재 프로젝트</span><Link to="/overview" onClick={() => { if (projectMenu.current) projectMenu.current.open = false }}>샘플 프로젝트<Check size={14} /></Link><Link to="/settings" onClick={() => { if (projectMenu.current) projectMenu.current.open = false }}>프로젝트 설정<Settings size={14} /></Link><small>프로젝트 1개로 구성된 데모예요.</small></div></details>
     <div className="sidebar-quick-actions"><button className="button button-dark" onClick={() => closeMobile(onCreate)}><Plus size={16} />새 작업 등록</button><button className="button sidebar-search" onClick={() => closeMobile(onSearch)} aria-label="검색 및 빠른 이동" title="검색 및 빠른 이동 · ⌘K"><Search size={16} /></button></div>
   </SidebarHeader><SidebarContent>{group('내가 확인할 것', personal)}{group('팀이 진행하는 일', project)}{group('프로젝트 관리', management)}<SidebarGroup className="workspace-nav-group sidebar-secondary"><SidebarMenu><SidebarMenuItem><SidebarMenuButton onClick={() => closeMobile(onGuide)}><CircleHelp size={17} /><span>도움말</span></SidebarMenuButton></SidebarMenuItem></SidebarMenu></SidebarGroup></SidebarContent><SidebarFooter className="workspace-sidebar-footer"><Link to="/my-work" className="profile"><span className="profile-monogram">수빈</span><span><strong>이수빈</strong><small>샘플 팀 · 관리자</small></span><UserRound size={15} /></Link></SidebarFooter></Sidebar>
 }
