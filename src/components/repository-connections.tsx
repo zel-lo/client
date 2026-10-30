@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Github, RefreshCw, Plus, ExternalLink } from 'lucide-react'
@@ -31,7 +31,22 @@ export function RepositoryConnections() {
   const [error, setError] = useState('')
   const [reauth, setReauth] = useState(false)
   const [notice, setNotice] = useState('')
+  const lastReturn = useRef(0)
   const project = projects.find(item => item.id === projectId)
+
+  useEffect(() => {
+    const returnedFromGithub = () => {
+      if (busy || document.visibilityState !== 'visible' || Date.now() - lastReturn.current < 1500) return
+      lastReturn.current = Date.now()
+      setError(''); setReauth(false); setRefresh(value => value + 1)
+    }
+    window.addEventListener('focus', returnedFromGithub)
+    document.addEventListener('visibilitychange', returnedFromGithub)
+    return () => {
+      window.removeEventListener('focus', returnedFromGithub)
+      document.removeEventListener('visibilitychange', returnedFromGithub)
+    }
+  }, [busy])
 
   function report(cause: unknown) {
     setError(cause instanceof Error ? cause.message : '요청을 처리하지 못했어요.')
@@ -143,16 +158,16 @@ export function RepositoryConnections() {
       </article>)}</div>}
       {!loadingConnected && !connected.length && <p className="help-text">현재 GitHub 계정으로 볼 수 있는 연결된 저장소가 없어요.</p>}
       {project.canManageRepositories ? <div className="connection-picker">
-        <div className="section-heading"><h3>저장소 연결</h3>{installUrl && <a className="button" href={installUrl} target="_blank" rel="noopener noreferrer"><Github size={14} />GitHub App 설치·저장소 선택<ExternalLink size={13} /></a>}</div>
-        <p className="help-text">GitHub에서 사용할 계정과 저장소를 승인한 뒤 이 화면의 ‘연결 목록 새로고침’을 눌러주세요. Organization은 관리자 승인이 필요할 수 있어요.</p>
+        <div className="section-heading"><h3>저장소 연결</h3>{installUrl && <a className="button" href={installUrl} target="_blank" rel="noopener noreferrer"><Github size={14} />GitHub 저장소 선택<ExternalLink size={13} /></a>}</div>
+        <p className="help-text">GitHub에서 사용할 개인·팀 계정과 저장소를 선택하세요. 이 화면으로 돌아오면 목록을 자동으로 갱신해요. Organization은 관리자 승인이 필요할 수 있어요.</p>
         {!installUrl && <p className="help-text">서버의 GitHub App 설치 주소 설정이 필요해요.</p>}
-        {loadingInstallations ? <p role="status">GitHub 설치 목록을 불러오는 중…</p> : !installations.items.length && <p className="help-text">접근 가능한 GitHub App 설치가 없어요. 위 버튼으로 사용할 계정에 App을 설치해 주세요.</p>}
+        {loadingInstallations ? <p role="status">GitHub 계정을 확인하는 중…</p> : !installations.items.length && <p className="help-text">아직 연결된 GitHub 계정이 없어요. ‘GitHub 저장소 선택’에서 사용할 저장소에 접근을 허용해 주세요.</p>}
         <form onSubmit={event => void connect(event)}>
           <label>GitHub 계정 또는 Organization<select value={installationId} disabled={busy || loadingInstallations || !installations.items.length} onChange={event => { setInstallationId(event.target.value); setRepositoryPage(1) }}><option value="">계정 선택</option>{installations.items.map(item => <option key={item.id} value={item.id}>{item.owner} · {item.ownerType === 'Organization' ? 'Organization' : '개인 계정'}</option>)}</select></label>
           <Pagination page={installationPage} hasNext={installations.hasNext} disabled={busy || loadingInstallations} onChange={page => { setRepositoryPage(1); setInstallationPage(page) }} label="계정" />
           <label>연결할 GitHub 저장소<select value={repositoryId} disabled={busy || loadingOptions || !options.items.length} onChange={event => setRepositoryId(event.target.value)}><option value="">저장소 선택</option>{options.items.map(item => <option key={item.id} value={item.id}>{item.fullName}{item.privateRepository ? ' · 비공개' : ''}{item.archived ? ' · 보관됨' : ''}</option>)}</select></label>
           {loadingOptions && <p role="status">연결 가능한 저장소를 불러오는 중…</p>}
-          {!loadingOptions && installationId && !options.items.length && <p className="help-text">이 설치에서 접근할 수 있는 저장소가 없어요. GitHub App의 저장소 선택 범위를 확인해 주세요.</p>}
+          {!loadingOptions && installationId && !options.items.length && <p className="help-text">이 계정에서 연결할 수 있는 저장소가 없어요. ‘GitHub 저장소 선택’에서 사용할 저장소에 접근을 허용해 주세요.</p>}
           <Pagination page={repositoryPage} hasNext={options.hasNext} disabled={busy || loadingOptions} onChange={setRepositoryPage} label="저장소" />
           <button className="button button-dark" disabled={busy || loading || loadingConnected || loadingOptions || loadingInstallations || !repositoryId || !installationId}><Plus size={14} />{busy ? '처리 중…' : '선택한 저장소 연결'}</button>
         </form>

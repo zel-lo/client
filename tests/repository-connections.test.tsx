@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { RepositoryConnections } from '../src/components/repository-connections'
@@ -88,13 +88,23 @@ describe('실제 프로젝트 저장소 연결', () => {
   it('설치가 없을 때 설치 링크와 새로고침을 제공하며 연결을 허용하지 않는다', async () => {
     backend({ installed: false })
     mount()
-    await screen.findByText(/접근 가능한 GitHub App 설치가 없어요/)
+    await screen.findByText(/아직 연결된 GitHub 계정이 없어요/)
     const refresh = screen.getByRole('button', { name: '연결 목록 새로고침' })
     await waitFor(() => expect(refresh).toBeEnabled())
     await userEvent.setup().click(refresh)
     await waitFor(() => expect(refresh).toBeEnabled())
     expect(screen.getByRole('button', { name: '선택한 저장소 연결' })).toBeDisabled()
-    expect(screen.getByRole('link', { name: /GitHub App 설치/ })).toHaveAttribute('href', 'https://github.com/apps/zello-dev/installations/new')
+    expect(screen.getByRole('link', { name: 'GitHub 저장소 선택' })).toHaveAttribute('href', 'https://github.com/apps/zello-dev/installations/new')
+  })
+
+  it('GitHub에서 권한을 승인하고 돌아오면 계정과 저장소를 자동으로 갱신한다', async () => {
+    backend({ installed: false })
+    mount()
+    await screen.findByText(/아직 연결된 GitHub 계정이 없어요/)
+    backend({ installed: true })
+    fireEvent(window, new Event('focus'))
+    await screen.findByRole('option', { name: 'team · Organization' })
+    await waitFor(() => expect(screen.getByRole('button', { name: '선택한 저장소 연결' })).toBeEnabled())
   })
 
   it('조회 권한의 멤버에게 연결 변경 폼을 표시하지 않는다', async () => {
