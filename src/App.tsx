@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AuthPage, LandingPage } from './components/public-pages'
+import { AuthCallbackPage, AuthPage, LandingPage } from './components/public-pages'
+import { SessionProvider, useSession } from './hooks/use-session'
 import { useTheme } from './hooks/use-theme'
 import { BrandMark } from './components/brand-mark'
 import type { FormEvent, ReactNode, CSSProperties } from 'react'
@@ -137,17 +138,24 @@ function PatchPreview({ note, onRead }: { note: PatchNote; onRead: () => void })
 }
 
 export default function App() {
+  return <SessionProvider><AppRoutes /></SessionProvider>
+}
+
+function AppRoutes() {
   const { pathname } = useLocation()
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [pathname])
   return <Routes>
     <Route path="/" element={<LandingPage />} />
     <Route path="/login" element={<AuthPage />} />
     <Route path="/signup" element={<AuthPage signup />} />
+    <Route path="/auth/callback" element={<AuthCallbackPage />} />
     <Route path="*" element={<WorkspaceApp />} />
   </Routes>
 }
 
 function WorkspaceApp() {
+  const session = useSession()
+  const [logoutPending, setLogoutPending] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const [repos, setRepos] = useStored<Repo[]>('gyeol.repositories.v1', initialRepos)
@@ -194,6 +202,17 @@ function WorkspaceApp() {
     setToast(message)
     if (toastTimer.current) clearTimeout(toastTimer.current)
     toastTimer.current = setTimeout(() => setToast(''), 3500)
+  }
+  async function logout() {
+    setLogoutPending(true)
+    try {
+      await session.logout()
+      navigate('/login', { replace: true })
+    } catch (cause) {
+      notify(cause instanceof Error ? cause.message : '로그아웃하지 못했어요.')
+    } finally {
+      setLogoutPending(false)
+    }
   }
   useEffect(() => () => { if (toastTimer.current) clearTimeout(toastTimer.current); if (syncTimer.current) clearTimeout(syncTimer.current) }, [])
   useEffect(() => {
@@ -310,9 +329,9 @@ function WorkspaceApp() {
 
   return <SidebarProvider className="app-shell" style={{ '--sidebar-width': '256px' } as CSSProperties}>
     <a className="skip-link" href="#main-content" onClick={e => { e.preventDefault(); document.getElementById('main-content')?.focus() }}>본문으로 이동</a>
-    <WorkspaceSidebar unreadCount={unreadCount} myWorkCount={myWorkCount} pullRequestCount={scopedPullRequests.filter(pr => ['open', 'draft'].includes(pr.status)).length} issueCount={activeIssues.length} onGuide={() => setModal('guide')} onSearch={() => setModal('search')} onCreate={() => openIssue(null)} />
+    <WorkspaceSidebar unreadCount={unreadCount} myWorkCount={myWorkCount} pullRequestCount={scopedPullRequests.filter(pr => ['open', 'draft'].includes(pr.status)).length} issueCount={activeIssues.length} onGuide={() => setModal('guide')} onSearch={() => setModal('search')} onCreate={() => openIssue(null)} currentUser={session.user} onLogout={() => void logout()} logoutPending={logoutPending} />
     <SidebarInset className="app-body">
-      <header className="topbar"><SidebarTrigger className="sidebar-trigger" aria-label="메뉴 열기 또는 닫기" /><div className="breadcrumb"><span className="project-mini"><BrandMark /></span><span>zello</span><ChevronRight size={12} /><strong>{heading}</strong></div>{showScope && repositoryControl}<div className="topbar-actions"><button className="search-trigger" onClick={() => setModal('search')}><Search size={16} /><span>검색 및 빠른 이동</span><kbd>⌘ K</kbd></button><span className="topbar-divider" /><Button variant="ghost" size="icon-sm" className="theme-toggle" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={theme === 'light' ? '어두운 테마로 전환' : '밝은 테마로 전환'} title={theme === 'light' ? 'Dark mode' : 'Light mode'}>{theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}</Button><div className="notification-anchor"><button className="icon-button notification-button" aria-label="알림" aria-expanded={notifications} onClick={() => setNotifications(v => !v)}><Bell size={18} />{unreadCount > 0 && <span className="unread-badge" aria-hidden="true">{unreadCount}</span>}</button>{notifications && <InboxPreview items={myInbox} repos={repos} onOpen={openNotification} />}</div><div className="top-avatar"><Avatar name={CURRENT_USER} small /></div></div></header>
+      <header className="topbar"><SidebarTrigger className="sidebar-trigger" aria-label="메뉴 열기 또는 닫기" /><div className="breadcrumb"><span className="project-mini"><BrandMark /></span><span>zello</span><ChevronRight size={12} /><strong>{heading}</strong></div>{showScope && repositoryControl}<div className="topbar-actions"><button className="search-trigger" onClick={() => setModal('search')}><Search size={16} /><span>검색 및 빠른 이동</span><kbd>⌘ K</kbd></button><span className="topbar-divider" /><Button variant="ghost" size="icon-sm" className="theme-toggle" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={theme === 'light' ? '어두운 테마로 전환' : '밝은 테마로 전환'} title={theme === 'light' ? 'Dark mode' : 'Light mode'}>{theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}</Button><div className="notification-anchor"><button className="icon-button notification-button" aria-label="알림" aria-expanded={notifications} onClick={() => setNotifications(v => !v)}><Bell size={18} />{unreadCount > 0 && <span className="unread-badge" aria-hidden="true">{unreadCount}</span>}</button>{notifications && <InboxPreview items={myInbox} repos={repos} onOpen={openNotification} />}</div><div className="top-avatar">{session.user ? <span className="session-avatar" title={session.user.displayName}>{session.user.displayName.slice(0, 2)}</span> : <Avatar name={CURRENT_USER} small />}</div></div></header>
       <div id="main-content" tabIndex={-1} className="main-content">
         <div className="page-heading"><div><div className="page-eyebrow">샘플 프로젝트 <span className="badge badge-neutral">팀 워크스페이스</span></div><h1>{heading}<span className="heading-dot">.</span></h1><p>{subtitle}</p></div><div className="heading-actions">{location.pathname === '/pull-requests' ? <button className="button button-dark" onClick={() => openPr()}><Plus size={15} />PR 작성</button> : ['/overview', '/issues'].includes(location.pathname) ? <button className="button button-dark" onClick={() => openIssue(null)}><Plus size={15} />이슈 만들기</button> : location.pathname === '/settings' && settingsTab === 'repositories' ? <button className="button button-dark" onClick={() => setModal('repo')}><Plus size={15} />저장소 연결</button> : location.pathname === '/changes' && changesView === 'updates' ? <button className="button button-dark" onClick={() => setModal('note')}><Plus size={15} />패치노트 작성</button> : null}</div></div>
         {showScope && <div className="page-toolbar">{filterControls}<div className="sync-status"><span><i className="status-dot" />{lastSync === '방금' ? '방금 확인' : `${lastSync} 마지막 확인`}</span><button className={`icon-button ${syncing ? 'is-syncing' : ''}`} disabled={syncing} aria-label="데이터 새로고침" onClick={sync}><RefreshCw size={15} /></button></div></div>}

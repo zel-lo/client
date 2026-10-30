@@ -749,6 +749,10 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .sync-repo-row > svg { color: var(--muted-foreground); }
 .sync-repo-row > .small { margin-left: auto; }
 .inline-icon { display: inline; vertical-align: -2px; margin-right: 5px; }
+.session-avatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; font-size: 10px; background: var(--surface); color: var(--foreground); }
+.session-logout { align-self: flex-start; margin: 0 12px 8px; color: var(--muted-foreground); font-size: 11px; }
+.session-logout:hover { color: var(--foreground); }
+.session-logout:disabled { opacity: .5; cursor: wait; }
 .inbox-panel { margin-top: 26px; }
 .inbox-list { overflow: hidden; }
 .inbox-item { position: relative; border-bottom: 1px solid var(--line); padding-bottom: 13px; }

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowRight, Bell, BookOpen, ChevronRight, CircleDot, Github, GitPullRequest, LoaderCircle, Moon, Sun } from 'lucide-react'
 import { BrandMark } from './brand-mark'
 import { Button } from './ui/button'
 import { useTheme } from '../hooks/use-theme'
-import { githubAuthUrl } from '../lib/auth'
+import { beginGitHubLogin } from '../lib/session-api'
+import { useSession } from '../hooks/use-session'
 import { initialIssues, initialPullRequests, issueSources, issueStatuses } from '../data/work-items'
 import type { IssueStatus } from '../data/work-items'
 import { initialRepos } from '../data/mock'
@@ -82,6 +83,7 @@ const errorMessages: Record<string, string> = {
   access_denied: 'GitHub 로그인이 취소됐어요. 다시 시도해 주세요.',
   expired: '로그인 시간이 만료됐어요. 다시 로그인해 주세요.',
   failed: 'GitHub 로그인에 실패했어요. 잠시 후 다시 시도해 주세요.',
+  inactive: '사용할 수 없는 계정이에요. 계정 상태를 확인해 주세요.',
 }
 
 export function AuthPage({ signup = false }: { signup?: boolean }) {
@@ -99,15 +101,15 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
     window.addEventListener('pageshow', reset)
     return () => window.removeEventListener('pageshow', reset)
   }, [])
-  function continueWithGithub() {
-    const url = githubAuthUrl(import.meta.env.VITE_GITHUB_AUTH_URL)
-    if (!url) {
-      setNotice('GitHub 로그인을 준비하고 있어요. 샘플 프로젝트는 바로 둘러볼 수 있어요.')
-      return
-    }
+  async function continueWithGithub() {
     setNotice('')
     setPending(true)
-    window.location.assign(url)
+    try {
+      await beginGitHubLogin(import.meta.env.VITE_GITHUB_AUTH_URL)
+    } catch (cause) {
+      setPending(false)
+      setNotice(cause instanceof Error ? cause.message : 'GitHub 로그인에 실패했어요. 다시 시도해 주세요.')
+    }
   }
   return <div className="public-shell auth-page">
     <SkipLink />
@@ -119,4 +121,18 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
       <div className="auth-preview"><Link className="public-text-link" to="/overview">샘플 프로젝트 둘러보기<ArrowRight size={14} /></Link><p>저장소 연결은 가입 후 선택하면 돼요.</p></div>
     </section></main><Footer />
   </div>
+}
+
+export function AuthCallbackPage() {
+  const session = useSession()
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (session.status === 'ready') {
+      navigate(session.user ? '/overview' : '/login?error=expired', { replace: true })
+    }
+  }, [session.status, session.user, navigate])
+  return <div className="public-shell auth-page"><header className="public-header"><Brand /></header>
+    <main className="auth-main"><section className="auth-form-content"><h1>로그인 확인</h1>
+      {session.status === 'unavailable' ? <><p className="auth-description" role="alert">{session.error}</p><Button className="github-auth-button" onClick={() => void session.refresh()}>다시 확인</Button><Link className="public-text-link" to="/login">로그인 화면으로</Link></> : <p className="auth-description" role="status"><LoaderCircle size={16} className="auth-spinner" /> 로그인 정보를 확인하고 있어요.</p>}
+    </section></main><Footer /></div>
 }
