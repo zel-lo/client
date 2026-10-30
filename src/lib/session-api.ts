@@ -10,7 +10,7 @@ export type CurrentUser = {
   theme: string
 }
 
-async function request(path: string, options: RequestInit = {}) {
+export async function request(path: string, options: RequestInit = {}) {
   try {
     return await fetch(path, { credentials: 'include', cache: 'no-store', ...options })
   } catch (cause) {

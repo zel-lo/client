@@ -801,3 +801,21 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
   .sync-repo-row { flex-wrap: wrap; padding: 15px; gap: 8px; }
   .sync-repo-row > .small { width: 100%; margin-left: 25px; }
 }
+
+.repository-connections { display: grid; gap: 18px; }
+.repository-connections .section-heading, .repository-connections .section-subheading { margin-bottom: 0; }
+.repository-connections label { display: grid; gap: 8px; font-size: 13px; }
+.repository-connections input, .repository-connections select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; color: inherit; background: var(--background); font: inherit; }
+.connection-project-form { display: flex; align-items: end; gap: 12px; }
+.connection-project-form label { flex: 1; }
+.connection-select { max-width: 560px; }
+.connection-picker { border: 1px solid var(--border); border-radius: 12px; padding: 22px; display: grid; gap: 18px; }
+.connection-picker form { display: grid; gap: 16px; }
+.connection-picker form > .button { justify-self: start; }
+.connection-pagination { display: flex; align-items: center; gap: 12px; font-size: 12px; }
+.connection-error { padding: 14px; border: 1px solid #dc4545; border-radius: 8px; }
+.connection-error a { margin-left: 12px; text-decoration: underline; }
+.connection-notice { font-size: 13px; }
+.connected-repo-card { cursor: default; }
+.connected-repo-card h3 a { display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
+@media (max-width: 640px) { .connection-project-form { align-items: stretch; flex-direction: column; } .connection-picker { padding: 14px; } .repository-connections > .section-heading { align-items: start; flex-direction: column; gap: 12px; } }
