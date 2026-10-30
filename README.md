@@ -35,6 +35,8 @@ GitHub OAuth, 실제 GitHub 이슈·PR 생성, 서버 동기화, 알림 발송 �
 
 ## 기술 구성
 
+브랜드 색상은 라이트 `#2F5BFF` / `#E8472B` / `#12151F` / `#F2F4F7`, 다크 `#7C9BFF` / `#FF8F78` / `#FFFFFF` / `#12151F`를 사용합니다. 공통 색상 역할은 `src/styles.css`에 정의하고, 헤더·사이드바·파비콘에 사용하는 원본 Z 로고는 `public/brand/`에 보관합니다. 테마를 바꾸면 로고와 브라우저 테마 색상도 함께 전환됩니다.
+
 React 19, TypeScript, Vite, Tailwind CSS 4, shadcn/ui, React Router, Vitest 및 React Testing Library를 사용합니다.
 가져온 shadcn/ui 컴포넌트의 MIT 라이선스는 [SHADCN-LICENSE.md](SHADCN-LICENSE.md)에 보존했습니다.
 
