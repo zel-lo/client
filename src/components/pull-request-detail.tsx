@@ -6,7 +6,7 @@ import { repositoryRef } from '@/data/work-items'
 import type { Issue, PullRequest } from '@/data/work-items'
 import { getPullRequest, updateTeamSummary } from '../lib/project-api'
 import type { PullRequestItem } from '../lib/project-api'
-import { checkLabels, reviewLabels } from './pull-requests-panel'
+import { checkLabels, reviewSummary } from './pull-requests-panel'
 import { MarkdownView } from './markdown'
 
 export function PullRequestDetail({ pr, repos, issues, onViewIssue, canEdit = false, onChanged }: {
@@ -59,7 +59,7 @@ export function PullRequestDetail({ pr, repos, issues, onViewIssue, canEdit = fa
     {pr.live && pr.url && <p className="help-text"><ExternalLink size={12} />제목·본문·리뷰어는 <a className="subtle-link" href={pr.url} target="_blank" rel="noopener noreferrer">GitHub에서 수정</a>할 수 있어요.</p>}
     {activity && <div className="diff-summary" aria-label="변경 파일 요약"><div><strong>{activity.files}</strong><span>변경 파일</span></div><div><strong className="diff-add">+{activity.additions}</strong><span>추가한 줄</span></div><div><strong className="diff-delete">−{activity.deletions}</strong><span>삭제한 줄</span></div></div>}
     {!activity && <p className="help-text"><FileText size={12} />{pr.live ? '변경 파일 정보는 아직 수집하지 않아요. GitHub에서 확인해 주세요.' : '파일별 변경 내용은 실제 GitHub 연결 후 수집됩니다.'}</p>}
-    <dl className="detail-properties"><div><dt>리뷰어</dt><dd>{reviewers.length ? reviewers.join(', ') : '지정되지 않았어요'}</dd></div><div><dt>코드 검토</dt><dd>{pr.status === 'draft' ? '초안 · 아직 검토 요청 전' : pr.status === 'closed' ? '병합하지 않고 닫힌 PR' : reviewLabels[pr.review]}</dd></div><div><dt>CI 검사</dt><dd className={`check-state check-${pr.checks}`}>{checkLabels[pr.checks]}</dd></div><div><dt>코드 병합</dt><dd>{pr.status === 'merged' ? <><CheckCircle2 size={13} />기본 브랜치에 반영됨</> : '아직 병합되지 않았어요'}</dd></div><div><dt>서비스 배포</dt><dd>{pr.live ? '수집 전' : activity?.deployed ? '배포 완료' : '아직 배포되지 않았어요'}</dd></div></dl>
+    <dl className="detail-properties"><div><dt>리뷰어</dt><dd>{reviewers.length ? reviewers.join(', ') : '지정되지 않았어요'}</dd></div><div><dt>코드 검토</dt><dd>{reviewSummary(pr)}</dd></div><div><dt>CI 검사</dt><dd className={`check-state check-${pr.checks}`}>{checkLabels[pr.checks]}</dd></div><div><dt>코드 병합</dt><dd>{pr.status === 'merged' ? <><CheckCircle2 size={13} />기본 브랜치에 반영됨</> : '아직 병합되지 않았어요'}</dd></div><div><dt>서비스 배포</dt><dd>{pr.live ? '수집 전' : activity?.deployed ? '배포 완료' : '아직 배포되지 않았어요'}</dd></div></dl>
     <div className="pr-linked-issues"><h3>이 변경으로 해결하는 이슈</h3>{linked.map(issue => <button className="command-item" key={issue.id} onClick={() => onViewIssue(issue)}><CircleDot size={14} /><span><small>{issue.id} · {repositoryRef(issue.repo, issue.githubNumber, repos, issue.id)} · {issue.assignee || '담당자 미지정'}</small>{issue.title}</span><ChevronRight size={14} /></button>)}{!linked.length && <p className="help-text">연결된 이슈가 없어요. 할 일 상세에서 이 PR을 연결해 주세요.</p>}</div><p className="work-demo-note">검토·CI·병합·배포는 서로 다른 상태입니다. {pr.live ? 'CI와 배포 상태는 아직 수집하지 않아요.' : '현재 표시되는 정보는 목데이터예요.'}</p>
   </div>
 }

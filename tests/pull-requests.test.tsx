@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import App from '../src/App'
+import { reviewSummary } from '../src/components/pull-requests-panel'
 import type { Project, PullRequestItem, PullRequestPage } from '../src/lib/project-api'
 
 vi.mock('../src/components/ui/contribution-skyline', async importOriginal => {
@@ -110,6 +111,25 @@ describe('실제 PR 연결', () => {
       method: 'PATCH', body: JSON.stringify({ teamSummary: '검색이 빨라졌어요', version: 3 }),
     }))
     expect(within(drawer).getByRole('button', { name: '수정' })).toBeInTheDocument()
+  })
+
+  it('병합되거나 닫힌 PR은 상세에서 마지막 리뷰 결과로 설명한다', () => {
+    expect(reviewSummary({ status: 'merged', review: 'approved' })).toBe('승인 후 병합됨')
+    expect(reviewSummary({ status: 'merged', review: 'pending' })).toBe('승인 없이 병합됨')
+    expect(reviewSummary({ status: 'merged', review: 'unknown' })).toBe('병합됨 · 리뷰 기록 없음')
+    expect(reviewSummary({ status: 'closed', review: 'changes_requested' })).toBe('병합하지 않고 닫힘 · 마지막 리뷰 수정 요청')
+    expect(reviewSummary({ status: 'closed', review: 'unknown' })).toBe('병합하지 않고 닫힘')
+    expect(reviewSummary({ status: 'open', review: 'pending' })).toBe('검토 대기')
+    expect(reviewSummary({ status: 'draft', review: 'unknown' })).toBe('초안 · 아직 검토 요청 전')
+  })
+
+  it('승인받고 병합된 PR 상세는 검토 대기가 아니라 승인 후 병합으로 보인다', async () => {
+    backend({ everything: [pull('3', 3, { state: 'MERGED', mergedAt: '2026-10-30T00:00:00Z', reviewDecision: 'APPROVED' })] })
+    mount('/pull-requests?status=merged')
+    await userEvent.setup().click(await screen.findByRole('button', { name: /실제 PR 3/ }))
+    const drawer = screen.getByRole('dialog', { name: 'Pull request 상세' })
+    expect(within(drawer).getByText('승인 후 병합됨')).toBeInTheDocument()
+    expect(within(drawer).queryByText('검토 대기')).not.toBeInTheDocument()
   })
 
   it('코드 검토 표에 맡긴 리뷰어를 보여준다', async () => {

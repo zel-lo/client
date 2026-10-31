@@ -6,7 +6,15 @@ import { repositoryRef } from '@/data/work-items'
 import type { Issue, PullRequest } from '@/data/work-items'
 
 const statusLabels = { open: '열림', merged: '병합됨', closed: '닫힘', draft: '초안' }
-export const reviewLabels = { pending: '검토 대기', approved: '승인됨', changes_requested: '수정 요청' }
+export const reviewLabels = { pending: '검토 대기', approved: '승인됨', changes_requested: '수정 요청', unknown: '수집 전' }
+
+/** 상세의 "코드 검토" 문구. 닫히거나 병합된 PR은 열려 있을 때의 마지막 리뷰 결과로 설명한다. */
+export function reviewSummary(pr: Pick<PullRequest, 'status' | 'review'>) {
+  if (pr.status === 'draft') return '초안 · 아직 검토 요청 전'
+  if (pr.status === 'merged') return { approved: '승인 후 병합됨', changes_requested: '수정 요청이 남은 채 병합됨', pending: '승인 없이 병합됨', unknown: '병합됨 · 리뷰 기록 없음' }[pr.review]
+  if (pr.status === 'closed') return pr.review === 'unknown' ? '병합하지 않고 닫힘' : `병합하지 않고 닫힘 · 마지막 리뷰 ${reviewLabels[pr.review]}`
+  return reviewLabels[pr.review]
+}
 export const checkLabels = { passing: '검사 통과', failing: '검사 실패', running: '검사 중', unknown: '수집 전' }
 
 export function PullRequestsPanel({ pullRequests, repos, issues, repoFilter, onSelect, onSelectIssue, live = false, loading = false, error = '', reauth = false, hasMore = false }: {
