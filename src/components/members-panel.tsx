@@ -43,7 +43,7 @@ export function MembersPanel({ projectId, onLeft }: { projectId: string; onLeft:
   }, [queryInput])
   useEffect(() => {
     const controller = new AbortController()
-    setLoading(true); setError(''); setSecondaryError(''); setData(null)
+    setLoading(true); setError(''); setSecondaryError('')
     void listMembers(projectId, query, page, controller.signal).then(async result => {
       if (controller.signal.aborted) return
       setData(result)
@@ -57,19 +57,18 @@ export function MembersPanel({ projectId, onLeft }: { projectId: string; onLeft:
       if (results[1].status === 'fulfilled') setHistory(results[1].value)
       else { setHistory(null); setSecondaryError('관리 이력을 확인하지 못했어요. 다시 불러와 주세요.') }
     }).catch(cause => {
-      if (!controller.signal.aborted) { setCreated(null); setInvitations(null); setHistory(null); setError(cause instanceof Error ? cause.message : '멤버를 불러오지 못했어요.') }
+      if (!controller.signal.aborted) { setData(null); setCreated(null); setInvitations(null); setHistory(null); setError(cause instanceof Error ? cause.message : '멤버를 불러오지 못했어요.') }
     }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
   }, [projectId, query, page, invitePage, historyPage, revision])
   useEffect(() => {
-    let last = 0
     const focus = () => {
-      if (busy || document.visibilityState !== 'visible' || Date.now() - last < 1500) return
-      last = Date.now(); refresh()
+      if (busy || action || document.visibilityState !== 'visible') return
+      refresh()
     }
-    window.addEventListener('focus', focus)
-    return () => window.removeEventListener('focus', focus)
-  }, [busy])
+    document.addEventListener('visibilitychange', focus)
+    return () => document.removeEventListener('visibilitychange', focus)
+  }, [busy, action])
   useEffect(() => {
     if (!action) return
     const previous = document.activeElement as HTMLElement | null

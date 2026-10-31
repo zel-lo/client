@@ -72,17 +72,13 @@ export function useLivePullRequests(enabled: boolean, pathname: string, userId?:
 
   useEffect(() => {
     if (!enabled) return
-    let last = 0
     const refresh = (event: Event) => {
       const selected = (event as CustomEvent<{ projectId?: string }>).detail?.projectId
       if (selected) preferred.current = selected
-      if (event.type === 'focus' && Date.now() - last < 1500) return
-      last = Date.now()
       void load()
     }
     window.addEventListener('zello:projects-changed', refresh)
-    window.addEventListener('focus', refresh)
-    return () => { window.removeEventListener('zello:projects-changed', refresh); window.removeEventListener('focus', refresh) }
+    return () => { window.removeEventListener('zello:projects-changed', refresh) }
   }, [enabled, load])
 
   const sync = useCallback(async () => {
@@ -95,7 +91,7 @@ export function useLivePullRequests(enabled: boolean, pathname: string, userId?:
   const pullRequests = useMemo<PullRequest[]>(() => all?.items.map(item => fromServerPullRequest(item, project?.id)) ?? [], [all, project])
   const authored = useMemo<PullRequest[]>(() => mine?.items.map(item => fromServerPullRequest(item, project?.id)) ?? [], [mine, project])
   return {
-    active: enabled && project !== null, project, projects, selectProject: (id: string) => { preferred.current = id; if (userId) selectProjectForUser(userId, id); else void load() }, pullRequests, authored, loading, error, reauth, loadedAt, sync, reload: load,
+    active: enabled && project !== null, project, projects, selectProject: (id: string) => { preferred.current = id; if (userId) selectProjectForUser(userId, id); else void load() }, pullRequests, authored, loading: loading && !all, error, reauth, loadedAt, sync, reload: load,
     openCount: all?.counts.open ?? 0, authoredCount: mine?.counts.open ?? 0, hasMore: Boolean(all?.hasNext),
   }
 }

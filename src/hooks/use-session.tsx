@@ -19,23 +19,27 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState('')
   const controller = useRef<AbortController | null>(null)
   const channel = useRef<BroadcastChannel | null>(null)
+  const resolved = useRef(false)
+  const lastBackgroundCheck = useRef(0)
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (background = false) => {
     controller.current?.abort()
     const pending = new AbortController()
     controller.current = pending
-    setStatus('loading')
+    if (!background || !resolved.current) setStatus('loading')
     setError('')
     try {
       const current = await getCurrentUser(pending.signal)
       if (!pending.signal.aborted) {
-        setUser(current)
+        setUser(previous => JSON.stringify(previous) === JSON.stringify(current) ? previous : current)
         setStatus('ready')
+        resolved.current = true
       }
     } catch (cause) {
       if (!pending.signal.aborted) {
-        setUser(null)
+        if (!background) setUser(null)
         setStatus('unavailable')
+        resolved.current = true
         setError(cause instanceof Error ? cause.message : '로그인 상태를 확인하지 못했어요.')
       }
     }
@@ -47,12 +51,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [refresh])
 
   useEffect(() => {
-    const check = () => { if (document.visibilityState === 'visible') void refresh() }
+    const check = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - lastBackgroundCheck.current < 30000) return
+      lastBackgroundCheck.current = Date.now()
+      void refresh(true)
+    }
     window.addEventListener('focus', check)
     document.addEventListener('visibilitychange', check)
     if (typeof BroadcastChannel !== 'undefined') {
       channel.current = new BroadcastChannel('zello-session')
-      channel.current.onmessage = () => { void refresh() }
+      channel.current.onmessage = () => { void refresh(true) }
     }
     return () => {
       window.removeEventListener('focus', check)
