@@ -36,7 +36,7 @@ async function json<T>(path: string, options?: RequestInit): Promise<T> {
   return response.status === 204 ? undefined as T : response.json() as Promise<T>
 }
 
-async function mutate<T>(path: string, method: 'POST' | 'DELETE', body?: unknown): Promise<T> {
+async function mutate<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
   const csrf = await json<{ headerName: string; token: string }>('/api/auth/csrf')
   return json<T>(path, { method, headers: { 'Content-Type': 'application/json', [csrf.headerName]: csrf.token },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
@@ -70,3 +70,29 @@ export const syncPullRequests = (projectId: string) =>
   mutate<PullRequestSync>(`/api/projects/${encodeURIComponent(projectId)}/pull-requests/sync`, 'POST')
 export const disconnectRepository = (projectId: string, repositoryId: string) =>
   mutate<void>(`/api/projects/${encodeURIComponent(projectId)}/repositories/${encodeURIComponent(repositoryId)}`, 'DELETE')
+
+export const githubAuthorization = (signal?: AbortSignal) => json<{ organizationAccessUrl: string | null }>('/api/github/authorization', { signal })
+export type IssueDetails = {
+  title: string; description: string; status: 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE'
+  priority: 'HIGH' | 'MEDIUM' | 'LOW'; source: 'DAILY' | 'WEEKLY' | 'REQUEST' | 'GITHUB'
+  meetingDate: string | null; meetingContext: string; acceptanceCriteria: string; assignee: string | null
+}
+export type LiveIssue = IssueDetails & {
+  id: string; version: number; key: string; repositoryId: string; repositoryOwner: string; repositoryName: string
+  number: number; url: string; githubState: 'OPEN' | 'CLOSED' | null; archived: boolean; publishStatus: 'LOCAL' | 'PENDING' | 'PUBLISHED' | 'FAILED' | 'UNKNOWN'; lastPublishError: string | null
+}
+export type IssuePage = Page<LiveIssue> & { total: number }
+export const listIssues = (projectId: string, options: { page?: number; query?: string; status?: string; mine?: boolean; archived?: boolean; activeOnly?: boolean } = {}, signal?: AbortSignal) => {
+  const params = new URLSearchParams({ page: String(options.page ?? 1), size: '30', query: options.query ?? '', mine: String(options.mine ?? false), activeOnly: String(options.activeOnly ?? false), archived: String(options.archived ?? false) })
+  if (options.status) params.set('status', options.status)
+  return json<IssuePage>(`/api/projects/${encodeURIComponent(projectId)}/issues?${params}`, { signal })
+}
+export const getIssue = (projectId: string, id: string, signal?: AbortSignal) => json<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(id)}`, { signal })
+export const createIssue = (projectId: string, repositoryId: string, details: IssueDetails, requestKey: string) => mutate<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues`, 'POST', { repositoryId, details, requestKey })
+export const updateIssue = (projectId: string, issue: LiveIssue, details: IssueDetails, githubState: LiveIssue['githubState']) => mutate<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}`, 'PATCH', { version: issue.version, details, githubState: githubState ?? 'OPEN' })
+export const archiveIssue = (projectId: string, issue: LiveIssue) => mutate<void>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}?version=${issue.version}`, 'DELETE')
+export const restoreIssue = (projectId: string, issue: LiveIssue) => mutate<void>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}/restore?version=${issue.version}`, 'POST')
+export const syncIssues = (projectId: string) => mutate<{ collected: number; skippedRepositories: number; hasMore: boolean }>(`/api/projects/${encodeURIComponent(projectId)}/issues/sync`, 'POST')
+export const listAssignees = (projectId: string, repositoryId: string, page = 1, signal?: AbortSignal) => json<Page<{ id: number; login: string }>>(`/api/projects/${encodeURIComponent(projectId)}/repositories/${encodeURIComponent(repositoryId)}/assignees?page=${page}`, { signal })
+
+export const publishIssue = (projectId: string, issue: LiveIssue) => mutate<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}/publish`, 'POST', { version: issue.version })
