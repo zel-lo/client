@@ -9,6 +9,7 @@ beforeEach(() => {
     return new Response(null, { status: 404 })
   }))
   localStorage.clear()
+  sessionStorage.clear()
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
     matches: false,
     media: query,

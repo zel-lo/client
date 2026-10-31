@@ -897,3 +897,20 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .live-issues .work-filters > label:first-child { flex: 1 1 240px; }
 .live-issues .work-filters input:not([type="checkbox"]), .live-issues .work-filters select { min-height: 36px; width: 100%; }
 .live-issues .work-filters > .inline-checkbox { flex: 0 0 auto; }
+
+/* Invitation landing and acceptance. */
+.invitation-page { min-height: 100svh; padding: 36px 24px 64px; background: var(--background); }
+.invitation-page > .public-brand { display: flex; align-items: center; gap: 10px; width: fit-content; margin: 0 auto; font-size: 23px; font-weight: 650; }
+.invitation-card { display: grid; gap: 20px; width: min(100%, 520px); margin: 60px auto 0; padding: 36px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 12px 40px rgb(0 0 0 / .04); }
+.invitation-icon { display: grid; place-items: center; width: 60px; height: 60px; color: var(--brand); border: 1px solid var(--accent-line); border-radius: 16px; background: var(--accent-bg); }
+.invitation-card h1 { margin: 0; font-size: clamp(23px, 5vw, 29px); font-weight: 650; letter-spacing: -.04em; line-height: 1.5; overflow-wrap: anywhere; }
+.invitation-card p { margin: 0; font-size: 13px; line-height: 1.9; color: var(--text-secondary); }
+.invitation-card > .button { min-height: 44px; }
+.invitation-card > .subtle-link { justify-self: center; font-size: 12px; }
+.invitation-card .connection-error p { color: var(--git-red); }
+.invitation-card .connection-error .button { margin-top: 12px; }
+.invitation-role { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 16px; border-radius: 10px; color: var(--brand); background: var(--accent-bg); font-size: 13px; }
+@media (max-width: 700px) {
+  .invitation-page { padding: 24px 16px; }
+  .invitation-card { padding: 26px 22px; margin-top: 34px; }
+}

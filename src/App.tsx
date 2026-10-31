@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AuthCallbackPage, AuthPage, LandingPage } from './components/public-pages'
 import { SessionProvider, useSession } from './hooks/use-session'
+import { InvitationPage } from './components/invitation-page'
 import { Onboarding } from './components/onboarding'
 import { LiveIssues } from './components/live-issues'
 import { RepositoryConnections } from './components/repository-connections'
@@ -153,6 +154,7 @@ function AppRoutes() {
     <Route path="/" element={<LandingPage />} />
     <Route path="/login" element={<AuthPage />} />
     <Route path="/signup" element={<AuthPage signup />} />
+    <Route path="/invite/:token" element={<InvitationPage />} />
     <Route path="/onboarding" element={<Onboarding />} />
     <Route path="/auth/callback" element={<AuthCallbackPage />} />
     <Route path="*" element={<WorkspaceApp />} />
@@ -174,7 +176,7 @@ function WorkspaceApp() {
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null)
   const [selectedPr, setSelectedPr] = useState<PullRequest | null>(null)
   const [repoFilter, setRepoFilter] = useState('all')
-  const live = useLivePullRequests(Boolean(session.user), location.pathname)
+  const live = useLivePullRequests(Boolean(session.user), location.pathname, session.user?.id)
   const [liveIssueCount, setLiveIssueCount] = useState(0)
   const [liveMineCount, setLiveMineCount] = useState(0)
   useEffect(() => { setLiveIssueCount(0); setLiveMineCount(0) }, [live.project?.id, session.user?.id])
