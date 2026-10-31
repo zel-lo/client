@@ -9,6 +9,19 @@ export type ConnectedRepository = {
   defaultBranch: string; privateRepository: boolean; status: string; initialSyncCompleted: boolean
 }
 export type Page<T> = { items: T[]; page: number; hasNext: boolean }
+export type PullRequestItem = {
+  id: string; repositoryId: string; repositoryOwner: string; repositoryName: string; number: number; url: string; title: string
+  headBranch: string; baseBranch: string; state: 'OPEN' | 'CLOSED' | 'MERGED'; draft: boolean
+  reviewDecision: 'UNKNOWN' | 'PENDING' | 'APPROVED' | 'CHANGES_REQUESTED'; teamSummary: string | null
+  author: { login: string; avatarUrl: string | null } | null; openedAt: string | null; mergedAt: string | null; githubUpdatedAt: string | null
+  body?: string
+}
+export type PullRequestPage = Page<PullRequestItem> & { counts: { open: number; merged: number; closed: number } }
+export type BranchList = { defaultBranch: string; branches: string[]; hasMore: boolean }
+export type NewPullRequest = {
+  repositoryId: string; title: string; headBranch: string; baseBranch: string; teamSummary: string; draft: boolean; requestKey: string
+}
+export type PullRequestSync ={ collected: number; skippedRepositories: number; syncedAt: string }
 
 export class ProjectApiError extends Error {
   constructor(message: string, readonly code: string) { super(message) }
@@ -42,5 +55,18 @@ export const listConnectedRepositories = (projectId: string, signal?: AbortSigna
   json<ConnectedRepository[]>(`/api/projects/${encodeURIComponent(projectId)}/repositories`, { signal })
 export const connectRepository = (projectId: string, githubRepositoryId: string) =>
   mutate<ConnectedRepository>(`/api/projects/${encodeURIComponent(projectId)}/repositories`, 'POST', { githubRepositoryId })
+export const listPullRequests = (projectId: string, options: { state?: 'open' | 'merged' | 'closed' | 'all'; author?: 'me'; size?: number } = {}, signal?: AbortSignal) => {
+  const params = new URLSearchParams({ state: options.state ?? 'all', size: String(options.size ?? 100) })
+  if (options.author) params.set('author', options.author)
+  return json<PullRequestPage>(`/api/projects/${encodeURIComponent(projectId)}/pull-requests?${params}`, { signal })
+}
+export const getPullRequest = (projectId: string, pullRequestId: string, signal?: AbortSignal) =>
+  json<PullRequestItem>(`/api/projects/${encodeURIComponent(projectId)}/pull-requests/${encodeURIComponent(pullRequestId)}`, { signal })
+export const listBranches = (projectId: string, repositoryId: string, signal?: AbortSignal) =>
+  json<BranchList>(`/api/projects/${encodeURIComponent(projectId)}/repositories/${encodeURIComponent(repositoryId)}/branches`, { signal })
+export const createPullRequest = (projectId: string, input: NewPullRequest) =>
+  mutate<PullRequestItem>(`/api/projects/${encodeURIComponent(projectId)}/pull-requests`, 'POST', input)
+export const syncPullRequests = (projectId: string) =>
+  mutate<PullRequestSync>(`/api/projects/${encodeURIComponent(projectId)}/pull-requests/sync`, 'POST')
 export const disconnectRepository = (projectId: string, repositoryId: string) =>
   mutate<void>(`/api/projects/${encodeURIComponent(projectId)}/repositories/${encodeURIComponent(repositoryId)}`, 'DELETE')

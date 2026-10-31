@@ -1,4 +1,4 @@
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Check, CircleDashed, CircleX, GitMerge, GitPullRequest, Link2 } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { Repo } from '@/data/mock'
@@ -7,10 +7,11 @@ import type { Issue, PullRequest } from '@/data/work-items'
 
 const statusLabels = { open: '열림', merged: '병합됨', closed: '닫힘', draft: '초안' }
 export const reviewLabels = { pending: '검토 대기', approved: '승인됨', changes_requested: '수정 요청' }
-export const checkLabels = { passing: '검사 통과', failing: '검사 실패', running: '검사 중' }
+export const checkLabels = { passing: '검사 통과', failing: '검사 실패', running: '검사 중', unknown: '수집 전' }
 
-export function PullRequestsPanel({ pullRequests, repos, issues, repoFilter, onSelect, onSelectIssue }: {
+export function PullRequestsPanel({ pullRequests, repos, issues, repoFilter, onSelect, onSelectIssue, live = false, loading = false, error = '', reauth = false, hasMore = false }: {
   pullRequests: PullRequest[]; repos: Repo[]; issues: Issue[]; repoFilter: string; onSelect: (pr: PullRequest) => void; onSelectIssue: (issue: Issue) => void;
+  live?: boolean; loading?: boolean; error?: string; reauth?: boolean; hasMore?: boolean;
 }) {
   const [params, setParams] = useSearchParams()
   const filter = params.get('status') ?? 'open'
@@ -26,7 +27,9 @@ export function PullRequestsPanel({ pullRequests, repos, issues, repoFilter, onS
   return <section className="work-panel" aria-label="Pull requests 목록">
     <div className="content-filter"><div className="segmented-tabs">
       {[['open', '열림'], ['merged', '병합됨'], ['all', '전체']].map(([value, label]) => <button key={value} aria-pressed={filter === value} className={filter === value ? 'selected' : ''} onClick={() => change('status', value)}>{label}<span className="tab-count">{scoped.filter(pr => value === 'all' || (value === 'open' ? ['open', 'draft'].includes(pr.status) : pr.status === value)).length}</span></button>)}
-    </div><span className="muted small">샘플 PR · GitHub 미연결</span></div>
+    </div><span className="muted small">{live ? `GitHub 연동${hasMore ? ' · 최근 100개만 표시' : ''}` : '샘플 PR · GitHub 미연결'}</span></div>
+    {error && <div className="connection-error" role="alert">{error}{reauth && <Link to="/login?reauth=github">GitHub 다시 로그인</Link>}</div>}
+    {loading && !pullRequests.length && <p role="status">PR을 불러오는 중…</p>}
     <div className="work-filter-bar"><select aria-label="PR 확인 필터" value={focus} onChange={event => change('focus', event.target.value)}><option value="all">모든 검토 상태</option><option value="pending">검토 대기</option><option value="failing">수정 또는 검사 실패</option><option value="unlinked">이슈 미연결</option></select>{params.size > 0 && <button className="subtle-link" onClick={() => setParams({})}>필터 초기화</button>}</div>
     <div className="data-frame"><Table><TableHeader><TableRow><TableHead>변경 요청</TableHead><TableHead>코드 검토</TableHead><TableHead>자동 검사 · CI</TableHead><TableHead>작성자</TableHead></TableRow></TableHeader><TableBody>
       {visible.map(pr => {
@@ -38,6 +41,6 @@ export function PullRequestsPanel({ pullRequests, repos, issues, repoFilter, onS
         <TableCell className="table-secondary">{pr.author}</TableCell></TableRow>
       })}
     </TableBody></Table></div>
-    {!visible.length && <div className="empty-state"><GitPullRequest size={25} /><h3>이 조건의 PR이 없어요</h3><p>저장소나 상태를 바꿔서 확인해 보세요.</p></div>}
+    {!visible.length && !loading && <div className="empty-state"><GitPullRequest size={25} />{live && !pullRequests.length ? <><h3>아직 가져온 PR이 없어요</h3><p>위의 새로고침 버튼으로 GitHub에서 PR을 가져와 보세요. 저장소가 연결되어 있어야 해요.</p></> : <><h3>이 조건의 PR이 없어요</h3><p>저장소나 상태를 바꿔서 확인해 보세요.</p></>}</div>}
   </section>
 }

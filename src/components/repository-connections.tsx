@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { Github, RefreshCw, Plus, ExternalLink } from 'lucide-react'
 import {
   connectRepository, createProject, disconnectRepository, listAvailableRepositories,
-  listConnectedRepositories, listGitHubAccounts, listProjects, ProjectApiError,
+  listConnectedRepositories, listGitHubAccounts, listProjects, ProjectApiError, syncPullRequests,
 } from '../lib/project-api'
 import type { ConnectedRepository, GitHubAccount, Page, Project, RepositoryOption } from '../lib/project-api'
 
@@ -115,7 +115,18 @@ export function RepositoryConnections() {
     try {
       const item = await connectRepository(projectId, repositoryId)
       setConnected(current => [...current, item]); setNotice(`${item.owner}/${item.name} 저장소를 연결했어요.`)
+      void collectPullRequests(projectId, `${item.owner}/${item.name}`)
     } catch (cause) { report(cause) } finally { setBusy(false) }
+  }
+
+  // 연결은 이미 끝났으므로 수집이 실패해도 연결 결과는 유지하고, 화면 조작도 막지 않는다.
+  async function collectPullRequests(targetProject: string, name: string) {
+    try {
+      const result = await syncPullRequests(targetProject)
+      setNotice(`${name} 저장소를 연결했고 PR ${result.collected}개를 가져왔어요.`)
+    } catch {
+      setNotice(`${name} 저장소를 연결했어요. PR은 아직 가져오지 못했으니 코드 검토 화면에서 새로고침해 주세요.`)
+    }
   }
 
   async function disconnect(item: ConnectedRepository) {
