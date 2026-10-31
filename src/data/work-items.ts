@@ -1,3 +1,5 @@
+import type { PullRequestItem } from '../lib/project-api'
+
 /** Product records are separate from the historical activity feed. */
 export type IssueStatus = 'backlog' | 'todo' | 'in_progress' | 'in_review' | 'done'
 export type IssueSource = 'daily' | 'weekly' | 'request' | 'github'
@@ -29,9 +31,12 @@ export type PullRequest = {
   base: string
   status: 'open' | 'merged' | 'closed' | 'draft'
   review: 'pending' | 'approved' | 'changes_requested'
-  checks: 'passing' | 'failing' | 'running'
+  checks: 'passing' | 'failing' | 'running' | 'unknown'
   summary?: string
   reviewers?: string[]
+  url?: string
+  live?: boolean
+  projectId?: string
 }
 export const issueStatuses: Record<IssueStatus, string> = {
   backlog: '백로그', todo: '할 일', in_progress: '진행 중', in_review: '검토 중', done: '완료',
@@ -78,6 +83,16 @@ export function issueAttention(issue: Issue, pullRequests: PullRequest[]) {
 export function hydratePullRequest(pr: PullRequest): PullRequest {
   const seed = initialPullRequests.find(item => item.id === pr.id && item.repo === pr.repo)
   return { reviewers: seed?.reviewers ?? [], ...pr }
+}
+// repo에는 저장소 이름을 넣는다. repositoryRef가 목록에서 못 찾으면 이름 그대로 표시한다.
+export function fromServerPullRequest(item: PullRequestItem, projectId?: string): PullRequest {
+  const status = item.state === 'MERGED' ? 'merged' : item.state === 'CLOSED' ? 'closed' : item.draft ? 'draft' : 'open'
+  const review = item.reviewDecision === 'APPROVED' ? 'approved' : item.reviewDecision === 'CHANGES_REQUESTED' ? 'changes_requested' : 'pending'
+  return {
+    id: item.id, number: item.number, repo: item.repositoryName, title: item.title, author: item.author?.login ?? '알 수 없음',
+    branch: item.headBranch, base: item.baseBranch, status, review, checks: 'unknown', summary: item.teamSummary ?? undefined,
+    url: item.url, live: true, projectId,
+  }
 }
 export function needsMyReview(pr: PullRequest) {
   return pr.status === 'open' && pr.review === 'pending' && Boolean(pr.reviewers?.includes(CURRENT_USER))
