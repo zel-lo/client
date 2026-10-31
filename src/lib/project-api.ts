@@ -1,6 +1,6 @@
 import { request } from './session-api'
 
-export type Project = { id: string; name: string; description: string | null; role: string; canManageRepositories: boolean }
+export type Project = { id: string; name: string; description: string | null; role: string; canManageRepositories: boolean; version?: number }
 export type GitHubAccount = { id: string; login: string; type: 'USER' | 'ORGANIZATION' }
 export type RepositoryOption = { id: string; fullName: string; owner: string; ownerType: string; privateRepository: boolean; archived: boolean }
 export type ConnectedRepository = {
@@ -27,7 +27,7 @@ export class ProjectApiError extends Error {
   constructor(message: string, readonly code: string) { super(message) }
 }
 
-async function json<T>(path: string, options?: RequestInit): Promise<T> {
+export async function json<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await request(path, options)
   if (!response.ok) {
     const error = await response.json().catch(() => null) as { code?: string; message?: string } | null
@@ -36,7 +36,7 @@ async function json<T>(path: string, options?: RequestInit): Promise<T> {
   return response.status === 204 ? undefined as T : response.json() as Promise<T>
 }
 
-async function mutate<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
+export async function mutate<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
   const csrf = await json<{ headerName: string; token: string }>('/api/auth/csrf')
   return json<T>(path, { method, headers: { 'Content-Type': 'application/json', [csrf.headerName]: csrf.token },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
