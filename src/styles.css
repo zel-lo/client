@@ -971,3 +971,22 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
   .invitation-page { padding: 24px 16px; }
   .invitation-card { padding: 26px 22px; margin-top: 34px; }
 }
+
+.repository-multiselect { min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.repository-multiselect legend { padding: 0 6px; font-size: 12px; color: var(--text-secondary); }
+.repository-connections .repository-select-all, .repository-connections .repository-option { display: flex; align-items: center; gap: 12px; padding: 12px; }
+.repository-select-all { border-bottom: 1px solid var(--line); }
+.repository-options { max-height: 340px; overflow-y: auto; scrollbar-gutter: stable; }
+.repository-option { cursor: pointer; border-radius: 6px; }
+.repository-option:hover { background: var(--surface); }
+.repository-option:has(input:disabled) { cursor: default; color: var(--muted-foreground); }
+.repository-connections input[type='checkbox'] { width: 16px; min-width: 16px; height: 16px; min-height: 16px; padding: 0; margin: 0; flex-shrink: 0; }
+.repository-option > span { display: grid; gap: 5px; min-width: 0; }
+.repository-option strong { overflow-wrap: anywhere; font-size: 12px; font-weight: 500; }
+.repository-option small { color: var(--muted-foreground); font-size: 11px; }
+.repository-selection { display: grid; gap: 12px; padding: 14px; background: var(--accent-bg); border: 1px solid var(--accent-line); border-radius: 8px; }
+.repository-selection > p { font-size: 12px; margin: 0; color: var(--brand); }
+.repository-selection > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.repository-selection .badge { white-space: normal; overflow-wrap: anywhere; text-align: left; }
+.repository-selection .badge svg { flex-shrink: 0; }
+.repository-selection > .subtle-link { justify-self: start; font-size: 11px; }
