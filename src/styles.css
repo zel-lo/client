@@ -898,7 +898,57 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .live-issues .work-filters input:not([type="checkbox"]), .live-issues .work-filters select { min-height: 36px; width: 100%; }
 .live-issues .work-filters > .inline-checkbox { flex: 0 0 auto; }
 
-/* Invitation landing and acceptance. */
+/* Membership controls use the same tokens in light and dark themes. */
+.members-panel, .project-general-settings { display: grid; gap: 20px; min-width: 0; max-width: 1040px; }
+.members-panel :is(.section-heading, .section-subheading) { margin-bottom: 0; }
+.members-panel :is(h2, h3), .project-general-settings h2 { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; }
+.members-panel label, .project-general-settings label { display: grid; gap: 8px; min-width: 0; font-size: 12px; color: var(--text-secondary); }
+.members-panel :is(input, select), .member-action-dialog select { width: 100%; min-width: 0; min-height: 42px; margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--foreground); background: var(--card); font: inherit; }
+.member-action-dialog select { margin-top: 8px; }
+.members-panel :is(input, select):focus-visible, .member-action-dialog select:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.member-search { max-width: 400px; }
+.member-list { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.live-member-row { display: flex; align-items: center; gap: 14px; min-width: 0; padding: 17px 18px; border-bottom: 1px solid var(--line); }
+.live-member-row:last-child { border-bottom: 0; }
+.member-monogram { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; background: var(--accent-bg); color: var(--brand); border: 1px solid var(--accent-line); font-size: 11px; }
+.member-identity { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.member-identity strong { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; font-size: 13px; overflow-wrap: anywhere; }
+.member-identity > span { font-size: 11px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+.member-role-owner { color: var(--brand); background: var(--accent-bg); border-color: var(--accent-line); }
+.member-role-admin { color: var(--git-purple); background: var(--git-purple-bg); }
+.member-row-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: end; gap: 12px; }
+.member-row-actions .subtle-link { font-size: 11px; }
+.member-role-guide { display: flex; gap: 12px; align-items: start; padding: 17px; border-radius: 10px; background: var(--surface); color: var(--text-secondary); }
+.member-role-guide svg { flex-shrink: 0; margin-top: 2px; }
+.member-role-guide p { margin: 0; font-size: 12px; line-height: 1.9; }
+.member-invitation-form, .member-invitations, .membership-history, .project-general-settings { padding: 22px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); }
+.member-invitation-form > .help-text { margin: 12px 0 18px; }
+.member-invitation-form form { display: grid; gap: 18px; }
+.member-invitation-form form > .button { justify-self: start; min-height: 40px; }
+.member-form-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.created-invitation { display: grid; gap: 12px; margin-top: 22px; padding: 18px; border-radius: 10px; border: 1px solid var(--accent-line); background: var(--accent-bg); font-size: 13px; }
+.created-invitation > p { margin: 0; }
+.created-invitation > .button { justify-self: start; }
+.created-invitation input { background: var(--card); font-size: 12px; }
+.invitation-list-row { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding: 18px 0; border-bottom: 1px solid var(--line); }
+.invitation-list-row > div { flex: 1; min-width: 160px; }
+.invitation-list-row strong { font-size: 12px; overflow-wrap: anywhere; }
+.invitation-list-row p { font-size: 11px; margin: 7px 0 0; color: var(--muted-foreground); }
+.member-invitations > .connection-pagination, .membership-history > .connection-pagination { margin-top: 18px; }
+.membership-history > article { display: grid; gap: 7px; padding: 17px 0; border-bottom: 1px solid var(--line); }
+.membership-history strong { font-size: 12px; font-weight: 500; }
+.membership-history small { font-size: 11px; color: var(--muted-foreground); }
+.member-leave { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 15px; padding: 20px 0; border-top: 1px solid var(--line); }
+.member-leave p { flex: 1 1 300px; margin: 0; }
+.danger-text { color: var(--git-red); }
+.button-danger { color: var(--git-red); background: var(--git-red-bg); border-color: var(--git-red); }
+.button-danger:hover { background: var(--surface); }
+.member-action-dialog .connection-error { color: var(--git-red); }
+.members-panel .connection-error > .button, .project-general-settings .connection-error > .button { margin: 10px 0 0 12px; }
+.project-general-settings .settings-form { max-width: 640px; }
+.project-general-settings .settings-form > label { margin: 0 0 22px; }
+.project-general-settings .settings-form :is(input, textarea) { margin: 0; }
+.project-general-settings textarea { resize: vertical; }
 .invitation-page { min-height: 100svh; padding: 36px 24px 64px; background: var(--background); }
 .invitation-page > .public-brand { display: flex; align-items: center; gap: 10px; width: fit-content; margin: 0 auto; font-size: 23px; font-weight: 650; }
 .invitation-card { display: grid; gap: 20px; width: min(100%, 520px); margin: 60px auto 0; padding: 36px; border: 1px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 0 12px 40px rgb(0 0 0 / .04); }
@@ -911,6 +961,13 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .invitation-card .connection-error .button { margin-top: 12px; }
 .invitation-role { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 16px; border-radius: 10px; color: var(--brand); background: var(--accent-bg); font-size: 13px; }
 @media (max-width: 700px) {
+  .members-panel > .section-heading { align-items: start; flex-direction: column; gap: 14px; }
+  .live-member-row { flex-wrap: wrap; gap: 10px; padding: 15px; }
+  .member-row-actions { width: 100%; justify-content: start; padding-left: 46px; }
+  .member-row-actions:empty { display: none; }
+  .member-form-columns { grid-template-columns: 1fr; }
+  .member-invitation-form, .member-invitations, .membership-history, .project-general-settings { padding: 16px; }
+  .member-invitation-form form > .button, .created-invitation > .button { justify-self: stretch; }
   .invitation-page { padding: 24px 16px; }
   .invitation-card { padding: 26px 22px; margin-top: 34px; }
 }
