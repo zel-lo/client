@@ -91,7 +91,7 @@ export function fromServerPullRequest(item: PullRequestItem, projectId?: string)
   return {
     id: item.id, number: item.number, repo: item.repositoryName, title: item.title, author: item.author?.login ?? '알 수 없음',
     branch: item.headBranch, base: item.baseBranch, status, review, checks: 'unknown', summary: item.teamSummary ?? undefined,
-    url: item.url, live: true, projectId,
+    reviewers: item.reviewers.map(reviewer => reviewer.login), url: item.url, live: true, projectId,
   }
 }
 export function needsMyReview(pr: PullRequest) {

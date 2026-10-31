@@ -14,6 +14,7 @@ export function useLivePullRequests(enabled: boolean, pathname: string) {
   const [project, setProject] = useState<Project | null>(null)
   const [all, setAll] = useState<PullRequestPage | null>(null)
   const [mine, setMine] = useState<PullRequestPage | null>(null)
+  const [requested, setRequested] = useState<PullRequestPage | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [reauth, setReauth] = useState(false)
@@ -32,13 +33,14 @@ export function useLivePullRequests(enabled: boolean, pathname: string) {
       if (pending.signal.aborted) return
       projectId.current = current?.id ?? null
       setProject(current)
-      if (!current) { setAll(null); setMine(null); setError(''); return }
-      const [everything, authored] = await Promise.all([
+      if (!current) { setAll(null); setMine(null); setRequested(null); setError(''); return }
+      const [everything, authored, reviewing] = await Promise.all([
         listPullRequests(current.id, { state: 'all' }, pending.signal),
         listPullRequests(current.id, { state: 'open', author: 'me' }, pending.signal),
+        listPullRequests(current.id, { state: 'open', reviewer: 'me' }, pending.signal),
       ])
       if (pending.signal.aborted) return
-      setAll(everything); setMine(authored); setError(''); setReauth(false); setLoadedAt(new Date())
+      setAll(everything); setMine(authored); setRequested(reviewing); setError(''); setReauth(false); setLoadedAt(new Date())
     } catch (cause) {
       if (pending.signal.aborted) return
       setError(cause instanceof Error ? cause.message : 'PR을 불러오지 못했어요.')
@@ -53,7 +55,7 @@ export function useLivePullRequests(enabled: boolean, pathname: string) {
   useEffect(() => {
     if (!enabled) {
       controller.current?.abort()
-      setProject(null); setAll(null); setMine(null); setError(''); setLoading(false)
+      setProject(null); setAll(null); setMine(null); setRequested(null); setError(''); setLoading(false)
       return
     }
     void load()
@@ -69,8 +71,9 @@ export function useLivePullRequests(enabled: boolean, pathname: string) {
 
   const pullRequests = useMemo<PullRequest[]>(() => all?.items.map(item => fromServerPullRequest(item, project?.id)) ?? [], [all, project])
   const authored = useMemo<PullRequest[]>(() => mine?.items.map(item => fromServerPullRequest(item, project?.id)) ?? [], [mine, project])
+  const reviews = useMemo<PullRequest[]>(() => requested?.items.map(item => fromServerPullRequest(item, project?.id)) ?? [], [requested, project])
   return {
-    active: enabled && project !== null, project, pullRequests, authored, loading, error, reauth, loadedAt, sync, reload: load,
+    active: enabled && project !== null, project, pullRequests, authored, reviews, reviewCount: requested?.counts.open ?? 0, loading, error, reauth, loadedAt, sync, reload: load,
     openCount: all?.counts.open ?? 0, authoredCount: mine?.counts.open ?? 0, hasMore: Boolean(all?.hasNext),
   }
 }

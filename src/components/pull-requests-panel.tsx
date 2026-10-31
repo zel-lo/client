@@ -31,13 +31,14 @@ export function PullRequestsPanel({ pullRequests, repos, issues, repoFilter, onS
     {error && <div className="connection-error" role="alert">{error}{reauth && <Link to="/login?reauth=github">GitHub 다시 로그인</Link>}</div>}
     {loading && !pullRequests.length && <p role="status">PR을 불러오는 중…</p>}
     <div className="work-filter-bar"><select aria-label="PR 확인 필터" value={focus} onChange={event => change('focus', event.target.value)}><option value="all">모든 검토 상태</option><option value="pending">검토 대기</option><option value="failing">수정 또는 검사 실패</option><option value="unlinked">이슈 미연결</option></select>{params.size > 0 && <button className="subtle-link" onClick={() => setParams({})}>필터 초기화</button>}</div>
-    <div className="data-frame"><Table><TableHeader><TableRow><TableHead>변경 요청</TableHead><TableHead>코드 검토</TableHead><TableHead>자동 검사 · CI</TableHead><TableHead>작성자</TableHead></TableRow></TableHeader><TableBody>
+    <div className="data-frame"><Table><TableHeader><TableRow><TableHead>변경 요청</TableHead><TableHead>코드 검토</TableHead><TableHead>자동 검사 · CI</TableHead><TableHead>리뷰어</TableHead><TableHead>작성자</TableHead></TableRow></TableHeader><TableBody>
       {visible.map(pr => {
         const linked = issues.filter(issue => issue.pullRequestIds.includes(pr.id))
         const Icon = pr.status === 'merged' ? GitMerge : pr.status === 'draft' ? CircleDashed : GitPullRequest
         return <TableRow key={pr.id}><TableCell><button className="pr-work-title" onClick={() => onSelect(pr)}><Icon size={17} className={`pr-icon pr-icon-${pr.status}`} /><span>{pr.title}<small className="pr-work-meta">{repositoryRef(pr.repo, pr.number, repos)} · {pr.branch}</small></span></button>{linked.length > 0 && <span className="linked-issue-chips">{linked.map(issue => <button className="reference-link" key={issue.id} onClick={() => onSelectIssue(issue)}><Link2 size={10} />{repositoryRef(issue.repo, issue.githubNumber, repos, issue.id)}</button>)}</span>}</TableCell>
-        <TableCell><span className={`review-state review-${pr.review}`}>{pr.status === 'merged' ? statusLabels.merged : pr.status === 'draft' ? statusLabels.draft : reviewLabels[pr.review]}</span></TableCell>
+        <TableCell><span className={`review-state review-${pr.review}`}>{pr.status === 'open' ? reviewLabels[pr.review] : statusLabels[pr.status]}</span></TableCell>
         <TableCell><span className={`check-state check-${pr.checks}`}>{pr.checks === 'passing' ? <Check size={12} /> : pr.checks === 'failing' ? <CircleX size={12} /> : <CircleDashed size={12} />}{checkLabels[pr.checks]}</span></TableCell>
+        <TableCell className="table-secondary">{pr.reviewers?.length ? pr.reviewers.join(', ') : <span className="muted">지정 안 함</span>}</TableCell>
         <TableCell className="table-secondary">{pr.author}</TableCell></TableRow>
       })}
     </TableBody></Table></div>
