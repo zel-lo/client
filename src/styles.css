@@ -803,23 +803,73 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
   .sync-repo-row > .small { width: 100%; margin-left: 25px; }
 }
 
-.repository-connections { display: grid; gap: 18px; }
+.repository-connections {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 2px 8px rgb(0 0 0 / .025);
+}
 .repository-connections .section-heading, .repository-connections .section-subheading { margin-bottom: 0; }
-.repository-connections label { display: grid; gap: 8px; font-size: 13px; }
-.repository-connections input, .repository-connections select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; color: inherit; background: var(--background); font: inherit; }
-.connection-project-form { display: flex; align-items: end; gap: 12px; }
+.repository-connections .section-subheading { font-size: 13px; line-height: 1.7; }
+.repository-connections h3 { font-size: 14px; font-weight: 600; }
+.repository-connections label { display: grid; gap: 8px; min-width: 0; font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+.repository-connections input, .repository-connections select {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--foreground);
+  background: var(--card);
+  font: inherit;
+  font-weight: 400;
+  line-height: 1.5;
+  transition: border-color .15s, background-color .15s;
+}
+.repository-connections input::placeholder { color: var(--muted-foreground); font-weight: 400; }
+.repository-connections :is(input, select):not(:disabled):hover { border-color: var(--line-strong); }
+.repository-connections :is(input, select):focus-visible { border-color: var(--brand); outline: 2px solid var(--brand); outline-offset: 2px; }
+.repository-connections :is(input, select):disabled { background: var(--surface); color: var(--muted-foreground); cursor: not-allowed; opacity: .75; }
+.repository-connections select { appearance: none; padding-right: 38px; text-overflow: ellipsis; cursor: pointer; }
+.repository-connections label:has(> select) { position: relative; }
+.repository-connections label:has(> select)::after {
+  content: '';
+  position: absolute;
+  right: 14px;
+  bottom: 17px;
+  width: 10px;
+  height: 7px;
+  background: var(--muted-foreground);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 7'%3E%3Cpath d='m1 1.5 4 4 4-4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  pointer-events: none;
+}
+.connection-project-form { display: flex; align-items: end; gap: 12px; padding: 16px; border-radius: 10px; background: var(--background); }
 .connection-project-form label { flex: 1; }
-.connection-select { max-width: 560px; }
-.connection-picker { border: 1px solid var(--border); border-radius: 12px; padding: 22px; display: grid; gap: 18px; }
-.connection-picker form { display: grid; gap: 16px; }
-.connection-picker form > .button { justify-self: start; }
-.connection-pagination { display: flex; align-items: center; gap: 12px; font-size: 12px; }
-.connection-error { padding: 14px; border: 1px solid #dc4545; border-radius: 8px; }
+.connection-project-form > .button { min-height: 42px; }
+.connection-select { width: 100%; max-width: 560px; }
+.connection-picker { min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 20px; display: grid; gap: 18px; background: var(--card); }
+.connection-picker form { display: grid; gap: 16px; min-width: 0; }
+.connection-picker form > .button { justify-self: start; min-height: 40px; }
+.connection-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12px; color: var(--muted-foreground); }
+.connection-error { padding: 14px; border: 1px solid var(--git-red); border-radius: 8px; color: var(--git-red); background: var(--git-red-bg); line-height: 1.6; }
 .connection-error a { margin-left: 12px; text-decoration: underline; }
-.connection-notice { font-size: 13px; }
+.connection-notice { font-size: 13px; color: var(--git-green); line-height: 1.6; }
 .connected-repo-card { cursor: default; }
 .connected-repo-card h3 a { display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
-@media (max-width: 640px) { .connection-project-form { align-items: stretch; flex-direction: column; } .connection-picker { padding: 14px; } .repository-connections > .section-heading { align-items: start; flex-direction: column; gap: 12px; } }
+@media (max-width: 640px) {
+  .repository-connections { padding: 16px; gap: 18px; }
+  .connection-project-form { align-items: stretch; flex-direction: column; }
+  .connection-picker { padding: 14px; }
+  .connection-picker form > .button { justify-self: stretch; justify-content: center; }
+  .repository-connections > .section-heading { align-items: start; flex-direction: column; gap: 12px; }
+}
 
 /* Setup and real issue workflow share the workspace's existing tokens. */
 .onboarding-page { max-width: 1040px; margin: 0 auto; padding: 40px 28px 80px; }
