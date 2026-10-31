@@ -83,12 +83,12 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
   useEffect(() => {
     if (!project) { setLoading(false); return }
     const controller = new AbortController(); request.current = controller
-    setLoading(true); setError(''); setReauth(false); setResult(null)
+    setLoading(true); setError(''); setReauth(false)
     void Promise.all([
       listIssues(project.id, { query, status, page, archived, mine, activeOnly: mineOnly }, controller.signal),
       listConnectedRepositories(project.id, controller.signal),
     ]).then(([issues, repos]) => { if (!controller.signal.aborted) { setResult(issues); setRepositories(repos) } })
-      .catch(cause => { if (!controller.signal.aborted) report(cause) })
+      .catch(cause => { if (!controller.signal.aborted) { setResult(null); report(cause) } })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
   }, [project?.id, query, status, page, archived, mine, mineOnly, revision])
@@ -130,7 +130,7 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
       <label>작업 목록<select value={archived ? 'archived' : 'active'} onChange={event => { setArchived(event.target.value === 'archived'); setPage(1) }}><option value="active">진행·완료한 작업</option><option value="archived">보관한 작업</option></select></label>
       {!mineOnly && <label className="inline-checkbox"><input type="checkbox" checked={mine} onChange={event => { setMine(event.target.checked); setPage(1) }} />내가 맡은 작업만</label>}
     </div>
-    {loading ? <p role="status">저장한 작업을 불러오는 중…</p> : result && <>
+    {loading && !result ? <p role="status">저장한 작업을 불러오는 중…</p> : result && <>
       <div className="data-frame"><Table><TableHeader><TableRow><TableHead>작업 / 등록 경로</TableHead><TableHead>상태</TableHead><TableHead>담당자</TableHead><TableHead>우선순위</TableHead><TableHead>GitHub 발행</TableHead></TableRow></TableHeader><TableBody>{result.items.map(issue => <TableRow key={issue.id}>
         <TableCell><button className="issue-title" disabled={busy} onClick={() => void open(issue)}><CircleDot size={15} /><span>{issue.title}<small>{issue.number ? `${issue.repositoryOwner}/${issue.repositoryName}#${issue.number}` : issue.key} · {sources[issue.source]}{issue.meetingDate ? ` · ${issue.meetingDate}` : ''}</small></span></button></TableCell>
         <TableCell><span className={`issue-status-badge issue-status-${issue.status.toLowerCase()}`}>{states[issue.status]}</span>{issue.githubState === 'CLOSED' && <small className="muted"> · GitHub 닫힘</small>}</TableCell>
@@ -139,8 +139,8 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
       {!result.items.length && <div className="empty-state"><CircleDot size={25} /><h3>{archived ? '보관한 작업이 없어요' : '아직 표시할 작업이 없어요'}</h3><p>{repositories.length ? '새 작업을 등록하거나 GitHub의 기존 이슈를 가져오세요.' : '먼저 프로젝트에 저장소를 연결해 주세요.'}</p>{!repositories.length && <Link className="button" to="/onboarding">저장소 연결</Link>}</div>}
       <div className="connection-pagination"><button className="button" disabled={page === 1} onClick={() => setPage(value => value - 1)}>이전 작업</button><span>{page} 페이지</span><button className="button" disabled={!result.hasNext} onClick={() => setPage(value => value + 1)}>다음 작업</button></div>
     </>}
-    <p className="help-text">작업은 먼저 zello에 저장돼요. GitHub 발행은 상세 화면에서 진행하며, 보관한 작업은 복원할 수 있어요.</p>
-    {editing && <IssueEditor key={editing === 'new' ? 'new' : editing.id} projectId={project.id} issue={editing === 'new' ? null : editing} repositories={repositories} canWrite={canWrite} onClose={() => setEditing(null)} onChanged={item => { setEditing(item); setRevision(value => value + 1) }} onArchived={() => { setEditing(null); setRevision(value => value + 1); setNotice(archived ? '작업을 복원했어요.' : '작업을 보관했어요. GitHub 원본은 유지됩니다.') }} />}
+    <p className="help-text">새 작업은 기본으로 zello에 저장한 뒤 선택한 GitHub 저장소에도 만듭니다. zello에만 저장한 작업은 상세에서 발행할 수 있어요.</p>
+    {editing && <IssueEditor  projectId={project.id} issue={editing === 'new' ? null : editing} repositories={repositories} canWrite={canWrite} onClose={() => setEditing(null)} onChanged={item => { setEditing(item); setRevision(value => value + 1) }} onArchived={() => { setEditing(null); setRevision(value => value + 1); setNotice(archived ? '작업을 복원했어요.' : '작업을 보관했어요. GitHub 원본은 유지됩니다.') }} />}
   </section>
 }
 
@@ -160,6 +160,7 @@ function IssueEditor({ projectId, issue, repositories, canWrite, onClose, onChan
   const [notice, setNotice] = useState('')
   const [stale, setStale] = useState(false)
   const [confirmArchive, setConfirmArchive] = useState(false)
+  const [publishAfterSave, setPublishAfterSave] = useState(true)
   const key = useRef(crypto.randomUUID())
   const unresolved = issue?.publishStatus === 'PENDING' || issue?.publishStatus === 'UNKNOWN'
   const disabled = !canWrite || busy || !!issue?.archived || unresolved
@@ -181,12 +182,24 @@ function IssueEditor({ projectId, issue, repositories, canWrite, onClose, onChan
   }
   async function submit(event: FormEvent) {
     event.preventDefault()
-    if (!valid || disabled) return
+    if (!valid || disabled || stale) return
     setBusy(true); setError(''); setNotice('')
+    let saved: LiveIssue | null = null
     try {
-      const saved = issue ? await updateIssue(projectId, issue, form, githubState) : await createIssue(projectId, repoId, form, key.current)
-      setForm(detailsFor(saved)); setGithubState(saved.githubState); onChanged(saved); setNotice('작업을 저장했어요.')
-    } catch (cause) { report(cause) } finally { setBusy(false) }
+      saved = issue ? await updateIssue(projectId, issue, form, githubState) : await createIssue(projectId, repoId, form, key.current)
+      // Keep the same editor mounted until publication resolves; otherwise the saved ID remounts it mid-request.
+      if (!issue && publishAfterSave) saved = await publishIssue(projectId, saved)
+      setForm(detailsFor(saved)); setGithubState(saved.githubState); onChanged(saved)
+      setNotice(saved.publishStatus === 'PUBLISHED' ? 'GitHub에 이슈를 만들었어요.' : 'zello에 저장했어요. GitHub에는 아직 만들어지지 않았어요.')
+    } catch (cause) {
+      if (saved && !issue) {
+        // Local persistence succeeded. Reopen the saved row, including the server's failed/unknown outcome.
+        let current = saved
+        try { current = await getIssue(projectId, saved.id) } catch { /* Retain the known local row. */ }
+        onChanged(current)
+      }
+      report(cause)
+    } finally { setBusy(false) }
   }
   async function publish() {
     if (!issue || busy) return
@@ -222,7 +235,8 @@ function IssueEditor({ projectId, issue, repositories, canWrite, onClose, onChan
     {issue?.publishStatus === 'PUBLISHED' && <label>GitHub 이슈 상태<select value={githubState ?? 'OPEN'} disabled={disabled} onChange={event => { const state = event.target.value as 'OPEN' | 'CLOSED'; setGithubState(state); setForm({ ...form, status: state === 'CLOSED' ? 'DONE' : form.status === 'DONE' ? 'TODO' : form.status }) }}><option value="OPEN">열림</option><option value="CLOSED">닫힘 · 완료</option></select></label>}
     {error && <p className="form-error" role="alert">{error}</p>}{notice && <p className="connection-notice" role="status">{notice}</p>}
     {stale && issue && <button className="button" type="button" disabled={busy} onClick={() => { void getIssue(projectId, issue.id).then(onChanged).then(() => onClose()).catch(report) }}>최신 내용을 다시 열기</button>}
-    <div className="form-actions"><span className="help-text">{issue?.publishStatus === 'PUBLISHED' ? '제목·설명·완료 조건·담당자는 GitHub에도 반영돼요.' : '먼저 zello에 저장하고, 준비되면 GitHub에 발행하세요.'}</span><button type="button" className="button" disabled={busy} onClick={onClose}>닫기</button>{canWrite && !issue?.archived && !unresolved && <button className="button button-dark" type="submit" disabled={!valid || busy}>작업 저장</button>}</div>
+    {!issue && canWrite && <label className="issue-publish-choice"><input type="checkbox" checked={publishAfterSave} disabled={busy} onChange={event => setPublishAfterSave(event.target.checked)} /><span><strong>저장하고 GitHub에도 이슈 만들기</strong><small>선택한 저장소에 실제 이슈가 생성돼요. 체크를 끄면 zello에만 저장합니다.</small></span></label>}
+    <div className="form-actions"><span className="help-text">{issue?.publishStatus === 'PUBLISHED' ? '제목·설명·완료 조건·담당자는 GitHub에도 반영돼요.' : !issue && publishAfterSave ? 'zello에 먼저 저장한 뒤 선택한 저장소에 실제 이슈를 만듭니다.' : 'zello에만 저장하면 GitHub에는 아직 만들어지지 않아요.'}</span><button type="button" className="button" disabled={busy} onClick={onClose}>닫기</button>{canWrite && !issue?.archived && !unresolved && <button className="button button-dark" type="submit" disabled={!valid || busy || stale}>{busy ? '처리 중…' : !issue && publishAfterSave ? '저장하고 GitHub에 만들기' : issue ? '작업 저장' : 'zello에만 저장'}</button>}</div>
     {issue && canWrite && !issue.archived && issue.publishStatus !== 'PUBLISHED' && <div className="issue-publication"><p>{dirty ? '수정한 내용을 먼저 저장한 다음 발행해 주세요.' : issue.lastPublishError || '저장한 제목·설명·완료 조건·담당자로 GitHub에 이슈를 발행해요.'}</p><button className="button" type="button" disabled={busy || !!dirty} onClick={() => void publish()}><Github size={14} />{unresolved ? '이전 발행 결과 확인' : '저장한 작업 GitHub에 발행'}</button></div>}
     {issue && canWrite && <div className="issue-archive">{confirmArchive && !issue.archived ? <><p>이 작업을 보관할까요? GitHub 이슈는 유지되며 보관 목록에서 복원할 수 있어요.</p><button className="button" type="button" disabled={busy} onClick={() => void archive()}>보관하기</button><button className="button" type="button" onClick={() => setConfirmArchive(false)}>취소</button></> : <button className="subtle-link" type="button" disabled={busy} onClick={() => issue.archived ? void archive() : setConfirmArchive(true)}><Archive size={13} />{issue.archived ? '작업 복원' : '작업 보관'}</button>}</div>}
   </form></IssueDialog>

@@ -990,3 +990,8 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .repository-selection .badge { white-space: normal; overflow-wrap: anywhere; text-align: left; }
 .repository-selection .badge svg { flex-shrink: 0; }
 .repository-selection > .subtle-link { justify-self: start; font-size: 11px; }
+.issue-publish-choice { display: flex !important; align-items: start; gap: 12px; padding: 16px; background: var(--accent-bg); border: 1px solid var(--accent-line); border-radius: 8px; }
+.issue-publish-choice input { flex-shrink: 0; margin-top: 3px; }
+.issue-publish-choice > span { display: grid; gap: 8px; }
+.issue-publish-choice strong { font-size: 12px; font-weight: 600; }
+.issue-publish-choice small { font-size: 11px; line-height: 1.7; color: var(--muted-foreground); }
