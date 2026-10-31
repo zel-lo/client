@@ -4,6 +4,7 @@ import { ArrowRight, Bell, BookOpen, ChevronRight, CircleDot, Github, GitPullReq
 import { BrandMark } from './brand-mark'
 import { Button } from './ui/button'
 import { useTheme } from '../hooks/use-theme'
+import { listProjects, listConnectedRepositories } from '../lib/project-api'
 import { beginGitHubLogin } from '../lib/session-api'
 import { useSession } from '../hooks/use-session'
 import { initialIssues, initialPullRequests, issueSources, issueStatuses } from '../data/work-items'
@@ -127,7 +128,7 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
       <p className="help-text">프로필·조직 조회와 공개·비공개 저장소 접근을 승인합니다. GitHub의 저장소 권한에는 읽기와 쓰기가 함께 포함됩니다.</p>
       {notice && <div className="auth-notice" role="status"><p>{notice}</p></div>}
       <div className="auth-switch-account"><span>{signup ? '이미 계정이 있나요?' : '계정이 없나요?'}</span><Link to={signup ? '/login' : '/signup'}>{signup ? '로그인' : '회원가입'}</Link></div>
-      <div className="auth-preview"><Link className="public-text-link" to="/overview">샘플 프로젝트 둘러보기<ArrowRight size={14} /></Link><p>저장소 연결은 가입 후 선택하면 돼요.</p></div>
+      <div className="auth-preview"><Link className="public-text-link" to="/overview">샘플 프로젝트 둘러보기<ArrowRight size={14} /></Link><p>로그인 다음 화면에서 팀과 저장소를 연결해요.</p></div>
     </section></main><Footer />
   </div>
 }
@@ -136,9 +137,14 @@ export function AuthCallbackPage() {
   const session = useSession()
   const navigate = useNavigate()
   useEffect(() => {
-    if (session.status === 'ready') {
-      navigate(session.user ? '/overview' : '/login?error=expired', { replace: true })
-    }
+    if (session.status !== 'ready') return
+    if (!session.user) { navigate('/login?error=expired', { replace: true }); return }
+    const controller = new AbortController()
+    void listProjects(controller.signal).then(async projects => {
+      const connected = await Promise.all(projects.map(project => listConnectedRepositories(project.id, controller.signal)))
+      if (!controller.signal.aborted) navigate(connected.some(items => items.length) ? '/issues' : '/onboarding', { replace: true })
+    }).catch(() => { if (!controller.signal.aborted) navigate('/onboarding', { replace: true }) })
+    return () => controller.abort()
   }, [session.status, session.user, navigate])
   return <div className="public-shell auth-page"><header className="public-header"><Brand /></header>
     <main className="auth-main"><section className="auth-form-content"><h1>로그인 확인</h1>

@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Github, RefreshCw, Plus, ExternalLink } from 'lucide-react'
 import {
-  connectRepository, createProject, disconnectRepository, listAvailableRepositories,
-  listConnectedRepositories, listGitHubAccounts, listProjects, ProjectApiError, syncPullRequests,
+  connectRepository, createProject, disconnectRepository, githubAuthorization, listAvailableRepositories,
+  listConnectedRepositories, listGitHubAccounts, listProjects, ProjectApiError, syncPullRequests, syncIssues,
 } from '../lib/project-api'
 import type { ConnectedRepository, GitHubAccount, Page, Project, RepositoryOption } from '../lib/project-api'
 
 const emptyPage = <T,>(): Page<T> => ({ items: [], page: 1, hasNext: false })
 
-export function RepositoryConnections() {
+export function RepositoryConnections({ onboarding = false }: { onboarding?: boolean }) {
+  const navigate = useNavigate()
+  const [accessUrl, setAccessUrl] = useState<string | null>(null)
   const location = useLocation()
   const [requestedProject] = useState(() => new URLSearchParams(location.search).get('project'))
   const [projects, setProjects] = useState<Project[]>([])
@@ -33,6 +35,7 @@ export function RepositoryConnections() {
   const [error, setError] = useState('')
   const [reauth, setReauth] = useState(false)
   const [notice, setNotice] = useState('')
+  const [accessPending, setAccessPending] = useState(false)
   const lastFocus = useRef(0)
   const project = projects.find(item => item.id === projectId)
   const visible = options.items.filter(item => item.fullName.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
@@ -43,10 +46,16 @@ export function RepositoryConnections() {
   }
 
   useEffect(() => {
+    const controller = new AbortController()
+    void githubAuthorization(controller.signal).then(result => { if (!controller.signal.aborted) setAccessUrl(result.organizationAccessUrl) }).catch(() => {})
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
     const check = () => {
       if (busy || document.visibilityState !== 'visible' || Date.now() - lastFocus.current < 1500) return
       lastFocus.current = Date.now()
-      setError(''); setReauth(false); setRefresh(value => value + 1)
+      setAccessPending(false); setError(''); setReauth(false); setRefresh(value => value + 1)
     }
     window.addEventListener('focus', check)
     document.addEventListener('visibilitychange', check)
@@ -110,12 +119,21 @@ export function RepositoryConnections() {
 
   async function connect(event: FormEvent) {
     event.preventDefault()
-    if (busy || !projectId || !visible.some(item => item.id === repositoryId)) return
+    if (busy || (!projectId && !onboarding) || !visible.some(item => item.id === repositoryId)) return
     setBusy(true); setError(''); setNotice('')
     try {
-      const item = await connectRepository(projectId, repositoryId)
+      let target = projectId
+      if (!target) {
+        const selected = visible.find(item => item.id === repositoryId)!
+        const created = await createProject(projectName.trim() || selected.owner)
+        target = created.id
+        setProjects(current => [...current, created]); setProjectId(target)
+      }
+      const item = await connectRepository(target, repositoryId)
       setConnected(current => [...current, item]); setNotice(`${item.owner}/${item.name} 저장소를 연결했어요.`)
-      void collectPullRequests(projectId, `${item.owner}/${item.name}`)
+      void syncIssues(target).then(() => window.dispatchEvent(new Event('zello:issues-updated'))).catch(cause => window.dispatchEvent(new CustomEvent('zello:issues-sync-error', { detail: { projectId: target, message: cause instanceof Error ? cause.message : '기존 이슈를 가져오지 못했어요. 다시 가져오기를 눌러주세요.' } })))
+      if (onboarding) navigate('/issues', { replace: true })
+      void collectPullRequests(target, `${item.owner}/${item.name}`)
     } catch (cause) { report(cause) } finally { setBusy(false) }
   }
 
@@ -144,13 +162,19 @@ export function RepositoryConnections() {
     {error && <div className="connection-error" role="alert">{error}{reauth && <Link to="/login?reauth=github">GitHub 다시 로그인</Link>}</div>}
     {notice && <p className="connection-notice" role="status">{notice}</p>}
     {loading && <p role="status">프로젝트를 불러오는 중…</p>}
-    <form className="connection-project-form" onSubmit={event => void create(event)}>
+    {!onboarding && <form className="connection-project-form" onSubmit={event => void create(event)}>
       <label>새 프로젝트 이름<input required maxLength={100} value={projectName} onChange={event => setProjectName(event.target.value)} placeholder="함께 작업할 프로젝트 이름" disabled={busy || loading} /></label>
       <button className="button" disabled={busy || loading || !projectName.trim()}><Plus size={14} />프로젝트 만들기</button>
-    </form>
+    </form>}
     {!!projects.length && <label className="connection-select">연결할 프로젝트<select value={projectId} disabled={busy || loading} onChange={event => { setProjectId(event.target.value); setNotice(''); setError('') }}>{projects.map(item => <option key={item.id} value={item.id}>{item.name} · {item.role === 'OWNER' ? '소유자' : item.role}</option>)}</select></label>}
-    {!loading && !projects.length && <p className="help-text">먼저 프로젝트를 만들면 저장소를 연결할 수 있어요.</p>}
-    {project && <>
+    {!onboarding && !loading && !projects.length && <p className="help-text">먼저 프로젝트를 만들면 저장소를 연결할 수 있어요.</p>}
+    <div className="organization-access">
+      <div><h3>찾는 조직이 없나요?</h3><p>GitHub에서 이 서비스의 조직 접근을 한 번 승인하면 돼요. 돌아오면 목록을 다시 확인합니다.</p></div>
+      {accessUrl ? <a className="button" href={accessUrl} target="_blank" rel="noopener noreferrer" onClick={() => setAccessPending(true)}><Github size={14} />조직 접근 승인하기<ExternalLink size={13} /></a> : <Link className="button" to="/login?reauth=github">GitHub 다시 연결</Link>}
+      {accessPending && <p role="status">새 탭에서 사용할 조직 옆 Grant를 눌러주세요. 승인 권한이 없으면 조직 관리자에게 요청할 수 있어요.</p>}
+    </div>
+    {(project || onboarding) && <>
+      {project && <>
       <div className="section-heading"><h3>{project.name}에 연결된 저장소</h3><span className="muted small">{connected.length}개</span></div>
       {loadingConnected ? <p role="status">저장소 접근 권한을 확인하는 중…</p> : <div className="repo-grid repo-grid-page">{connected.map(item => <article className="repo-card connected-repo-card" key={item.id}>
         <div className="repo-card-head"><Github size={20} /><span className="badge">{item.privateRepository ? '비공개' : '공개'}</span></div>
@@ -160,9 +184,11 @@ export function RepositoryConnections() {
         {project.canManageRepositories && <button className="button" disabled={busy || loading} onClick={() => void disconnect(item)}>연결 해제</button>}
       </article>)}</div>}
       {!loadingConnected && !connected.length && <p className="help-text">현재 GitHub 계정으로 볼 수 있는 연결된 저장소가 없어요.</p>}
-      {project.canManageRepositories ? <div className="connection-picker">
+      </>}
+      {(!project || project.canManageRepositories) ? <div className="connection-picker">
         <div className="section-heading"><h3>내 GitHub 저장소</h3></div>
         <form onSubmit={event => void connect(event)}>
+          {onboarding && !project && <label>프로젝트 이름<input value={projectName} maxLength={100} disabled={busy} onChange={event => setProjectName(event.target.value)} placeholder={visible.find(item => item.id === repositoryId)?.owner ?? '저장소 소유자 이름으로 자동 설정'} /></label>}
           <label>GitHub 계정 또는 Organization<select value={account} disabled={busy || loadingAccounts} onChange={event => { setAccount(event.target.value); setRepositoryPage(1) }}>
             <option value="all">접근 가능한 모든 저장소</option>
             {accounts.items.map(item => <option key={item.id} value={item.type === 'USER' ? 'personal' : `organization:${item.login}`}>{item.login} · {item.type === 'USER' ? '개인 계정' : 'Organization'}</option>)}
@@ -170,6 +196,7 @@ export function RepositoryConnections() {
           <Pagination page={accountPage} hasNext={accounts.hasNext} disabled={busy || loadingAccounts} onChange={setAccountPage} label="조직" />
           <label>목록에서 저장소 검색<input type="search" value={search} disabled={busy || loadingOptions || !options.items.length} placeholder="계정/저장소 이름으로 검색" onChange={event => { const value = event.target.value; setSearch(value); setRepositoryId(options.items.find(item => item.fullName.toLocaleLowerCase().includes(value.trim().toLocaleLowerCase()))?.id ?? '') }} /></label>
           <label>연결할 GitHub 저장소<select value={repositoryId} disabled={busy || loadingOptions || !visible.length} onChange={event => setRepositoryId(event.target.value)}><option value="">저장소 선택</option>{visible.map(item => <option key={item.id} value={item.id}>{item.fullName}{item.privateRepository ? ' · 비공개' : ''}{item.archived ? ' · 보관됨' : ''}</option>)}</select></label>
+          {accounts.items.length === 1 && <p className="help-text">현재 개인 계정만 연결되어 있어요. 팀 저장소를 쓰려면 위에서 조직 접근을 승인하세요.</p>}
           {loadingOptions && <p role="status">GitHub 저장소를 불러오는 중…</p>}
           {!loadingOptions && !options.items.length && !error && <p className="help-text">접근 가능한 저장소가 없어요. 다른 계정을 선택하거나 GitHub 로그인 권한을 확인해 주세요.</p>}
           {search && <p className="help-text">현재 페이지에서 {visible.length}개를 찾았어요.</p>}

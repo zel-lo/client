@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AuthCallbackPage, AuthPage, LandingPage } from './components/public-pages'
 import { SessionProvider, useSession } from './hooks/use-session'
+import { Onboarding } from './components/onboarding'
 import { RepositoryConnections } from './components/repository-connections'
 import { useTheme } from './hooks/use-theme'
 import { useLivePullRequests } from './hooks/use-pull-requests'
@@ -151,6 +152,7 @@ function AppRoutes() {
     <Route path="/" element={<LandingPage />} />
     <Route path="/login" element={<AuthPage />} />
     <Route path="/signup" element={<AuthPage signup />} />
+    <Route path="/onboarding" element={<Onboarding />} />
     <Route path="/auth/callback" element={<AuthCallbackPage />} />
     <Route path="*" element={<WorkspaceApp />} />
   </Routes>

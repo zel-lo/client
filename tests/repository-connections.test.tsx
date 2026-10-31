@@ -13,6 +13,7 @@ const personalSource = { ...source, id: '31', fullName: 'octocat/client', owner:
 function backend({ projects = [project], failure = '', expired = false }: { projects?: Project[]; failure?: string; expired?: boolean } = {}) {
   let repositories: ConnectedRepository[] = []
   const fetcher = vi.fn(async (path: string, init?: RequestInit) => {
+    if (path === "/api/github/authorization") return Response.json({ organizationAccessUrl: "https://github.com/settings/connections/applications/test-public-client" })
     if (path === '/api/projects' && init?.method === 'POST') {
       const created = { ...project, id: '2', name: JSON.parse(init.body as string).name as string }
       projects = [...projects, created]
@@ -134,6 +135,27 @@ describe('사이트 안에서 GitHub 저장소 연결', () => {
     const count = fetcher.mock.calls.filter(([path]) => path.startsWith('/api/github/repositories')).length
     fireEvent(window, new Event('focus'))
     await waitFor(() => expect(fetcher.mock.calls.filter(([path]) => path.startsWith('/api/github/repositories')).length).toBeGreaterThan(count))
+  })
+
+  it('조직 승인 화면으로 바로 연결하고 돌아오면 기존 목록 갱신 흐름을 사용한다', async () => {
+    backend()
+    mount()
+    const approval = await screen.findByRole('link', { name: '조직 접근 승인하기' })
+    expect(approval).toHaveAttribute('href', 'https://github.com/settings/connections/applications/test-public-client')
+    expect(approval).toHaveAttribute('target', '_blank')
+    await userEvent.setup().click(approval)
+    expect(screen.getByRole('status')).toHaveTextContent('Grant')
+  })
+
+  it('가입 안내에서는 프로젝트 이름을 입력하지 않아도 저장소 선택으로 프로젝트를 준비한다', async () => {
+    const fetcher = backend({ projects: [] })
+    render(<MemoryRouter initialEntries={['/onboarding']}><RepositoryConnections onboarding /></MemoryRouter>)
+    await screen.findByRole('option', { name: 'team/server · 비공개' })
+    expect(screen.queryByRole('button', { name: '프로젝트 만들기' })).not.toBeInTheDocument()
+    expect(fetcher.mock.calls.some(([path, init]) => path === '/api/projects' && init?.method === 'POST')).toBe(false)
+    await userEvent.setup().click(screen.getByRole('button', { name: '선택한 저장소 연결' }))
+    await waitFor(() => expect(fetcher).toHaveBeenCalledWith('/api/projects', expect.objectContaining({ body: JSON.stringify({ name: 'team' }) })))
+    expect(fetcher).toHaveBeenCalledWith('/api/projects/2/repositories', expect.objectContaining({ method: 'POST' }))
   })
 
   it('조회 권한의 멤버에게 연결 변경 폼을 표시하지 않는다', async () => {

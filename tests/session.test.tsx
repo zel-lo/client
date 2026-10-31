@@ -86,6 +86,7 @@ describe('서버 세션 로그인 연결', () => {
   it('callback 이후 실제 회원을 표시하고 로그아웃하면 로그인 화면으로 이동한다', async () => {
     const fetcher = vi.fn(async (path: string) => {
       if (path === '/api/me') return Response.json(currentUser)
+      if (path === '/api/projects') return Response.json([])
       if (path === '/api/auth/csrf') return Response.json({ headerName: 'X-CSRF-TOKEN', token: 'csrf-token' })
       if (path === '/api/auth/logout') return new Response(null, { status: 204 })
       return new Response(null, { status: 404 })
@@ -93,7 +94,7 @@ describe('서버 세션 로그인 연결', () => {
     vi.stubGlobal('fetch', fetcher)
     render(<MemoryRouter initialEntries={['/auth/callback']}><App /></MemoryRouter>)
     await screen.findByText('로그인 사용자')
-    expect(screen.getByRole('heading', { name: /^전체 현황/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '어떤 저장소로 시작할까요?' })).toBeInTheDocument()
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: '로그아웃', exact: true }))
     await screen.findByRole('heading', { name: 'zello에 로그인' })

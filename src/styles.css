@@ -820,3 +820,17 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .connected-repo-card { cursor: default; }
 .connected-repo-card h3 a { display: flex; align-items: center; gap: 8px; overflow-wrap: anywhere; }
 @media (max-width: 640px) { .connection-project-form { align-items: stretch; flex-direction: column; } .connection-picker { padding: 14px; } .repository-connections > .section-heading { align-items: start; flex-direction: column; gap: 12px; } }
+
+/* Setup and real issue workflow share the workspace's existing tokens. */
+.onboarding-page { max-width: 1040px; margin: 0 auto; padding: 40px 28px 80px; }
+.onboarding-intro { margin: 56px 0 32px; }
+.onboarding-intro h1 { margin: 12px 0; font-size: clamp(26px, 4vw, 36px); letter-spacing: -.04em; }
+.onboarding-intro p, .organization-access p { color: var(--muted-foreground); line-height: 1.7; }
+.organization-access { padding: 18px; margin: 0; border: 1px solid var(--accent-line); border-radius: 10px; background: var(--accent-bg); }
+.organization-access h3 { margin: 0 0 6px; }
+.organization-access p { margin: 0 0 12px; font-size: 12px; }
+.organization-access > p:last-child { margin: 12px 0 0; }
+.onboarding-page > .section-heading .issue-actions { align-items: center; }
+.onboarding-page > .subtle-link { display: inline-flex; margin-top: 22px; }
+.issue-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 700px) { .onboarding-page { padding: 28px 16px 60px; } }
