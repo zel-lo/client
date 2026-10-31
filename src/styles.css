@@ -832,5 +832,18 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .organization-access > p:last-child { margin: 12px 0 0; }
 .onboarding-page > .section-heading .issue-actions { align-items: center; }
 .onboarding-page > .subtle-link { display: inline-flex; margin-top: 22px; }
+.workspace-project-picker { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.workspace-project-picker label { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.workspace-project-picker select, .live-issues .work-filters select, .live-issues .work-filters input { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; background: var(--background); color: var(--foreground); }
+.live-issues .work-filters { flex-wrap: wrap; gap: 14px; align-items: end; }
+.live-issues .work-filters label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+.live-issues .work-filters .inline-checkbox { flex-direction: row; align-items: center; padding-bottom: 9px; }
 .issue-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-@media (max-width: 700px) { .onboarding-page { padding: 28px 16px 60px; } }
+.issue-publication, .issue-archive { padding-top: 18px; margin-top: 8px; border-top: 1px solid var(--line); }
+.issue-publication p, .issue-archive p { font-size: 13px; line-height: 1.6; }
+@media (max-width: 700px) { .live-issues .section-heading { align-items: flex-start; gap: 14px; flex-direction: column; } .onboarding-page { padding: 28px 16px 60px; } .workspace-project-picker { flex-wrap: wrap; } }
+.live-issues .work-filters { display: flex; margin: 20px 0; }
+.live-issues .work-filters > label { flex: 0 1 180px; }
+.live-issues .work-filters > label:first-child { flex: 1 1 240px; }
+.live-issues .work-filters input:not([type="checkbox"]), .live-issues .work-filters select { min-height: 36px; width: 100%; }
+.live-issues .work-filters > .inline-checkbox { flex: 0 0 auto; }

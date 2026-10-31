@@ -160,11 +160,11 @@ describe('실제 PR 연결', () => {
     expect(keys[2]).not.toBe(keys[1])
   })
 
-  it('프로젝트가 없으면 기존 샘플 PR을 그대로 보여준다', async () => {
+  it('로그인 후 프로젝트가 없으면 샘플을 섞지 않고 연결을 안내한다', async () => {
     backend({ projects: [] })
     mount('/pull-requests')
-    expect(await screen.findByText('샘플 PR · GitHub 미연결')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /검색 결과를 더 빠르게/ })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: '프로젝트와 저장소 연결' })).toHaveAttribute('href', '/onboarding')
+    expect(screen.queryByRole('button', { name: /검색 결과를 더 빠르게/ })).not.toBeInTheDocument()
   })
 
   it('수집한 PR이 아직 없으면 새로고침 안내를 보여준다', async () => {

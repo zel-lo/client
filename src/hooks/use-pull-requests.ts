@@ -11,6 +11,8 @@ const reauthCodes = ['AUTHENTICATION_REQUIRED', 'GITHUB_REAUTH_REQUIRED', 'ACCOU
  * 코드 검토·내 작업 화면에 들어올 때마다 다시 불러온다. GitHub에서 새로 가져오는 것은 sync()뿐이다.
  */
 export function useLivePullRequests(enabled: boolean, pathname: string) {
+  const [projects, setProjects] = useState<Project[]>([])
+  const preferred = useRef<string | null>(null)
   const [project, setProject] = useState<Project | null>(null)
   const [all, setAll] = useState<PullRequestPage | null>(null)
   const [mine, setMine] = useState<PullRequestPage | null>(null)
@@ -28,8 +30,9 @@ export function useLivePullRequests(enabled: boolean, pathname: string) {
     setLoading(true)
     try {
       const projects = await listProjects(pending.signal)
-      const current = projects[0] ?? null
+      const current = projects.find(item => item.id === preferred.current) ?? projects[0] ?? null
       if (pending.signal.aborted) return
+      setProjects(projects)
       projectId.current = current?.id ?? null
       setProject(current)
       if (!current) { setAll(null); setMine(null); setError(''); return }
@@ -70,7 +73,7 @@ export function useLivePullRequests(enabled: boolean, pathname: string) {
   const pullRequests = useMemo<PullRequest[]>(() => all?.items.map(item => fromServerPullRequest(item, project?.id)) ?? [], [all, project])
   const authored = useMemo<PullRequest[]>(() => mine?.items.map(item => fromServerPullRequest(item, project?.id)) ?? [], [mine, project])
   return {
-    active: enabled && project !== null, project, pullRequests, authored, loading, error, reauth, loadedAt, sync, reload: load,
+    active: enabled && project !== null, project, projects, selectProject: (id: string) => { preferred.current = id; void load() }, pullRequests, authored, loading, error, reauth, loadedAt, sync, reload: load,
     openCount: all?.counts.open ?? 0, authoredCount: mine?.counts.open ?? 0, hasMore: Boolean(all?.hasNext),
   }
 }
