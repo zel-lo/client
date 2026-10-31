@@ -136,7 +136,7 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
         <TableCell><span className={`issue-status-badge issue-status-${issue.status.toLowerCase()}`}>{states[issue.status]}</span>{issue.githubState === 'CLOSED' && <small className="muted"> · GitHub 닫힘</small>}</TableCell>
         <TableCell>{issue.assignee ?? '지정 필요'}</TableCell><TableCell>{priorities[issue.priority]}</TableCell><TableCell><span className="badge">{publication[issue.publishStatus]}</span></TableCell>
       </TableRow>)}</TableBody></Table></div>
-      {!result.items.length && <div className="empty-state"><CircleDot size={25} /><h3>{archived ? '보관한 작업이 없어요' : '아직 표시할 작업이 없어요'}</h3><p>{repositories.length ? '새 작업을 등록하거나 GitHub의 기존 이슈를 가져오세요.' : '먼저 프로젝트에 저장소를 연결해 주세요.'}</p>{!repositories.length && <Link className="button" to="/onboarding">저장소 연결</Link>}</div>}
+      {!result.items.length && <div className="empty-state"><CircleDot size={25} /><h3>{archived ? '보관한 작업이 없어요' : '아직 표시할 작업이 없어요'}</h3><p>{repositories.length ? '새 작업을 등록하거나 GitHub의 기존 이슈를 가져오세요.' : '먼저 프로젝트에 저장소를 연결해 주세요.'}</p>{!repositories.length && <Link className="button" to="/settings?tab=repositories">저장소 연결</Link>}</div>}
       <div className="connection-pagination"><button className="button" disabled={page === 1} onClick={() => setPage(value => value - 1)}>이전 작업</button><span>{page} 페이지</span><button className="button" disabled={!result.hasNext} onClick={() => setPage(value => value + 1)}>다음 작업</button></div>
     </>}
     <p className="help-text">새 작업은 기본으로 zello에 저장한 뒤 선택한 GitHub 저장소에도 만듭니다. zello에만 저장한 작업은 상세에서 발행할 수 있어요.</p>
@@ -222,7 +222,7 @@ function IssueEditor({ projectId, issue, repositories, canWrite, onClose, onChan
     {issue && <p><span className="badge">{publication[issue.publishStatus]}</span> <span className="mono muted">{issue.key}</span>{issue.url && <a className="reference-link" href={issue.url} target="_blank" rel="noopener noreferrer">GitHub에서 보기<ArrowUpRight size={13} /></a>}</p>}
     {!canWrite && <p className="help-text">조회 전용 멤버는 작업을 변경할 수 없어요.</p>}
     <label>연결 저장소<select required value={repoId} disabled={disabled || !!issue} onChange={event => { setRepoId(event.target.value); setAssigneesPage(1); setAssignees([]); setForm(current => ({ ...current, assignee: null })) }}>{!repoId && <option value="">저장소 선택</option>}{repositories.map(repo => <option key={repo.id} value={repo.id}>{repo.owner}/{repo.name}</option>)}</select></label>
-    {!repositories.length && <Link className="reference-link" to="/onboarding">먼저 저장소 연결하기</Link>}
+    {!repositories.length && <Link className="reference-link" to="/settings?tab=repositories">먼저 저장소 연결하기</Link>}
     <label>작업 제목<input autoFocus required maxLength={255} value={form.title} disabled={disabled} onChange={event => setForm({ ...form, title: event.target.value })} placeholder="어떤 작업을 할까요?" /></label>
     <label>설명<textarea rows={4} maxLength={50000} value={form.description} disabled={disabled} onChange={event => setForm({ ...form, description: event.target.value })} placeholder="배경과 해야 할 일을 적어주세요." /></label>
     <label>완료 조건<textarea rows={3} maxLength={10000} value={form.acceptanceCriteria} disabled={disabled} onChange={event => setForm({ ...form, acceptanceCriteria: event.target.value })} placeholder="- [ ] 어떤 결과를 확인하면 완료인가요?" /></label>

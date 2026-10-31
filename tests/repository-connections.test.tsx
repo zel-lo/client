@@ -46,7 +46,7 @@ function backend({ projects = [project], failure = '', expired = false, failedId
   return fetcher
 }
 
-function mount(url = '/settings?tab=repositories') { render(<MemoryRouter initialEntries={[url]}><RepositoryConnections /></MemoryRouter>) }
+function mount(url = '/settings?tab=repositories') { render(<MemoryRouter initialEntries={[url]}><RepositoryConnections project={project} /></MemoryRouter>) }
 
 describe('사이트 안에서 GitHub 저장소 연결', () => {
   it('저장소 ID만 CSRF와 세션 쿠키로 연결하고 새로고침·해제를 처리한다', async () => {
@@ -72,20 +72,15 @@ describe('사이트 안에서 GitHub 저장소 연결', () => {
     expect(localStorage.length).toBe(0)
   })
 
-  it('프로젝트가 없으면 만든 프로젝트 ID로 저장소를 연결한다', async () => {
+  it('프로젝트 생성은 별도 시작 화면에서만 하고 만든 ID로 연결한다', async () => {
     const fetcher = backend({ projects: [] })
-    mount()
+    render(<MemoryRouter initialEntries={['/onboarding?new=1']}><RepositoryConnections onboarding /></MemoryRouter>)
     const user = userEvent.setup()
-    const input = screen.getByRole('textbox', { name: '새 프로젝트 이름' })
-    await waitFor(() => expect(input).toBeEnabled())
-    await user.type(input, '새 협업 프로젝트')
-    await user.click(screen.getByRole('button', { name: '프로젝트 만들기' }))
-    await screen.findByRole('heading', { name: '새 협업 프로젝트에 연결된 저장소' })
-    const button = screen.getByRole('button', { name: '선택한 저장소 연결' })
-    await userEvent.setup().click(await screen.findByRole('checkbox', { name: 'team/server · 비공개' }))
-    await waitFor(() => expect(button).toBeEnabled())
-    await user.click(button)
+    await user.type(screen.getByRole('textbox', { name: '프로젝트 이름' }), '새 협업 프로젝트')
+    await user.click(await screen.findByRole('checkbox', { name: 'team/server · 비공개' }))
+    await user.click(screen.getByRole('button', { name: '선택한 저장소 연결' }))
     await waitFor(() => expect(fetcher).toHaveBeenCalledWith('/api/projects/2/repositories', expect.objectContaining({ method: 'POST' })))
+    expect(fetcher).toHaveBeenCalledWith('/api/projects', expect.objectContaining({ body: JSON.stringify({ name: '새 협업 프로젝트' }) }))
   })
 
   it('개인·Organization 저장소를 사이트의 선택기로 조회한다', async () => {
@@ -172,8 +167,8 @@ describe('사이트 안에서 GitHub 저장소 연결', () => {
   })
 
   it('조회 권한의 멤버에게 연결 변경 폼을 표시하지 않는다', async () => {
-    backend({ projects: [{ ...project, role: 'VIEWER', canManageRepositories: false }] })
-    mount()
+    backend()
+    render(<MemoryRouter><RepositoryConnections project={{ ...project, role: 'VIEWER', canManageRepositories: false }} /></MemoryRouter>)
     await screen.findByText('프로젝트 소유자와 관리자만 저장소 연결을 변경할 수 있어요.')
     expect(screen.queryByRole('button', { name: '선택한 저장소 연결' })).not.toBeInTheDocument()
   })
@@ -206,14 +201,13 @@ describe('사이트 안에서 GitHub 저장소 연결', () => {
     const requests = fetcher.mock.calls.filter(([path, init]) => path.endsWith('/repositories') && init?.method === 'POST')
     expect(requests.map(([, init]) => JSON.parse(init!.body as string).githubRepositoryId)).toEqual(['30', '31', '31'])
   })
-  it('프로젝트를 바꾸면 선택을 비우고 이미 연결된 저장소는 다시 고르지 못한다', async () => {
-    backend({ projects: [project, { ...project, id: '2', name: '다른 프로젝트' }], alreadyConnected: true }); mount(); const user = userEvent.setup()
+  it('현재 프로젝트 안에서는 다른 프로젝트 선택과 새 프로젝트 생성이 나타나지 않는다', async () => {
+    const fetcher = backend({ alreadyConnected: true }); mount()
     await screen.findByRole('link', { name: 'team/server' })
     expect(screen.getByRole('checkbox', { name: 'team/server · 비공개' })).toBeDisabled()
-    await user.click(screen.getByRole('checkbox', { name: 'octocat/client' }))
-    await user.selectOptions(screen.getByRole('combobox', { name: '연결할 프로젝트' }), '2')
-    expect(screen.getByRole('button', { name: '선택한 저장소 연결' })).toBeDisabled()
-    expect(screen.queryByText(/1개 선택/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: '연결할 프로젝트' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '프로젝트 만들기' })).not.toBeInTheDocument()
+    expect(fetcher.mock.calls.some(([path]) => path === '/api/projects')).toBe(false)
   })
 
 })

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { preferredProject, selectProjectForUser } from '../lib/workspace'
+import { preferredProject, rememberProjectForUser, selectProjectForUser } from '../lib/workspace'
 import { fromServerPullRequest } from '../data/work-items'
 import type { PullRequest } from '../data/work-items'
 import { listProjects, listPullRequests, ProjectApiError, syncPullRequests } from '../lib/project-api'
@@ -31,9 +31,10 @@ export function useLivePullRequests(enabled: boolean, pathname: string, userId?:
     setLoading(true)
     try {
       const projects = await listProjects(pending.signal)
-      const current = projects.find(item => item.id === preferred.current) ?? projects[0] ?? null
+      const current = preferred.current ? projects.find(item => item.id === preferred.current) ?? null : projects[0] ?? null
       if (pending.signal.aborted) return
       setProjects(projects)
+      if (current) { preferred.current = current.id; if (userId) rememberProjectForUser(userId, current.id) }
       if (projectId.current !== current?.id) { setAll(null); setMine(null); setLoadedAt(null) }
       projectId.current = current?.id ?? null
       setProject(current)
@@ -55,7 +56,7 @@ export function useLivePullRequests(enabled: boolean, pathname: string, userId?:
     } finally {
       if (!pending.signal.aborted) setLoading(false)
     }
-  }, [])
+  }, [userId])
 
   // 두 화면에 들어올 때만 다시 불러오고, 다른 화면 사이 이동에는 다시 불러오지 않는다.
   const refreshKey = pathname === '/pull-requests' || pathname === '/my-work' ? pathname : ''
@@ -91,7 +92,12 @@ export function useLivePullRequests(enabled: boolean, pathname: string, userId?:
   const pullRequests = useMemo<PullRequest[]>(() => all?.items.map(item => fromServerPullRequest(item, project?.id)) ?? [], [all, project])
   const authored = useMemo<PullRequest[]>(() => mine?.items.map(item => fromServerPullRequest(item, project?.id)) ?? [], [mine, project])
   return {
-    active: enabled && project !== null, project, projects, selectProject: (id: string) => { preferred.current = id; if (userId) selectProjectForUser(userId, id); else void load() }, pullRequests, authored, loading: loading && !all, error, reauth, loadedAt, sync, reload: load,
+    active: enabled && project !== null, project, projects, selectProject: (id: string) => {
+      if (!projects.some(item => item.id === id) || projectId.current === id) return
+      controller.current?.abort(); preferred.current = id; projectId.current = null
+      setProject(null); setAll(null); setMine(null); setLoadedAt(null); setLoading(true)
+      if (userId) selectProjectForUser(userId, id); else void load()
+    }, pullRequests, authored, loading: loading && !all, error, reauth, loadedAt, sync, reload: load,
     openCount: all?.counts.open ?? 0, authoredCount: mine?.counts.open ?? 0, hasMore: Boolean(all?.hasNext),
   }
 }

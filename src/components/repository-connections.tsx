@@ -1,23 +1,22 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Github, RefreshCw, Plus, ExternalLink, X } from 'lucide-react'
 import {
   connectRepository, createProject, disconnectRepository, githubAuthorization, listAvailableRepositories,
-  listConnectedRepositories, listGitHubAccounts, listProjects, ProjectApiError, syncPullRequests, syncIssues,
+  listConnectedRepositories, listGitHubAccounts, ProjectApiError, syncPullRequests, syncIssues,
 } from '../lib/project-api'
-import { projectsChanged } from '../lib/workspace'
+import { projectsChanged, selectProjectForUser } from '../lib/workspace'
 import type { ConnectedRepository, GitHubAccount, Page, Project, RepositoryOption } from '../lib/project-api'
 
 const emptyPage = <T,>(): Page<T> => ({ items: [], page: 1, hasNext: false })
 
-export function RepositoryConnections({ onboarding = false }: { onboarding?: boolean }) {
+export function RepositoryConnections({ project: currentProject, onboarding = false, userId }: { project?: Project; onboarding?: boolean; userId?: string }) {
   const navigate = useNavigate()
   const [accessUrl, setAccessUrl] = useState<string | null>(null)
-  const location = useLocation()
-  const [requestedProject] = useState(() => new URLSearchParams(location.search).get('project'))
-  const [projects, setProjects] = useState<Project[]>([])
-  const [projectId, setProjectId] = useState('')
+  const [createdProject, setCreatedProject] = useState<Project | null>(null)
+  const project = currentProject ?? createdProject
+  const projectId = project?.id ?? ''
   const [projectName, setProjectName] = useState('')
   const [connected, setConnected] = useState<ConnectedRepository[]>([])
   const [accounts, setAccounts] = useState<Page<GitHubAccount>>(emptyPage)
@@ -31,7 +30,6 @@ export function RepositoryConnections({ onboarding = false }: { onboarding?: boo
   const connectedRequest = useRef<AbortController | null>(null)
   const [search, setSearch] = useState('')
   const [refresh, setRefresh] = useState(0)
-  const [loading, setLoading] = useState(true)
   const [loadingConnected, setLoadingConnected] = useState(false)
   const [loadingAccounts, setLoadingAccounts] = useState(false)
   const [loadingOptions, setLoadingOptions] = useState(false)
@@ -41,7 +39,6 @@ export function RepositoryConnections({ onboarding = false }: { onboarding?: boo
   const [notice, setNotice] = useState('')
   const [accessPending, setAccessPending] = useState(false)
   const lastFocus = useRef(0)
-  const project = projects.find(item => item.id === projectId)
   const connectedIds = new Set(connected.map(item => item.githubRepositoryId))
   const selectable = (item: RepositoryOption) => !item.archived && !connectedIds.has(item.id)
   const visible = options.items.filter(item => item.fullName.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
@@ -67,18 +64,6 @@ export function RepositoryConnections({ onboarding = false }: { onboarding?: boo
     document.addEventListener('visibilitychange', check)
     return () => { window.removeEventListener('focus', check); document.removeEventListener('visibilitychange', check) }
   }, [busy, accessPending])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    setLoading(true)
-    void listProjects(controller.signal).then(items => {
-      if (controller.signal.aborted) return
-      setProjects(items)
-      setProjectId(current => items.some(item => item.id === current) ? current : items.find(item => item.id === requestedProject)?.id ?? items[0]?.id ?? '')
-    }).catch(cause => { if (!controller.signal.aborted) report(cause) })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
-    return () => controller.abort()
-  }, [refresh, requestedProject])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -113,17 +98,6 @@ export function RepositoryConnections({ onboarding = false }: { onboarding?: boo
     return () => controller.abort()
   }, [account, repositoryPage, refresh])
 
-  async function create(event: FormEvent) {
-    event.preventDefault()
-    if (busy || !projectName.trim()) return
-    setBusy(true); setError(''); setNotice('')
-    try {
-      const item = await createProject(projectName.trim())
-      setProjects(current => [...current, item]); setProjectId(item.id); setProjectName(''); setSelected([]); setFailures([]); projectsChanged()
-      setNotice(`${item.name} 프로젝트를 만들었어요.`)
-    } catch (cause) { report(cause) } finally { setBusy(false) }
-  }
-
   function toggle(item: RepositoryOption) {
     setSelected(current => current.some(repo => repo.id === item.id) ? current.filter(repo => repo.id !== item.id) : current.length < 50 ? [...current, item] : current)
   }
@@ -131,7 +105,7 @@ export function RepositoryConnections({ onboarding = false }: { onboarding?: boo
   async function connect(event: FormEvent) {
     event.preventDefault()
     const batch = selected.filter(selectable)
-    if (busy || loading || loadingConnected || (!projectId && !onboarding) || !batch.length) return
+    if (busy || loadingConnected || (!projectId && !onboarding) || !batch.length) return
     setBusy(true); setError(''); setReauth(false); setNotice(''); setFailures([])
     let target = projectId
     const successes: ConnectedRepository[] = []
@@ -140,7 +114,8 @@ export function RepositoryConnections({ onboarding = false }: { onboarding?: boo
       if (!target) {
         const created = await createProject(projectName.trim() || batch[0].owner)
         target = created.id
-        setProjects(current => [...current, created]); setProjectId(target)
+        setCreatedProject(created)
+        if (userId) selectProjectForUser(userId, target)
       }
       for (let index = 0; index < batch.length; index++) {
         const repo = batch[index]
@@ -190,17 +165,11 @@ export function RepositoryConnections({ onboarding = false }: { onboarding?: boo
   }
 
   return <section className="repository-connections" aria-label="GitHub 저장소 연결">
-    <div className="section-heading"><h2>프로젝트와 GitHub 저장소</h2><button className="button" disabled={busy || loading || loadingAccounts || loadingOptions || loadingConnected} onClick={() => { setError(''); setReauth(false); setRefresh(value => value + 1) }}><RefreshCw size={14} />목록 새로고침</button></div>
-    <p className="section-subheading">로그인한 GitHub 계정의 개인·조직 저장소를 여기서 검색하고 프로젝트에 연결하세요.</p>
+    <div className="section-heading"><h2>{project ? `${project.name}의 저장소` : '새 프로젝트의 GitHub 저장소'}</h2><button className="button" disabled={busy || loadingAccounts || loadingOptions || loadingConnected} onClick={() => { setError(''); setReauth(false); setRefresh(value => value + 1) }}><RefreshCw size={14} />목록 새로고침</button></div>
+    <p className="section-subheading">로그인한 GitHub 계정의 개인·조직 저장소를 검색해 현재 프로젝트에 연결하세요.</p>
     {error && <div className="connection-error" role="alert">{error}{reauth && <Link to="/login?reauth=github">GitHub 다시 로그인</Link>}</div>}
     {notice && <p className="connection-notice" role="status">{notice}</p>}
-    {loading && <p role="status">프로젝트를 불러오는 중…</p>}
-    {!onboarding && <form className="connection-project-form" onSubmit={event => void create(event)}>
-      <label>새 프로젝트 이름<input required maxLength={100} value={projectName} onChange={event => setProjectName(event.target.value)} placeholder="함께 작업할 프로젝트 이름" disabled={busy || loading} /></label>
-      <button className="button" disabled={busy || loading || !projectName.trim()}><Plus size={14} />프로젝트 만들기</button>
-    </form>}
-    {!!projects.length && <label className="connection-select">연결할 프로젝트<select value={projectId} disabled={busy || loading} onChange={event => { setProjectId(event.target.value); setSelected([]); setFailures([]); setNotice(''); setError('') }}>{projects.map(item => <option key={item.id} value={item.id}>{item.name} · {item.role === 'OWNER' ? '소유자' : item.role}</option>)}</select></label>}
-    {!onboarding && !loading && !projects.length && <p className="help-text">먼저 프로젝트를 만들면 저장소를 연결할 수 있어요.</p>}
+    {!project && !onboarding && <p className="help-text">사이드바에서 프로젝트를 선택해 주세요.</p>}
     <div className="organization-access">
       <div><h3>찾는 조직이 없나요?</h3><p>GitHub에서 이 서비스의 조직 접근을 한 번 승인하면 돼요. 돌아오면 목록을 다시 확인합니다.</p></div>
       {accessUrl ? <a className="button" href={accessUrl} target="_blank" rel="noopener noreferrer" onClick={() => setAccessPending(true)}><Github size={14} />조직 접근 승인하기<ExternalLink size={13} /></a> : <Link className="button" to="/login?reauth=github">GitHub 다시 연결</Link>}
@@ -214,7 +183,7 @@ export function RepositoryConnections({ onboarding = false }: { onboarding?: boo
         <h3><a href={item.htmlUrl} target="_blank" rel="noopener noreferrer">{item.owner}/{item.name}<ExternalLink size={13} /></a></h3>
         <p>{item.description || '설명 없음'}</p><div className="repo-card-foot"><span>{item.language || '언어 미지정'}</span><span>{item.defaultBranch}</span></div>
         <p className="help-text">{item.initialSyncCompleted ? '초기 수집 완료' : '연결 완료 · 작업 데이터 수집 전'}</p>
-        {project.canManageRepositories && <button className="button" disabled={busy || loading} onClick={() => void disconnect(item)}>연결 해제</button>}
+        {project.canManageRepositories && <button className="button" disabled={busy} onClick={() => void disconnect(item)}>연결 해제</button>}
       </article>)}</div>}
       {!loadingConnected && !connected.length && <p className="help-text">현재 GitHub 계정으로 볼 수 있는 연결된 저장소가 없어요.</p>}
       </>}
@@ -242,7 +211,7 @@ export function RepositoryConnections({ onboarding = false }: { onboarding?: boo
           {!loadingOptions && !options.items.length && !error && <p className="help-text">접근 가능한 저장소가 없어요. 다른 계정을 선택하거나 GitHub 로그인 권한을 확인해 주세요.</p>}
           {search && <p className="help-text">현재 페이지에서 {visible.length}개를 찾았어요.</p>}
           <Pagination page={repositoryPage} hasNext={options.hasNext} disabled={busy || loadingOptions} onChange={setRepositoryPage} label="저장소" />
-          <button className="button button-dark" disabled={busy || loading || loadingConnected || loadingOptions || !selected.some(selectable)}><Plus size={14} />{busy ? '처리 중…' : '선택한 저장소 연결'}</button>
+          <button className="button button-dark" disabled={busy || loadingConnected || loadingOptions || !selected.some(selectable)}><Plus size={14} />{busy ? '처리 중…' : '선택한 저장소 연결'}</button>
           {progress && <p role="status">{progress}</p>}
         </form>
         {!!failures.length && <div className="connection-error" role="alert"><strong>연결하지 못한 저장소</strong><ul>{failures.map(item => <li key={item.id}>{item.name}: {item.message}</li>)}</ul></div>}
