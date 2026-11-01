@@ -16,17 +16,27 @@ const project: Project = { id: '7', name: '실제 프로젝트', description: nu
 const pull = (id: string, number: number, overrides: Partial<PullRequestItem> = {}): PullRequestItem => ({
   id, repositoryId: '40', repositoryOwner: 'sinheyy', repositoryName: 'zello-test', number, url: `https://github.com/sinheyy/zello-test/pull/${number}`,
   title: `실제 PR ${number}`, headBranch: `feat/${number}`, baseBranch: 'main', state: 'OPEN', draft: false, reviewDecision: 'PENDING', teamSummary: null,
-  author: { login: 'sinheyy', avatarUrl: null }, reviewers: [], version: 3, openedAt: null, mergedAt: null, githubUpdatedAt: null, ...overrides,
+  author: { login: 'sinheyy', avatarUrl: null }, reviewers: [], version: 3, changedFiles: null, additions: null, deletions: null, openedAt: null, mergedAt: null, githubUpdatedAt: null, ...overrides,
 })
-const page = (items: PullRequestItem[]): PullRequestPage => ({
-  items, page: 1, hasNext: false,
-  counts: { open: items.filter(item => item.state === 'OPEN').length, merged: items.filter(item => item.state === 'MERGED').length, closed: 0 },
-})
+/** 실제 서버처럼 state·review·page·size 조건으로 거르고, counts는 조건과 상관없이 전체 기준으로 돌려준다. */
+const page = (items: PullRequestItem[], path = ''): PullRequestPage => {
+  const params = new URLSearchParams(path.split('?')[1] ?? '')
+  const state = params.get('state') ?? 'all'
+  const review = params.get('review')
+  const size = Number(params.get('size') ?? 100)
+  const current = Number(params.get('page') ?? 1)
+  const matched = items.filter(item => (state === 'all' || item.state === state.toUpperCase())
+    && (!review || (!item.draft && item.reviewDecision === review.toUpperCase())))
+  return {
+    items: matched.slice((current - 1) * size, current * size), page: current, hasNext: matched.length > current * size, total: matched.length,
+    counts: { open: items.filter(item => item.state === 'OPEN').length, merged: items.filter(item => item.state === 'MERGED').length, closed: items.filter(item => item.state === 'CLOSED').length },
+  }
+}
 
 const connectedRepo = { id: '40', projectId: '7', githubRepositoryId: '30', installationId: null, owner: 'sinheyy', name: 'zello-test', htmlUrl: 'https://github.com/sinheyy/zello-test', description: null, language: null, defaultBranch: 'main', privateRepository: false, status: 'CONNECTED', initialSyncCompleted: false }
 type CreateFailure = { status: number; code: string; message: string }
 
-function backend({ projects = [project], everything = [pull('1', 1), pull('2', 2, { author: { login: 'other', avatarUrl: null }, draft: true }), pull('3', 3, { state: 'MERGED', mergedAt: '2026-10-30T00:00:00Z' })], mine = [pull('1', 1)], requested = [pull('4', 4, { author: { login: 'teammate', avatarUrl: null } })], failure = '', createFailures = [] as CreateFailure[], detailBody = 'GitHub에 적은 본문\n두 번째 줄', createWarning = '' } = {}) {
+function backend({ projects = [project], everything = [pull('1', 1), pull('2', 2, { author: { login: 'other', avatarUrl: null }, draft: true }), pull('3', 3, { state: 'MERGED', mergedAt: '2026-10-30T00:00:00Z' })], mine = [pull('1', 1)], requested = [pull('4', 4, { author: { login: 'teammate', avatarUrl: null } })], failure = '', createFailures = [] as CreateFailure[], detailBody = 'GitHub에 적은 본문\n두 번째 줄', detailStats = { changedFiles: 4, additions: 1200, deletions: 35 } as Partial<PullRequestItem>, createWarning = '' } = {}) {
   const fetcher = vi.fn(async (path: string, init?: RequestInit) => {
     if (path === '/api/me') return Response.json(user)
     if (path === '/api/projects') return Response.json(projects)
@@ -47,10 +57,10 @@ function backend({ projects = [project], everything = [pull('1', 1), pull('2', 2
       const sent = JSON.parse(init.body as string) as { teamSummary: string; version: number }
       return Response.json({ ...pull(path.split('/').pop()!, 1), teamSummary: sent.teamSummary || null, version: sent.version + 1, body: detailBody })
     }
-    if (/\/pull-requests\/\d+$/.test(path)) return Response.json({ ...pull(path.split('/').pop()!, 1), reviewers: [{ login: 'teammate', avatarUrl: null }], body: detailBody })
+    if (/\/pull-requests\/\d+$/.test(path)) return Response.json({ ...pull(path.split('/').pop()!, 1), reviewers: [{ login: 'teammate', avatarUrl: null }], ...detailStats, body: detailBody })
     if (path.includes('/pull-requests?') && path.includes('reviewer=me')) return Response.json(page(requested))
     if (path.includes('/pull-requests?') && path.includes('author=me')) return Response.json(page(mine))
-    if (path.includes('/pull-requests?')) return Response.json(page(everything))
+    if (path.includes('/pull-requests?')) return Response.json(page(everything, path))
     return new Response(null, { status: 404 })
   })
   vi.stubGlobal('fetch', fetcher)
@@ -85,6 +95,27 @@ describe('실제 PR 연결', () => {
     expect(within(drawer).getByText('teammate')).toBeInTheDocument()
     expect(within(drawer).getByRole('link', { name: 'GitHub에서 수정' })).toHaveAttribute('href', 'https://github.com/sinheyy/zello-test/pull/1')
     expect(fetcher).toHaveBeenCalledWith('/api/projects/7/pull-requests/1', expect.anything())
+  })
+
+  it('상세를 열면 변경 파일 수와 추가·삭제한 줄 수를 보여준다', async () => {
+    backend()
+    mount('/pull-requests')
+    await userEvent.setup().click(await screen.findByRole('button', { name: /실제 PR 1/ }))
+    const drawer = screen.getByRole('dialog', { name: 'Pull request 상세' })
+    const stats = await within(drawer).findByLabelText('변경 파일 요약')
+    expect(within(stats).getByText('4')).toBeInTheDocument()
+    expect(within(stats).getByText('+1,200')).toBeInTheDocument()
+    expect(within(stats).getByText('−35')).toBeInTheDocument()
+    expect(within(drawer).getByRole('link', { name: 'GitHub에서' })).toHaveAttribute('href', 'https://github.com/sinheyy/zello-test/pull/1/files')
+  })
+
+  it('변경 규모를 받지 못하면 GitHub에서 확인하도록 안내한다', async () => {
+    backend({ detailStats: {} })
+    mount('/pull-requests')
+    await userEvent.setup().click(await screen.findByRole('button', { name: /실제 PR 1/ }))
+    const drawer = screen.getByRole('dialog', { name: 'Pull request 상세' })
+    expect(await within(drawer).findByText(/변경 규모를 GitHub에서 받지 못했어요/)).toBeInTheDocument()
+    expect(within(drawer).queryByLabelText('변경 파일 요약')).not.toBeInTheDocument()
   })
 
   it('GitHub 본문이 비어 있으면 본문 영역을 숨긴다', async () => {
@@ -130,6 +161,43 @@ describe('실제 PR 연결', () => {
     const drawer = screen.getByRole('dialog', { name: 'Pull request 상세' })
     expect(within(drawer).getByText('승인 후 병합됨')).toBeInTheDocument()
     expect(within(drawer).queryByText('검토 대기')).not.toBeInTheDocument()
+  })
+
+  it('코드 검토 목록은 30개씩 서버에서 받아 이전·다음 페이지로 넘긴다', async () => {
+    const many = Array.from({ length: 35 }, (_, index) => pull(String(index + 1), index + 1))
+    const fetcher = backend({ everything: many })
+    mount('/pull-requests')
+    expect(await screen.findByRole('button', { name: /실제 PR 30(?!\d)/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /실제 PR 31(?!\d)/ })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('button', { name: /^열림/ })).getByText('35')).toBeInTheDocument()
+    const control = userEvent.setup()
+    const pagination = screen.getByLabelText('PR 페이지')
+    expect(within(pagination).getByRole('button', { name: '이전' })).toBeDisabled()
+    await control.click(within(pagination).getByRole('button', { name: '다음' }))
+    expect(await screen.findByRole('button', { name: /실제 PR 31(?!\d)/ })).toBeInTheDocument()
+    expect(screen.getByText('2 페이지')).toBeInTheDocument()
+    expect(fetcher).toHaveBeenCalledWith(expect.stringMatching(/pull-requests\?state=open&size=30&page=2/), expect.anything())
+    expect(screen.getByRole('button', { name: '다음' })).toBeDisabled()
+
+    // 탭을 바꾸면 첫 페이지부터 다시 받는다.
+    await control.click(screen.getByRole('button', { name: /^전체/ }))
+    expect(await screen.findByRole('button', { name: /실제 PR 1(?!\d)/ })).toBeInTheDocument()
+    expect(screen.getByText('1 페이지')).toBeInTheDocument()
+  })
+
+  it('검토 상태 필터는 서버에 조건으로 보내고 초안은 검토 대기에서 뺀다', async () => {
+    const fetcher = backend({ everything: [pull('1', 1), pull('2', 2, { reviewDecision: 'CHANGES_REQUESTED' }), pull('3', 3, { draft: true })] })
+    mount('/pull-requests')
+    await screen.findByRole('button', { name: /실제 PR 1(?!\d)/ })
+    const control = userEvent.setup()
+    await control.selectOptions(screen.getByLabelText('PR 확인 필터'), 'pending')
+    await waitFor(() => expect(fetcher).toHaveBeenCalledWith(expect.stringContaining('review=pending'), expect.anything()))
+    await waitFor(() => expect(screen.queryByRole('button', { name: /실제 PR 3(?!\d)/ })).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: /실제 PR 1(?!\d)/ })).toBeInTheDocument()
+    expect(screen.getByText(/조건에 맞는 PR 1개/)).toBeInTheDocument()
+    await control.selectOptions(screen.getByLabelText('PR 확인 필터'), 'failing')
+    expect(await screen.findByRole('button', { name: /실제 PR 2(?!\d)/ })).toBeInTheDocument()
+    expect(fetcher).toHaveBeenCalledWith(expect.stringContaining('review=changes_requested'), expect.anything())
   })
 
   it('코드 검토 표에 맡긴 리뷰어를 보여준다', async () => {

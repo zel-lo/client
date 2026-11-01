@@ -14,6 +14,8 @@ export type PullRequestItem = {
   headBranch: string; baseBranch: string; state: 'OPEN' | 'CLOSED' | 'MERGED'; draft: boolean
   reviewDecision: 'UNKNOWN' | 'PENDING' | 'APPROVED' | 'CHANGES_REQUESTED'; teamSummary: string | null
   author: { login: string; avatarUrl: string | null } | null; reviewers: Reviewer[]; version: number
+  /** 변경 규모. 상세를 열 때 GitHub에서 받아 오며, 아직 없으면 null. */
+  changedFiles: number | null; additions: number | null; deletions: number | null
   openedAt: string | null; mergedAt: string | null; githubUpdatedAt: string | null
   /** GitHub 원본 본문. 상세 응답에만 있다. */
   body?: string
@@ -22,7 +24,11 @@ export type PullRequestItem = {
 }
 export type Reviewer = { login: string; avatarUrl: string | null }
 export type ReviewerCandidates = { users: Reviewer[]; hasMore: boolean }
-export type PullRequestPage = Page<PullRequestItem> & { counts: { open: number; merged: number; closed: number } }
+/** 이슈 목록(IssuePage)과 같은 형식. counts는 탭별 전체 개수로 검토 상태 필터와 상관없다. */
+export type PullRequestPage = Page<PullRequestItem> & { total: number; counts: { open: number; merged: number; closed: number } }
+export type PullRequestQuery = {
+  state?: 'open' | 'merged' | 'closed' | 'all'; author?: 'me'; reviewer?: 'me'; review?: 'pending' | 'changes_requested'; page?: number; size?: number
+}
 export type BranchList = { defaultBranch: string; branches: string[]; hasMore: boolean }
 export type NewPullRequest = {
   repositoryId: string; title: string; headBranch: string; baseBranch: string; teamSummary: string; body: string; draft: boolean
@@ -62,10 +68,12 @@ export const listConnectedRepositories = (projectId: string, signal?: AbortSigna
   json<ConnectedRepository[]>(`/api/projects/${encodeURIComponent(projectId)}/repositories`, { signal })
 export const connectRepository = (projectId: string, githubRepositoryId: string) =>
   mutate<ConnectedRepository>(`/api/projects/${encodeURIComponent(projectId)}/repositories`, 'POST', { githubRepositoryId })
-export const listPullRequests = (projectId: string, options: { state?: 'open' | 'merged' | 'closed' | 'all'; author?: 'me'; reviewer?: 'me'; size?: number } = {}, signal?: AbortSignal) => {
+export const listPullRequests = (projectId: string, options: PullRequestQuery = {}, signal?: AbortSignal) => {
   const params = new URLSearchParams({ state: options.state ?? 'all', size: String(options.size ?? 100) })
+  if (options.page && options.page > 1) params.set('page', String(options.page))
   if (options.author) params.set('author', options.author)
   if (options.reviewer) params.set('reviewer', options.reviewer)
+  if (options.review) params.set('review', options.review)
   return json<PullRequestPage>(`/api/projects/${encodeURIComponent(projectId)}/pull-requests?${params}`, { signal })
 }
 export const getPullRequest = (projectId: string, pullRequestId: string, signal?: AbortSignal) =>
