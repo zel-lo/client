@@ -29,6 +29,6 @@ bash scripts/smoke-container.sh zello-client:local
 
 ## 운영 배포 범위
 
-현재 워크플로는 검증한 이미지의 GHCR 업로드까지 수행합니다. 운영 서버를 재시작하거나 트래픽을 전환하는 단계는 포함하지 않습니다. 운영 서버 자동 배포 연결에는 배포 대상과 접근 방법이 필요합니다.
+`DEPLOY_ENABLED=true`이고 배포용 Secrets가 등록되면 이미지 업로드 후 `zello.asia`에 자동 배포합니다. 설정 전에는 운영 배포 작업을 건너뜁니다. 서버의 운영 `.env`, SSH 키와 GitHub Actions 설정은 [서버 PRODUCTION.md](https://github.com/zel-lo/server/blob/main/PRODUCTION.md)를 참고하세요.
 
 컨테이너는 8080 포트에서 실행하며 `API_UPSTREAM`의 기본값은 `http://server:8080`입니다. 운영 환경에서는 백엔드 주소와 HTTPS 프록시를 설정하고, 백엔드의 OAuth callback·프론트 주소·보안 세션 쿠키를 같은 서비스 도메인에 맞춰야 합니다.
