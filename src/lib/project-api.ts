@@ -21,7 +21,12 @@ export type PullRequestItem = {
   body?: string
   /** PR은 만들었지만 리뷰어 지정만 실패했을 때 담긴다. */
   warning?: string
+  /** 상세 응답에만 있다. 리뷰·병합 버튼을 쓸 수 있는지와 GitHub 병합 상태. */
+  actions?: PullRequestActions
 }
+/** mergeState는 GitHub mergeable_state(clean, dirty, blocked, behind, unstable, draft, unknown 등). headSha는 병합 요청에 그대로 보낸다. */
+export type PullRequestActions = { canReview: boolean; canMerge: boolean; mergeState?: string; headSha?: string }
+export type ReviewEvent = 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'
 export type Reviewer = { login: string; avatarUrl: string | null }
 export type ReviewerCandidates = { users: Reviewer[]; hasMore: boolean }
 /** 이슈 목록(IssuePage)과 같은 형식. counts는 탭별 전체 개수로 검토 상태 필터와 상관없다. */
@@ -84,6 +89,11 @@ export const listReviewerCandidates = (projectId: string, repositoryId: string, 
   json<ReviewerCandidates>(`/api/projects/${encodeURIComponent(projectId)}/repositories/${encodeURIComponent(repositoryId)}/reviewer-candidates`, { signal })
 export const updateTeamSummary = (projectId: string, pullRequestId: string, teamSummary: string, version: number) =>
   mutate<PullRequestItem>(`/api/projects/${encodeURIComponent(projectId)}/pull-requests/${encodeURIComponent(pullRequestId)}`, 'PATCH', { teamSummary, version })
+export const submitReview = (projectId: string, pullRequestId: string, event: ReviewEvent, body: string) =>
+  mutate<PullRequestItem>(`/api/projects/${encodeURIComponent(projectId)}/pull-requests/${encodeURIComponent(pullRequestId)}/reviews`, 'POST',
+    { event, body: body.trim() ? body : null })
+export const mergePullRequest = (projectId: string, pullRequestId: string, sha: string) =>
+  mutate<PullRequestItem>(`/api/projects/${encodeURIComponent(projectId)}/pull-requests/${encodeURIComponent(pullRequestId)}/merge`, 'POST', { sha })
 export const createPullRequest = (projectId: string, input: NewPullRequest) =>
   mutate<PullRequestItem>(`/api/projects/${encodeURIComponent(projectId)}/pull-requests`, 'POST', input)
 export const syncPullRequests = (projectId: string) =>
