@@ -4,6 +4,8 @@ import { ArrowRight, Bell, BookOpen, ChevronRight, CircleDot, Github, GitPullReq
 import { BrandMark } from './brand-mark'
 import { Button } from './ui/button'
 import { useTheme } from '../hooks/use-theme'
+import { listProjects, listConnectedRepositories } from '../lib/project-api'
+import { invitationReturnPath, rememberInvitation, pendingInvitation } from '../lib/auth-return'
 import { beginGitHubLogin } from '../lib/session-api'
 import { useSession } from '../hooks/use-session'
 import { initialIssues, initialPullRequests, issueSources, issueStatuses } from '../data/work-items'
@@ -93,11 +95,13 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
   const location = useLocation()
   const error = new URLSearchParams(location.search).get('error')
   const reauthorize = new URLSearchParams(location.search).get('reauth') === 'github'
+  const next = invitationReturnPath(new URLSearchParams(location.search).get('next')) ?? pendingInvitation()
+  const switchPath = `${signup ? '/login' : '/signup'}${next ? `?${new URLSearchParams({ next })}` : ''}`
   const [notice, setNotice] = useState('')
   const [pending, setPending] = useState(false)
   useEffect(() => {
-    if (session.status === 'ready' && session.user && !error && !reauthorize) navigate('/overview', { replace: true })
-  }, [session.status, session.user, error, reauthorize, navigate])
+    if (session.status === 'ready' && session.user && !error && !reauthorize) navigate(next ?? '/overview', { replace: true })
+  }, [session.status, session.user, error, reauthorize, next, navigate])
   useEffect(() => {
     document.title = `${signup ? '회원가입' : '로그인'} · zello`
     setNotice(error ? errorMessages[error] ?? errorMessages.failed : '')
@@ -113,6 +117,7 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
     setNotice('')
     setPending(true)
     try {
+      if (next) rememberInvitation(next)
       await beginGitHubLogin(import.meta.env.VITE_GITHUB_AUTH_URL)
     } catch (cause) {
       setPending(false)
@@ -121,25 +126,32 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
   }
   return <div className="public-shell auth-page">
     <SkipLink />
-    <header className="public-header"><Brand /><nav aria-label="서비스 메뉴"><ThemeToggle /><Link className="public-login-link" to={signup ? '/login' : '/signup'}>{signup ? '로그인' : '회원가입'}</Link></nav></header>
+    <header className="public-header"><Brand /><nav aria-label="서비스 메뉴"><ThemeToggle /><Link className="public-login-link" to={switchPath}>{signup ? '로그인' : '회원가입'}</Link></nav></header>
     <main id="public-main" tabIndex={-1} className="auth-main"><section className="auth-form-content" aria-labelledby="auth-title"><h1 id="auth-title">{signup ? 'zello 시작하기' : 'zello에 로그인'}</h1><p className="auth-description">{signup ? 'GitHub 계정 하나로 팀과 함께 일해요.' : '함께하던 작업을 이어서 확인해요.'}</p><Button className="github-auth-button" size="lg" onClick={continueWithGithub} disabled={pending} aria-busy={pending}>{pending ? <LoaderCircle size={18} className="auth-spinner" /> : <Github size={18} />}<span>{pending ? 'GitHub로 이동 중' : signup ? 'GitHub로 시작하기' : 'GitHub로 로그인'}</span></Button>
       <p className="auth-account-note">{signup ? '처음 로그인하면 계정이 만들어져요.' : '가입할 때 사용한 GitHub 계정으로 로그인해요.'}</p>
       <p className="help-text">프로필·조직 조회와 공개·비공개 저장소 접근을 승인합니다. GitHub의 저장소 권한에는 읽기와 쓰기가 함께 포함됩니다.</p>
       {notice && <div className="auth-notice" role="status"><p>{notice}</p></div>}
-      <div className="auth-switch-account"><span>{signup ? '이미 계정이 있나요?' : '계정이 없나요?'}</span><Link to={signup ? '/login' : '/signup'}>{signup ? '로그인' : '회원가입'}</Link></div>
-      <div className="auth-preview"><Link className="public-text-link" to="/overview">샘플 프로젝트 둘러보기<ArrowRight size={14} /></Link><p>저장소 연결은 가입 후 선택하면 돼요.</p></div>
+      <div className="auth-switch-account"><span>{signup ? '이미 계정이 있나요?' : '계정이 없나요?'}</span><Link to={switchPath}>{signup ? '로그인' : '회원가입'}</Link></div>
+      <div className="auth-preview"><Link className="public-text-link" to="/overview">샘플 프로젝트 둘러보기<ArrowRight size={14} /></Link><p>로그인 다음 화면에서 팀과 저장소를 연결해요.</p></div>
     </section></main><Footer />
   </div>
 }
 
 export function AuthCallbackPage() {
   const session = useSession()
+  const [returnTo] = useState(() => pendingInvitation())
   const navigate = useNavigate()
   useEffect(() => {
-    if (session.status === 'ready') {
-      navigate(session.user ? '/overview' : '/login?error=expired', { replace: true })
-    }
-  }, [session.status, session.user, navigate])
+    if (session.status !== 'ready') return
+    if (!session.user) { navigate('/login?error=expired', { replace: true }); return }
+    if (returnTo) { pendingInvitation(true); navigate(returnTo, { replace: true }); return }
+    const controller = new AbortController()
+    void listProjects(controller.signal).then(async projects => {
+      const connected = await Promise.all(projects.map(project => listConnectedRepositories(project.id, controller.signal)))
+      if (!controller.signal.aborted) navigate(connected.some(items => items.length) ? '/issues' : '/onboarding', { replace: true })
+    }).catch(() => { if (!controller.signal.aborted) navigate('/onboarding', { replace: true }) })
+    return () => controller.abort()
+  }, [session.status, session.user, navigate, returnTo])
   return <div className="public-shell auth-page"><header className="public-header"><Brand /></header>
     <main className="auth-main"><section className="auth-form-content"><h1>로그인 확인</h1>
       {session.status === 'unavailable' ? <><p className="auth-description" role="alert">{session.error}</p><Button className="github-auth-button" onClick={() => void session.refresh()}>다시 확인</Button><Link className="public-text-link" to="/login">로그인 화면으로</Link></> : <p className="auth-description" role="status"><LoaderCircle size={16} className="auth-spinner" /> 로그인 정보를 확인하고 있어요.</p>}
