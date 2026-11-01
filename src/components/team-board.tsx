@@ -7,7 +7,8 @@ import { CSS } from '@dnd-kit/utilities'
 import { DropdownMenu, Popover } from 'radix-ui'
 import { Archive, ArrowRight, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Circle, CircleDot, GitPullRequest, GripVertical, LayoutList, Columns3, LoaderCircle, Mic, MoreHorizontal, Plus, RotateCcw, UserRound, X } from 'lucide-react'
 import type { IssueStatus } from '../data/work-items'
-import { shiftWeek, startOfWeek, weekLabel } from '../lib/work-weeks'
+import { shiftWeek, startOfWeek, weekLabel, projectWeeks, projectWeekCount, projectWeekNumber, today } from '../lib/work-weeks'
+import type { ProjectPeriod } from '../lib/work-weeks'
 import { useWorkWeek } from '../hooks/use-work-week'
 import { LoadingState } from './loading-state'
 
@@ -42,11 +43,15 @@ export function WorkViewToggle({ view, onChange, disabled = false }: { view: 'bo
   </div>
 }
 
-export function WeekNavigation({ week, onChange, disabled = false }: { week: string; onChange: (week: string) => void; disabled?: boolean }) {
-  const current = useWorkWeek()
+export function WeekNavigation({ week, onChange, disabled = false, period }: { week: string; onChange: (week: string) => void; disabled?: boolean; period?: ProjectPeriod }) {
+  const current = useWorkWeek(period)
+  const weeks = projectWeeks(period)
+  const number = projectWeekNumber(week, period)
+  const upcoming = !!period?.startDate && today() < period.startDate
+  const ended = !!period?.endDate && today() > period.endDate
   return <div className="week-navigation">
-    <div className="week-heading"><span className="week-eyebrow"><CalendarDays size={13} />{week.slice(0, 4)}년 · 주간 계획</span><div><h2>{weekLabel(week)}</h2>{week === current ? <span className="week-current">이번 주</span> : <button className="text-button" disabled={disabled} onClick={() => onChange(current)}>이번 주로</button>}</div></div>
-    <div className="week-actions"><button type="button" className="icon-button" aria-label="이전 주" disabled={disabled} onClick={() => onChange(shiftWeek(week, -1))}><ChevronLeft size={18} /></button><label className="week-date-picker" title="주차 선택"><CalendarDays size={16} /><input type="date" aria-label="주차 선택" value={week} disabled={disabled} onChange={event => { if (event.target.value) onChange(startOfWeek(event.target.value)) }} /></label><button type="button" className="icon-button" aria-label="다음 주" disabled={disabled} onClick={() => onChange(shiftWeek(week, 1))}><ChevronRight size={18} /></button></div>
+    <div className="week-heading"><span className="week-eyebrow"><CalendarDays size={13} />{number ? `전체 ${projectWeekCount(period)}주 · 프로젝트 계획` : `${week.slice(0, 4)}년 · 주간 계획`}</span><div><h2>{number ? `${number}주차` : weekLabel(week)}</h2>{number && <span className="week-range">{weekLabel(week, period)}</span>}{week === current ? <span className="week-current">{upcoming ? '시작 예정' : ended ? '프로젝트 종료' : '이번 주'}</span> : <button className="text-button" disabled={disabled} onClick={() => onChange(current)}>이번 주로</button>}</div></div>
+    <div className="week-actions"><button type="button" className="icon-button" aria-label="이전 주" disabled={disabled || !!weeks.length && week === weeks[0]} onClick={() => onChange(shiftWeek(week, -1))}><ChevronLeft size={18} /></button>{weeks.length ? <select className="project-week-select" aria-label="프로젝트 주차" value={week} disabled={disabled} onChange={event => onChange(event.target.value)}>{weeks.map((value, index) => <option key={value} value={value}>{index + 1}주차 · {weekLabel(value, period)}</option>)}</select> : <label className="week-date-picker" title="주차 선택"><CalendarDays size={16} /><input type="date" aria-label="주차 선택" value={week} disabled={disabled} onChange={event => { if (event.target.value) onChange(startOfWeek(event.target.value, period)) }} /></label>}<button type="button" className="icon-button" aria-label="다음 주" disabled={disabled || !!weeks.length && week === weeks.at(-1)} onClick={() => onChange(shiftWeek(week, 1))}><ChevronRight size={18} /></button></div>
   </div>
 }
 

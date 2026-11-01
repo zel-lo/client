@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
-import { startOfWeek } from '../lib/work-weeks'
+import { startOfWeek, today } from '../lib/work-weeks'
+import type { ProjectPeriod } from '../lib/work-weeks'
 
-/** An open board follows the new week without a reload; a selected historical week stays selected. */
-export function useWorkWeek() {
-  const [week, setWeek] = useState(startOfWeek)
+/** The clock follows the team's date; changing project periods takes effect immediately. */
+export function useWorkWeek(period?: ProjectPeriod) {
+  const [date, setDate] = useState(today)
   useEffect(() => {
-    const update = () => setWeek(startOfWeek())
+    const update = () => setDate(today())
     const timer = window.setInterval(update, 60_000)
     window.addEventListener('focus', update)
     return () => { window.clearInterval(timer); window.removeEventListener('focus', update) }
   }, [])
-  return week
+  return startOfWeek(date, period)
 }

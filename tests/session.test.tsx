@@ -94,7 +94,7 @@ describe('서버 세션 로그인 연결', () => {
     vi.stubGlobal('fetch', fetcher)
     render(<MemoryRouter initialEntries={['/auth/callback']}><App /></MemoryRouter>)
     await screen.findByText('로그인 사용자')
-    expect(screen.getByRole('heading', { name: '어떤 저장소로 시작할까요?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '함께할 프로젝트를 준비해요' })).toBeInTheDocument()
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: '로그아웃', exact: true }))
     await screen.findByRole('heading', { name: 'zello에 로그인' })

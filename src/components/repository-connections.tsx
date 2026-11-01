@@ -8,11 +8,14 @@ import {
   listConnectedRepositories, listGitHubAccounts, ProjectApiError, syncPullRequests, syncIssues,
 } from '../lib/project-api'
 import { projectsChanged, selectProjectForUser } from '../lib/workspace'
-import type { ConnectedRepository, GitHubAccount, Page, Project, RepositoryOption } from '../lib/project-api'
+import type { ConnectedRepository, GitHubAccount, Page, Project, ProjectDraft, RepositoryOption } from '../lib/project-api'
 
 const emptyPage = <T,>(): Page<T> => ({ items: [], page: 1, hasNext: false })
 
-export function RepositoryConnections({ project: currentProject, onboarding = false, userId }: { project?: Project; onboarding?: boolean; userId?: string }) {
+export function RepositoryConnections({ project: currentProject, onboarding = false, userId, draft, onProjectCreated, onComplete, onBusyChange, onCreationStart }: {
+  project?: Project; onboarding?: boolean; userId?: string; draft?: ProjectDraft;
+  onProjectCreated?: (project: Project) => void; onComplete?: (project: Project) => void; onBusyChange?: (busy: boolean) => void; onCreationStart?: () => void;
+}) {
   const navigate = useNavigate()
   const [accessUrl, setAccessUrl] = useState<string | null>(null)
   const [createdProject, setCreatedProject] = useState<Project | null>(null)
@@ -43,6 +46,9 @@ export function RepositoryConnections({ project: currentProject, onboarding = fa
   const connectedIds = new Set(connected.map(item => item.githubRepositoryId))
   const selectable = (item: RepositoryOption) => !item.archived && !connectedIds.has(item.id)
   const visible = options.items.filter(item => item.fullName.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()))
+
+  useEffect(() => { onBusyChange?.(busy) }, [busy, onBusyChange])
+  useEffect(() => () => { onBusyChange?.(false) }, [onBusyChange])
 
   function report(cause: unknown) {
     setError(cause instanceof Error ? cause.message : '요청을 처리하지 못했어요.')
@@ -109,13 +115,17 @@ export function RepositoryConnections({ project: currentProject, onboarding = fa
     if (busy || loadingConnected || (!projectId && !onboarding) || !batch.length) return
     setBusy(true); setError(''); setReauth(false); setNotice(''); setFailures([])
     let target = projectId
+    let readyProject = project
     const successes: ConnectedRepository[] = []
     const failed: { id: string; name: string; message: string }[] = []
     try {
       if (!target) {
-        const created = await createProject(projectName.trim() || batch[0].owner)
+        onCreationStart?.()
+        const created = await createProject(draft?.name ?? (projectName.trim() || batch[0].owner), draft ? { startDate: draft.startDate, endDate: draft.endDate, requestKey: draft.requestKey } : undefined)
         target = created.id
         setCreatedProject(created)
+        readyProject = created
+        onProjectCreated?.(created)
         if (userId) selectProjectForUser(userId, target)
       }
       for (let index = 0; index < batch.length; index++) {
@@ -150,7 +160,7 @@ export function RepositoryConnections({ project: currentProject, onboarding = fa
         // Collection runs once per project after the entire batch, not once per repository.
         void syncIssues(target).then(() => window.dispatchEvent(new Event('zello:issues-updated'))).catch(cause => window.dispatchEvent(new CustomEvent('zello:issues-sync-error', { detail: { projectId: target, message: cause instanceof Error ? cause.message : '기존 이슈를 가져오지 못했어요. 다시 가져오기를 눌러주세요.' } })))
         void syncPullRequests(target).catch(() => {})
-        if (onboarding && !failed.length) navigate('/issues', { replace: true })
+        if (onboarding && !failed.length) { if (onComplete && readyProject) onComplete(readyProject); else navigate('/issues', { replace: true }) }
       }
     } catch (cause) { report(cause) }
     finally { setBusy(false); setProgress('') }
@@ -186,12 +196,13 @@ export function RepositoryConnections({ project: currentProject, onboarding = fa
         <p className="help-text">{item.initialSyncCompleted ? '초기 수집 완료' : '연결 완료 · 작업 데이터 수집 전'}</p>
         {project.canManageRepositories && <button className="button" disabled={busy} onClick={() => void disconnect(item)}>연결 해제</button>}
       </article>)}</div>}
+      {onComplete && !loadingConnected && !!connected.length && <button type="button" className="button button-dark" disabled={busy} onClick={() => onComplete(project)}>연결된 저장소로 계속</button>}
       {!loadingConnected && !connected.length && <p className="help-text">현재 GitHub 계정으로 볼 수 있는 연결된 저장소가 없어요.</p>}
       </>}
       {(!project || project.canManageRepositories) ? <div className="connection-picker">
         <div className="section-heading"><h3>내 GitHub 저장소</h3></div>
         <form onSubmit={event => void connect(event)}>
-          {onboarding && !project && <label>프로젝트 이름<input value={projectName} maxLength={100} disabled={busy} onChange={event => setProjectName(event.target.value)} placeholder={selected[0]?.owner ?? '저장소 소유자 이름으로 자동 설정'} /></label>}
+          {onboarding && !project && !draft && <label>프로젝트 이름<input value={projectName} maxLength={100} disabled={busy} onChange={event => setProjectName(event.target.value)} placeholder={selected[0]?.owner ?? '저장소 소유자 이름으로 자동 설정'} /></label>}
           <label>GitHub 계정 또는 Organization<select value={account} disabled={busy || loadingAccounts} onChange={event => { setAccount(event.target.value); setRepositoryPage(1) }}>
             <option value="all">접근 가능한 모든 저장소</option>
             {accounts.items.map(item => <option key={item.id} value={item.type === 'USER' ? 'personal' : `organization:${item.login}`}>{item.login} · {item.type === 'USER' ? '개인 계정' : 'Organization'}</option>)}
@@ -216,7 +227,7 @@ export function RepositoryConnections({ project: currentProject, onboarding = fa
           {progress && <p role="status">{progress}</p>}
         </form>
         {!!failures.length && <div className="connection-error" role="alert"><strong>연결하지 못한 저장소</strong><ul>{failures.map(item => <li key={item.id}>{item.name}: {item.message}</li>)}</ul></div>}
-        {onboarding && !!connected.length && !!failures.length && <Link className="button" to="/issues">연결된 저장소로 시작하기</Link>}
+        {onboarding && !onComplete && !!connected.length && !!failures.length && <Link className="button" to="/issues">연결된 저장소로 시작하기</Link>}
         <p className="help-text">조직에서 OAuth 접근을 제한하는 경우 조직 관리자 승인이나 SSO 인증이 필요할 수 있어요.</p>
       </div> : <p className="help-text">프로젝트 소유자와 관리자만 저장소 연결을 변경할 수 있어요.</p>}
     </>}

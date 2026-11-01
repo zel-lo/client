@@ -1,6 +1,6 @@
 import { request } from './session-api'
 
-export type Project = { id: string; name: string; description: string | null; role: string; canManageRepositories: boolean; version?: number }
+export type Project = { id: string; name: string; description: string | null; role: string; canManageRepositories: boolean; version?: number; startDate?: string | null; endDate?: string | null; totalWeeks?: number }
 export type GitHubAccount = { id: string; login: string; type: 'USER' | 'ORGANIZATION' }
 export type RepositoryOption = { id: string; fullName: string; owner: string; ownerType: string; privateRepository: boolean; archived: boolean }
 export type ConnectedRepository = {
@@ -61,7 +61,8 @@ export async function mutate<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE
 }
 
 export const listProjects = (signal?: AbortSignal) => json<Project[]>('/api/projects', { signal })
-export const createProject = (name: string) => mutate<Project>('/api/projects', 'POST', { name })
+export type ProjectDraft = { name: string; startDate: string; endDate: string; requestKey: string }
+export const createProject = (name: string, period?: Omit<ProjectDraft, 'name'>) => mutate<Project>('/api/projects', 'POST', { name, ...period })
 export const listGitHubAccounts = (page: number, signal?: AbortSignal) =>
   json<Page<GitHubAccount>>(`/api/github/accounts?page=${page}`, { signal })
 export const listAvailableRepositories = (account: string, page: number, signal?: AbortSignal) => {

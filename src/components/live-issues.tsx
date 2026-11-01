@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Archive, ArrowUpRight, CircleDot, Github, Plus, RefreshCw, X } from 'lucide-react'
@@ -7,7 +8,7 @@ import type { ConnectedRepository, IssueDetails, IssuePage, LiveIssue, Project }
 import { TeamBoard, WeekNavigation, WorkViewToggle } from './team-board'
 import type { BoardActions, BoardItem, BoardMove } from './team-board'
 import type { IssueStatus } from '../data/work-items'
-import { startOfWeek, validWeek } from '../lib/work-weeks'
+import { startOfWeek, validWeek, projectWeeks, weekLabel } from '../lib/work-weeks'
 import { useWorkWeek } from '../hooks/use-work-week'
 import { LoadingState } from './loading-state'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table'
@@ -50,8 +51,8 @@ function IssueDialog({ children, busy, onClose, drawer = false }: { children: Re
 
 export function LiveIssues({ project, projectLoading = false, mineOnly = false, onCountChange }: { project: Project | null; projectLoading?: boolean; mineOnly?: boolean; onCountChange?: (total: number) => void }) {
   const [params, setParams] = useSearchParams()
-  const currentWeek = useWorkWeek()
-  const week = params.has('week') ? validWeek(params.get('week')) : currentWeek
+  const currentWeek = useWorkWeek(project ?? undefined)
+  const week = params.has('week') ? validWeek(params.get('week'), project ?? undefined) : currentWeek
   const [result, setResult] = useState<IssuePage | null>(null)
   const [repositories, setRepositories] = useState<ConnectedRepository[]>([])
   const [loading, setLoading] = useState(true)
@@ -80,6 +81,8 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
   const scope = useRef(project?.id); scope.current = project?.id
   const view = mineOnly || archived || params.get('view') === 'list' ? 'list' : 'board'
   const canWrite = !!project && ['OWNER', 'ADMIN', 'MEMBER'].includes(project.role)
+  const [headerActionsHost, setHeaderActionsHost] = useState<HTMLElement | null>(null)
+  useLayoutEffect(() => { setHeaderActionsHost(mineOnly ? null : document.getElementById('workspace-page-actions')) }, [mineOnly])
   const focusUnassigned = params.get('focus') === 'unassigned'
   const loadKey = `${repoFilter}:${assigneeFilter}:${focusUnassigned}:${project?.id}:${query}:${status}:${archived}:${mine}:${mineOnly}:${week}:${view}:${revision}`
   const currentKey = useRef(loadKey); currentKey.current = loadKey
@@ -194,10 +197,10 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
   }))
   const actions: BoardActions = { onOpen: id => { const item = result?.items.find(item => item.id === id); if (item) void open(item) }, onMove: move => { const item = result?.items.find(item => item.id === move.id); if (item?.publishStatus === 'PUBLISHED' && (move.status === 'done' || item.status === 'DONE') && item.status !== move.status.toUpperCase()) { setPendingMove(move); return }; return change(move.id, { status: move.status }, { beforeId: move.beforeId }) }, onAssign: (id, login) => change(id, { assignee: login }), loadAssignees: loadPeople }
   return <section className="live-issues" aria-label={mineOnly ? '실제 맡은 작업' : '실제 팀 작업'}>
-    <div className="section-heading"><h2>{mineOnly ? '내가 맡은 작업' : '팀의 작업'} <span className="count-text">{result?.total ?? '—'}</span></h2><div className="issue-actions"><button className="button" disabled={syncing || busy || loading} onClick={() => void sync()}><RefreshCw size={14} className={syncing ? 'board-saving' : ''} />{syncing ? 'GitHub 확인 중…' : 'GitHub 이슈 가져오기'}</button>{canWrite && <button className="button button-dark" disabled={busy} onClick={() => { setError(''); setEditing('new') }}><Plus size={14} />새 작업 등록</button>}</div></div>
+    {headerActionsHost ? <><h2 className="sr-only">팀의 작업 <span>{result?.total ?? 0}</span></h2>{createPortal(<div className="issue-actions"><button className="button" disabled={syncing || busy || loading} onClick={() => void sync()}><RefreshCw size={14} className={syncing ? 'board-saving' : ''} />{syncing ? 'GitHub 확인 중…' : 'GitHub 이슈 가져오기'}</button>{canWrite && <button className="button button-dark" disabled={busy} onClick={() => { setError(''); setEditing('new') }}><Plus size={14} />새 작업 등록</button>}</div>, headerActionsHost)}</> : <div className="section-heading"><h2>{mineOnly ? '내가 맡은 작업' : '팀의 작업'} <span className="count-text">{result?.total ?? '—'}</span></h2><div className="issue-actions"><button className="button" disabled={syncing || busy || loading} onClick={() => void sync()}><RefreshCw size={14} className={syncing ? 'board-saving' : ''} />{syncing ? 'GitHub 확인 중…' : 'GitHub 이슈 가져오기'}</button>{canWrite && <button className="button button-dark" disabled={busy} onClick={() => { setError(''); setEditing('new') }}><Plus size={14} />새 작업 등록</button>}</div></div>}
     {error && <div className="connection-error" role="alert">{error}{reauth ? <Link to="/login?reauth=github">GitHub 다시 로그인</Link> : <button className="button" disabled={loading || busy} onClick={() => { setPage(1); setRevision(value => value + 1) }}>다시 불러오기</button>}</div>}
     {notice && <p className="connection-notice" role="status">{notice}</p>}
-    {!mineOnly && !archived && <WeekNavigation week={week} onChange={value => setParam('week', value)} disabled={busy} />}
+    {!mineOnly && !archived && <WeekNavigation period={project} week={week} onChange={value => setParam('week', value)} disabled={busy} />}
     <div className="board-toolbar">
       {!mineOnly && <WorkViewToggle view={view} disabled={busy} onChange={value => setParam('view', value)} />}
       <input className="board-search" type="search" aria-label="작업 검색" value={queryInput} disabled={busy} onChange={event => setQueryInput(event.target.value)} placeholder="제목 또는 작업 번호 검색" />
@@ -221,12 +224,12 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
     <p className="help-text">{mineOnly ? '현재 맡은 미완료 작업을 모았어요.' : '미완료 작업은 원래 계획 주차를 유지하며 다음 주에도 표시돼요. 완료한 작업은 완료한 주에 남아요.'} 새 작업은 zello에 저장한 뒤 GitHub에도 만들 수 있어요.</p>
     {pendingMove && <IssueDialog busy={false} onClose={() => setPendingMove(null)}><div className="dialog-form"><h2>{pendingMove.status === 'done' ? '작업을 완료할까요?' : '작업을 다시 시작할까요?'}</h2><p>{pendingMove.status === 'done' ? '연결된 GitHub 이슈도 함께 닫아요. 서비스 배포 상태는 별도로 확인해 주세요.' : '연결된 GitHub 이슈도 다시 열어요.'}</p><div className="form-actions"><button className="button" onClick={() => setPendingMove(null)}>취소</button><button className="button button-dark" onClick={() => { const move = pendingMove; setPendingMove(null); void change(move.id, { status: move.status }, { beforeId: move.beforeId }) }}>{pendingMove.status === 'done' ? '완료하고 GitHub 이슈 닫기' : 'GitHub 이슈 다시 열고 이동'}</button></div></div></IssueDialog>}
     {opening && !editing && <IssueDialog busy={false} drawer onClose={() => { detailRequest.current?.abort(); setOpening(false) }}><div className="dialog-form"><LoadingState layout="detail" label="작업 상세를 불러오는 중" /></div></IssueDialog>}
-    {editing && <IssueEditor projectId={project.id} issue={editing === 'new' ? null : editing} initialWeek={week} repositories={repositories} canWrite={canWrite} onClose={() => setEditing(null)} onChanged={item => { setEditing(item); setPage(1); setRevision(value => value + 1) }} onArchived={() => { setEditing(null); setPage(1); setRevision(value => value + 1); setNotice(archived ? '작업을 복원했어요.' : '작업을 보관했어요. GitHub 원본은 유지됩니다.') }} />}
+    {editing && <IssueEditor projectId={project.id} issue={editing === 'new' ? null : editing} initialWeek={week} period={project} repositories={repositories} canWrite={canWrite} onClose={() => setEditing(null)} onChanged={item => { setEditing(item); setPage(1); setRevision(value => value + 1) }} onArchived={() => { setEditing(null); setPage(1); setRevision(value => value + 1); setNotice(archived ? '작업을 복원했어요.' : '작업을 보관했어요. GitHub 원본은 유지됩니다.') }} />}
   </section>
 }
 
-function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, onClose, onChanged, onArchived }: {
-  projectId: string; issue: LiveIssue | null; initialWeek: string; repositories: ConnectedRepository[]; canWrite: boolean
+function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, period, onClose, onChanged, onArchived }: {
+  projectId: string; issue: LiveIssue | null; initialWeek: string; period: Project; repositories: ConnectedRepository[]; canWrite: boolean
   onClose: () => void; onChanged: (issue: LiveIssue) => void; onArchived: () => void
 }) {
   const [form, setForm] = useState<IssueDetails>(issue ? detailsFor(issue) : { ...blank(), plannedWeekStart: initialWeek })
@@ -310,7 +313,7 @@ function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, on
     <div className="issue-fields"><label>작업이 나온 곳<select value={form.source} disabled={disabled} onChange={event => setForm({ ...form, source: event.target.value as IssueDetails['source'], meetingDate: form.meetingDate ?? new Date().toLocaleDateString('en-CA') })}>{Object.entries(sources).filter(([value]) => value !== 'GITHUB' || form.source === 'GITHUB').map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{meeting && <label>회의 날짜<input type="date" required value={form.meetingDate ?? ''} disabled={disabled} onChange={event => setForm({ ...form, meetingDate: event.target.value })} /></label>}</div>
     {meeting && <label>회의에서 정한 내용<textarea rows={2} maxLength={10000} disabled={disabled} value={form.meetingContext} onChange={event => setForm({ ...form, meetingContext: event.target.value })} placeholder="논의 배경과 결정 내용을 팀에 남겨주세요." /></label>}
     <div className="issue-fields"><label>작업 상태<select value={form.status} disabled={disabled} onChange={event => { const value = event.target.value as IssueDetails['status']; setForm({ ...form, status: value }); if (issue?.publishStatus === 'PUBLISHED') setGithubState(value === 'DONE' ? 'CLOSED' : 'OPEN') }}>{Object.entries(states).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>우선순위<select value={form.priority} disabled={disabled} onChange={event => setForm({ ...form, priority: event.target.value as IssueDetails['priority'] })}>{Object.entries(priorities).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
-    <label>계획 주차<input type="date" value={form.plannedWeekStart ?? initialWeek} disabled={disabled} onChange={event => { if (event.target.value) setForm({ ...form, plannedWeekStart: startOfWeek(event.target.value) }) }} /></label>
+    <label>계획 주차{projectWeeks(period).length ? <select value={form.plannedWeekStart ?? initialWeek} disabled={disabled} onChange={event => setForm({ ...form, plannedWeekStart: event.target.value })}>{projectWeeks(period).map((value, index) => <option key={value} value={value}>{index + 1}주차 · {weekLabel(value, period)}</option>)}</select> : <input type="date" value={form.plannedWeekStart ?? initialWeek} disabled={disabled} onChange={event => { if (event.target.value) setForm({ ...form, plannedWeekStart: startOfWeek(event.target.value) }) }} />}</label>
     <label>담당자<select value={form.assignee ?? ''} disabled={disabled || assigneesLoading} onChange={event => setForm({ ...form, assignee: event.target.value || null })}><option value="">지정하지 않음</option>{form.assignee && !assignees.some(person => person.login === form.assignee) && <option value={form.assignee}>{form.assignee}</option>}{assignees.map(person => <option key={person.login} value={person.login}>{person.login}</option>)}</select></label>
     {assigneesMore && <button className="button" type="button" disabled={assigneesLoading} onClick={() => setAssigneesPage(value => value + 1)}>담당자 더 보기</button>}
     <p className="help-text">이 저장소에 이슈를 배정할 수 있는 프로젝트 멤버만 표시해요. 회의 내용은 zello에 보관하고, 발행할 때 우선순위 라벨도 자동으로 준비해요.</p>

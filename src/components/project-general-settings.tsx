@@ -31,6 +31,7 @@ export function ProjectGeneralSettings({ projectId }: { projectId: string }) {
     finally { setBusy(false) }
   }
   return <section className="project-general-settings"><h2>프로젝트 기본 설정</h2>{!project && !error && <p role="status">프로젝트를 불러오고 있어요…</p>}
+    {project?.startDate && project.endDate && <div className="setup-project-summary"><div><strong>프로젝트 기간 · {project.startDate} – {project.endDate}</strong><p>전체 {project.totalWeeks}주 · 시작일부터 7일씩 주차를 나눠요.</p></div></div>}
     {project && <form className="settings-form" onSubmit={event => { event.preventDefault(); void save() }}><label>프로젝트 이름<input required maxLength={100} value={name} disabled={busy || !canManage} onChange={event => setName(event.target.value)} /></label><label>프로젝트 설명<textarea maxLength={4000} rows={4} value={description} disabled={busy || !canManage} onChange={event => setDescription(event.target.value)} /></label>{canManage ? <button className="button button-dark" disabled={busy || !name.trim() || project.version === undefined}>{busy ? '저장 중…' : '설정 저장'}</button> : <p className="help-text">소유자와 관리자만 프로젝트 정보를 변경할 수 있어요.</p>}</form>}
     {error && <p className="connection-error" role="alert">{error}<button className="button" onClick={() => setRevision(value => value + 1)}>최신 설정 확인</button></p>}{notice && <p className="connection-notice" role="status">{notice}</p>}
   </section>

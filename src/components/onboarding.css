@@ -1,0 +1,73 @@
+.project-setup-page { max-width: 1060px; padding-bottom: 72px; }
+.setup-steps { display: flex; align-items: center; justify-content: center; gap: 42px; padding: 32px 0 6px; }
+.setup-steps > div { display: flex; align-items: center; gap: 9px; color: var(--muted-foreground); font-size: 12px; }
+.setup-steps > div > span { display: inline-grid; place-items: center; width: 27px; height: 27px; border: 1px solid var(--line); border-radius: 50%; font-size: 11px; background: var(--card); }
+.setup-steps > div[aria-current="step"] { color: var(--brand); font-weight: 650; }
+.setup-steps > div[aria-current="step"] > span { background: var(--brand); color: var(--primary-foreground); border-color: var(--brand); }
+.setup-steps > .is-complete > span { background: var(--accent-bg); color: var(--brand); border-color: var(--accent-line); }
+.project-setup-page .onboarding-intro { margin: 42px 0 28px; }
+.setup-period-form, .setup-invite-card, .setup-create-repository { max-width: 680px; padding: 30px; border-radius: 22px; border: 1px solid var(--quiet-line); background: var(--card); }
+.setup-period-form > label, .setup-date-fields > label, .setup-invite-card > label { display: block; font-size: 13px; font-weight: 550; color: var(--text-secondary); }
+.setup-period-form input, .setup-invite-card input { display: block; width: 100%; min-height: 48px; padding: 12px 14px; margin-top: 10px; border-radius: var(--control-radius); border: 1px solid transparent; background: var(--control-bg); color: var(--foreground); }
+.setup-date-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 24px; }
+.setup-week-preview { display: flex; align-items: flex-start; gap: 12px; background: var(--accent-bg); border: 1px solid var(--accent-line); border-radius: 14px; padding: 18px; margin-top: 24px; }
+.setup-week-preview > svg { color: var(--brand); margin-top: 2px; }
+.setup-week-preview strong { display: block; font-size: 14px; color: var(--foreground); }
+.setup-week-preview p { color: var(--muted-foreground); font-size: 12px; line-height: 1.8; margin-top: 7px; }
+.setup-week-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 13px; }
+.setup-week-chips > span { background: var(--card); border-radius: 7px; padding: 6px 8px; font-size: 10px; color: var(--text-secondary); }
+.setup-week-chips small { margin-left: 5px; color: var(--muted-foreground); font-size: 9px; }
+.setup-next { margin-top: 26px; min-height: 48px; }
+.setup-period-form > .setup-next { width: 100%; }
+.setup-project-summary { display: flex; align-items: center; gap: 13px; border: 1px solid var(--quiet-line); border-radius: 14px; background: var(--card); padding: 18px; margin-bottom: 22px; }
+.setup-summary-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; color: var(--brand); background: var(--accent-bg); }
+.setup-project-summary strong { font-size: 14px; }
+.setup-project-summary p { font-size: 12px; line-height: 1.7; color: var(--muted-foreground); margin-top: 4px; }
+.setup-project-summary > button { margin-left: auto; }
+.setup-repository-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.setup-repository-choices > button { position: relative; display: flex; align-items: flex-start; flex-direction: column; text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: 20px; padding: 28px; min-height: 195px; color: var(--foreground); transition: border-color .15s, background-color .15s; }
+.setup-repository-choices > button:hover, .setup-repository-choices > button:focus-visible { border-color: var(--brand); background: var(--accent-bg); }
+.setup-repository-choices > button > svg:first-child { color: var(--brand); margin-bottom: 24px; }
+.setup-repository-choices strong { font-size: 17px; letter-spacing: -.4px; }
+.setup-repository-choices p { font-size: 12px; color: var(--muted-foreground); line-height: 1.8; margin-top: 8px; }
+.setup-repository-choices > button > svg:last-child { position: absolute; top: 30px; right: 26px; color: var(--muted-foreground); }
+.setup-create-repository { display: flex; align-items: flex-start; flex-direction: column; gap: 16px; }
+.setup-create-repository > svg { color: var(--brand); }
+.setup-create-repository h2 { font-size: 21px; letter-spacing: -.5px; }
+.setup-create-repository p { line-height: 1.9; color: var(--muted-foreground); font-size: 13px; }
+.setup-invite-card { max-width: 620px; }
+.setup-ready-icon { display: grid; place-items: center; width: 62px; height: 62px; margin-bottom: 20px; color: var(--git-green); background: var(--git-green-bg); border-radius: 18px; }
+.setup-invite-card h2 { font-size: 23px; letter-spacing: -.5px; line-height: 1.5; }
+.setup-invite-card > p { font-size: 13px; line-height: 1.8; margin: 10px 0 26px; color: var(--muted-foreground); }
+.setup-invite-card > label { margin-top: 24px; }
+.setup-invite-card > .button:not(.setup-next) { margin-top: 10px; }
+.setup-invite-card > .setup-invite-help { font-size: 11px; line-height: 1.9; margin: 15px 0; }
+.setup-invite-card > small { display: block; text-align: center; color: var(--muted-foreground); font-size: 10px; margin-top: 13px; }
+.setup-back { margin-top: 24px; }
+.week-range { color: var(--muted-foreground); font-size: 13px; }
+.project-week-select { background: transparent; color: var(--text-secondary); border: 0; padding: 8px; font-size: 11px; max-width: 200px; cursor: pointer; }
+.project-week-select option { background: var(--card); color: var(--foreground); }
+.dark .setup-period-form, .dark .setup-invite-card, .dark .setup-create-repository,
+.dark .setup-project-summary, .dark .setup-repository-choices > button { background: var(--panel-surface); border-color: var(--panel-edge); box-shadow: var(--surface-shadow); }
+.dark .setup-repository-choices > button:hover { background: var(--accent-bg); border-color: var(--brand); }
+@media (max-width: 640px) {
+  .setup-steps { gap: 14px; justify-content: flex-start; padding-top: 24px; }
+  .setup-steps > div { font-size: 10px; gap: 6px; }
+  .setup-steps > div > span { width: 23px; height: 23px; }
+  .setup-period-form, .setup-invite-card, .setup-create-repository { padding: 23px 18px; border-radius: 18px; }
+  .setup-repository-choices { grid-template-columns: 1fr; gap: 12px; }
+  .setup-repository-choices > button { min-height: 160px; padding: 23px; }
+  .setup-date-fields { gap: 10px; }
+  .setup-period-form input[type="date"] { font-size: 12px; padding: 10px; min-width: 0; }
+  .week-navigation:has(.project-week-select) { align-items: flex-start; flex-direction: column; }
+  .week-heading > div { gap: 9px; flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) { .setup-repository-choices > button { transition: none; } }
+
+/* Intro and content share one centered reading column in the first and last steps. */
+.project-setup-page[data-step="1"] .onboarding-intro,
+.project-setup-page[data-step="1"] > .setup-back,
+.setup-period-form { width: 100%; max-width: 680px; margin-left: auto; margin-right: auto; }
+.project-setup-page[data-step="3"] .onboarding-intro,
+.setup-invite-card { width: 100%; max-width: 620px; margin-left: auto; margin-right: auto; }
+.setup-create-repository { width: 100%; margin-left: auto; margin-right: auto; }
