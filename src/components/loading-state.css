@@ -1,0 +1,33 @@
+/* Skeletons match the content footprint; no layout swap on background refresh. */
+.zello-skeleton { background: var(--control-bg); animation: zello-skeleton-pulse 1.65s ease-in-out infinite; }
+@keyframes zello-skeleton-pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+.loading-state { width: 100%; min-width: 0; }
+.board-skeleton-grid { display: grid; grid-template-columns: minmax(220px, .9fr) repeat(4, minmax(245px, 1fr)); gap: 12px; min-height: 480px; overflow: hidden; }
+.board-skeleton-column { border-radius: 18px; padding: 17px 10px; background: color-mix(in srgb, var(--surface) 58%, var(--card)); }
+.skeleton-column-title { width: 100px; height: 16px; margin: 0 4px 25px; }
+.skeleton-work-card { border: 1px solid var(--quiet-line); border-radius: 14px; background: var(--card); padding: 15px; margin-bottom: 10px; }
+.skeleton-reference { width: 80px; height: 10px; }
+.skeleton-title { width: 86%; height: 14px; margin: 13px 0 9px; }
+.skeleton-title.short { width: 58%; margin-top: 0; }
+.skeleton-caption { width: 100%; height: 28px; margin-top: 16px; }
+.skeleton-avatar { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; }
+.skeleton-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
+.skeleton-table { border: 1px solid var(--quiet-line); border-radius: 14px; overflow: hidden; }
+.skeleton-table-row { display: flex; gap: 16px; align-items: center; min-height: 76px; padding: 15px 20px; }
+.skeleton-table-row + .skeleton-table-row { border-top: 1px solid var(--quiet-line); }
+.skeleton-table-row > div:nth-child(2) { flex: 1; }
+.skeleton-table-row .skeleton-title { margin-top: 0; max-width: 380px; }
+.skeleton-badge { width: 60px; height: 23px; }
+.skeleton-detail-block { height: 130px; width: 100%; margin: 24px 0; }
+.skeleton-detail-field { height: 48px; width: 100%; margin-top: 18px; }
+.skeleton-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+.assignee-options .skeleton-table { border: 0; }
+.assignee-options .skeleton-table-row { padding: 9px; min-height: 48px; }
+.assignee-options .skeleton-badge { display: none; }
+
+@media (max-width: 760px) {
+  .board-skeleton-grid { grid-template-columns: repeat(4, minmax(260px, 80vw)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .zello-skeleton { animation: none; }
+}

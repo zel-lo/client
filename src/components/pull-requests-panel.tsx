@@ -1,3 +1,4 @@
+import { LoadingState } from './loading-state'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Check, CircleDashed, CircleX, GitMerge, GitPullRequest, Link2 } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -48,7 +49,7 @@ export function PullRequestsPanel({ pullRequests, repos, issues, repoFilter, onS
       {[['open', '열림'], ['merged', '병합됨'], ['all', '전체']].map(([value, label]) => <button key={value} aria-pressed={filter === value} className={filter === value ? 'selected' : ''} onClick={() => change('status', value)}>{label}<span className="tab-count">{tabCount(value)}</span></button>)}
     </div><span className="muted small">{needsSetup ? '저장소 연결 필요' : live ? `GitHub 연동${paging && focus !== 'all' && focus !== 'unlinked' ? ` · 조건에 맞는 PR ${paging.total}개` : ''}` : '샘플 PR · GitHub 미연결'}</span></div>
     {error && <div className="connection-error" role="alert">{error}{reauth && <Link to="/login?reauth=github">GitHub 다시 로그인</Link>}</div>}
-    {loading && !pullRequests.length && <p role="status">PR을 불러오는 중…</p>}
+    {loading && !pullRequests.length && <LoadingState label="PR을 불러오는 중" />}
     <div className="work-filter-bar"><select aria-label="PR 확인 필터" value={focus} onChange={event => change('focus', event.target.value)}><option value="all">모든 검토 상태</option><option value="pending">검토 대기</option><option value="failing">수정 또는 검사 실패</option><option value="unlinked">이슈 미연결</option></select>{params.size > 0 && <button className="subtle-link" onClick={() => setParams({})}>필터 초기화</button>}</div>
     <div className="data-frame"><Table><TableHeader><TableRow><TableHead>변경 요청</TableHead><TableHead>코드 검토</TableHead><TableHead>자동 검사 · CI</TableHead><TableHead>리뷰어</TableHead><TableHead>작성자</TableHead></TableRow></TableHeader><TableBody>
       {visible.map(pr => {

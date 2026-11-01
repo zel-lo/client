@@ -1,3 +1,4 @@
+import { LoadingState } from './loading-state'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, Copy, Link2, Plus, RefreshCw, ShieldCheck, Users, X } from 'lucide-react'
@@ -138,7 +139,7 @@ export function MembersPanel({ projectId, onLeft }: { projectId: string; onLeft:
     {notice && <p className="connection-notice" role="status">{notice}</p>}
     {error && <div className="connection-error" role="alert">{error}<button className="button" disabled={busy} onClick={refresh}>다시 확인</button></div>}
     <label className="member-search">멤버 검색<input type="search" value={queryInput} maxLength={100} onChange={event => setQueryInput(event.target.value)} placeholder="이름 또는 GitHub 아이디" /></label>
-    {loading && <p role="status">멤버 정보를 확인하고 있어요…</p>}
+    {loading && !data && <LoadingState label="멤버 정보를 불러오는 중" />}
     {data && <>
       <div className="member-list">{data.items.map(member => <article className="live-member-row" key={member.userId}>
         <span className="member-monogram" aria-hidden="true">{member.displayName.slice(0, 2)}</span>

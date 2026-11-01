@@ -1,3 +1,4 @@
+import { LoadingState } from './loading-state'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -178,7 +179,7 @@ export function RepositoryConnections({ project: currentProject, onboarding = fa
     {(project || onboarding) && <>
       {project && <>
       <div className="section-heading"><h3>{project.name}에 연결된 저장소</h3><span className="muted small">{connected.length}개</span></div>
-      {loadingConnected ? <p role="status">저장소 접근 권한을 확인하는 중…</p> : <div className="repo-grid repo-grid-page">{connected.map(item => <article className="repo-card connected-repo-card" key={item.id}>
+      {loadingConnected && !connected.length ? <LoadingState layout="cards" rows={3} label="저장소 접근 권한을 확인하는 중" /> : <div className="repo-grid repo-grid-page">{connected.map(item => <article className="repo-card connected-repo-card" key={item.id}>
         <div className="repo-card-head"><Github size={20} /><span className="badge">{item.privateRepository ? '비공개' : '공개'}</span></div>
         <h3><a href={item.htmlUrl} target="_blank" rel="noopener noreferrer">{item.owner}/{item.name}<ExternalLink size={13} /></a></h3>
         <p>{item.description || '설명 없음'}</p><div className="repo-card-foot"><span>{item.language || '언어 미지정'}</span><span>{item.defaultBranch}</span></div>
@@ -207,7 +208,7 @@ export function RepositoryConnections({ project: currentProject, onboarding = fa
           {!!selected.length && <div className="repository-selection"><p>{selected.length}개 선택 · 계정이나 페이지를 바꿔도 선택이 유지돼요.</p><div>{selected.map(item => <button className="badge" type="button" disabled={busy} key={item.id} onClick={() => toggle(item)} aria-label={`${item.fullName} 선택 해제`}>{item.fullName}<X size={12} /></button>)}</div><button className="subtle-link" type="button" disabled={busy} onClick={() => setSelected([])}>선택 모두 해제</button></div>}
           <p className="help-text">한 프로젝트에 여러 저장소를 연결할 수 있어요. 한 번에 최대 50개를 선택하세요.</p>
           {accounts.items.length === 1 && <p className="help-text">현재 개인 계정만 연결되어 있어요. 팀 저장소를 쓰려면 위에서 조직 접근을 승인하세요.</p>}
-          {loadingOptions && <p role="status">GitHub 저장소를 불러오는 중…</p>}
+          {loadingOptions && !options.items.length && <LoadingState label="GitHub 저장소를 불러오는 중" rows={3} />}
           {!loadingOptions && !options.items.length && !error && <p className="help-text">접근 가능한 저장소가 없어요. 다른 계정을 선택하거나 GitHub 로그인 권한을 확인해 주세요.</p>}
           {search && <p className="help-text">현재 페이지에서 {visible.length}개를 찾았어요.</p>}
           <Pagination page={repositoryPage} hasNext={options.hasNext} disabled={busy || loadingOptions} onChange={setRepositoryPage} label="저장소" />
