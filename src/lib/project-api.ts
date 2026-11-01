@@ -96,20 +96,25 @@ export type IssueDetails = {
   title: string; description: string; status: 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'DONE'
   priority: 'HIGH' | 'MEDIUM' | 'LOW'; source: 'DAILY' | 'WEEKLY' | 'REQUEST' | 'GITHUB'
   meetingDate: string | null; meetingContext: string; acceptanceCriteria: string; assignee: string | null
+  plannedWeekStart?: string
 }
 export type LiveIssue = IssueDetails & {
   id: string; version: number; key: string; repositoryId: string; repositoryOwner: string; repositoryName: string
   number: number; url: string; githubState: 'OPEN' | 'CLOSED' | null; archived: boolean; publishStatus: 'LOCAL' | 'PENDING' | 'PUBLISHED' | 'FAILED' | 'UNKNOWN'; lastPublishError: string | null
+  boardOrder?: number; completedAt?: string | null
 }
 export type IssuePage = Page<LiveIssue> & { total: number }
-export const listIssues = (projectId: string, options: { page?: number; query?: string; status?: string; mine?: boolean; archived?: boolean; activeOnly?: boolean } = {}, signal?: AbortSignal) => {
-  const params = new URLSearchParams({ page: String(options.page ?? 1), size: '30', query: options.query ?? '', mine: String(options.mine ?? false), activeOnly: String(options.activeOnly ?? false), archived: String(options.archived ?? false) })
+export const listIssues = (projectId: string, options: { page?: number; size?: number; query?: string; status?: string; mine?: boolean; archived?: boolean; activeOnly?: boolean; week?: string; repositoryId?: string; assignee?: string } = {}, signal?: AbortSignal) => {
+  const params = new URLSearchParams({ page: String(options.page ?? 1), size: String(options.size ?? 30), query: options.query ?? '', mine: String(options.mine ?? false), activeOnly: String(options.activeOnly ?? false), archived: String(options.archived ?? false) })
   if (options.status) params.set('status', options.status)
+  if (options.week) params.set('week', options.week)
+  if (options.repositoryId) params.set('repositoryId', options.repositoryId)
+  if (options.assignee) params.set('assignee', options.assignee)
   return json<IssuePage>(`/api/projects/${encodeURIComponent(projectId)}/issues?${params}`, { signal })
 }
 export const getIssue = (projectId: string, id: string, signal?: AbortSignal) => json<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(id)}`, { signal })
 export const createIssue = (projectId: string, repositoryId: string, details: IssueDetails, requestKey: string) => mutate<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues`, 'POST', { repositoryId, details, requestKey })
-export const updateIssue = (projectId: string, issue: LiveIssue, details: IssueDetails, githubState: LiveIssue['githubState']) => mutate<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}`, 'PATCH', { version: issue.version, details, githubState: githubState ?? 'OPEN' })
+export const updateIssue = (projectId: string, issue: LiveIssue, details: IssueDetails, githubState: LiveIssue['githubState'], placement?: { beforeId: string | null }) => mutate<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}`, 'PATCH', { version: issue.version, details, githubState: githubState ?? 'OPEN', ...(placement ? { placement } : {}) })
 export const archiveIssue = (projectId: string, issue: LiveIssue) => mutate<void>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}?version=${issue.version}`, 'DELETE')
 export const restoreIssue = (projectId: string, issue: LiveIssue) => mutate<void>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}/restore?version=${issue.version}`, 'POST')
 export const syncIssues = (projectId: string) => mutate<{ collected: number; skippedRepositories: number; hasMore: boolean }>(`/api/projects/${encodeURIComponent(projectId)}/issues/sync`, 'POST')

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { CheckCircle2, Circle, CircleDashed, CircleDot, Clock3, Flag, GitPullRequest, Plus, UserRound } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { startOfWeek } from '../lib/work-weeks'
 import { members } from '@/data/mock'
 import type { Repo } from '@/data/mock'
 import { CURRENT_USER, issuePriorities, issueStatuses, issueSources, repositoryRef } from '@/data/work-items'
@@ -51,8 +52,9 @@ export function IssueEditor({ issue, repos, pullRequests, defaultRepo, onSave, o
   issue: Issue | null; repos: Repo[]; pullRequests: PullRequest[]; defaultRepo: string;
   onSave: (issue: Omit<Issue, 'id'>) => void; onCancel: () => void; onViewPr: (pr: PullRequest) => void;
 }) {
+  const [editorParams] = useSearchParams()
   const [form, setForm] = useState<Omit<Issue, 'id'>>(() => issue ?? {
-    title: '', description: '', status: 'backlog', priority: 'medium', assignee: '',
+    plannedWeekStart: startOfWeek(editorParams.get('week') ?? undefined), title: '', description: '', status: 'todo', priority: 'medium', assignee: '',
     repo: repos.some(repo => repo.id === defaultRepo) ? defaultRepo : repos[0]?.id ?? '', pullRequestIds: [], source: 'daily', meetingDate: '2026-10-27', acceptanceCriteria: '',
   })
   function submit(event: FormEvent) {
@@ -67,6 +69,7 @@ export function IssueEditor({ issue, repos, pullRequests, defaultRepo, onSave, o
     <label>완료 조건<textarea rows={2} maxLength={2000} placeholder="무엇을 확인하면 이 작업이 끝났다고 할 수 있나요?" value={form.acceptanceCriteria ?? ''} onChange={event => setForm({ ...form, acceptanceCriteria: event.target.value })} /></label>
     <div className="issue-fields"><label>작업이 나온 곳<select value={form.source ?? 'request'} onChange={event => setForm({ ...form, source: event.target.value as IssueSource })}>{Object.entries(issueSources).filter(([value]) => value !== 'github' || form.source === 'github').map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{['daily', 'weekly'].includes(form.source ?? '') && <label>회의 날짜<input type="date" required value={form.meetingDate ?? '2026-10-27'} onChange={event => setForm({ ...form, meetingDate: event.target.value })} /></label>}<label>상태<select value={form.status} onChange={event => setForm({ ...form, status: event.target.value as IssueStatus })}>{Object.entries(issueStatuses).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
     <label>우선순위<select value={form.priority} onChange={event => setForm({ ...form, priority: event.target.value as Issue['priority'] })}>{Object.entries(issuePriorities).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
+    <label>계획 주차<input type="date" value={form.plannedWeekStart ?? startOfWeek(form.meetingDate)} onChange={event => { if (event.target.value) setForm({ ...form, plannedWeekStart: startOfWeek(event.target.value) }) }} /></label>
     <label>담당자<select value={form.assignee} onChange={event => setForm({ ...form, assignee: event.target.value })}><option value="">미지정</option>{members.map(member => <option key={member.name}>{member.name}</option>)}</select></label>
     <label>연결 저장소<select value={form.repo} onChange={event => setForm({ ...form, repo: event.target.value, pullRequestIds: [] })}>{repos.map(repo => <option key={repo.id} value={repo.id}>{repo.name}</option>)}</select></label></div>
     <fieldset className="issue-pr-links"><legend>이 이슈를 해결하는 PR</legend>{pullRequests.filter(pr => pr.repo === form.repo).map(pr => <div className="issue-pr-option" key={pr.id}><label><input type="checkbox" checked={form.pullRequestIds.includes(pr.id)} onChange={() => setForm({ ...form, pullRequestIds: form.pullRequestIds.includes(pr.id) ? form.pullRequestIds.filter(id => id !== pr.id) : [...form.pullRequestIds, pr.id] })} /><span><strong>#{pr.number} {pr.title}</strong><small>{pr.branch} · {pr.status === 'merged' ? '병합됨' : pr.status === 'draft' ? '초안' : '열림'}</small></span></label>{issue && issue.pullRequestIds.includes(pr.id) && <button type="button" className="subtle-link" onClick={() => onViewPr(pr)}>PR 보기</button>}</div>)}{!pullRequests.some(pr => pr.repo === form.repo) && <p className="help-text">이 저장소에는 연결할 샘플 PR이 없어요.</p>}</fieldset>

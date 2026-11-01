@@ -255,6 +255,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     await user.selectOptions(within(editor).getByLabelText('담당자'), '박지훈')
     await user.type(within(editor).getByLabelText('완료 조건'), '팀이 검색 응답 시간을 확인할 수 있다.')
     await user.click(within(editor).getByRole('button', { name: '이슈 만들기' }))
+    await user.click(screen.getByRole('button', { name: '목록', exact: true }))
     const issueRow = screen.getByRole('button', { name: /ZELLO-46.*검색 시간 확인 기능/ }).closest('tr')!
     expect(within(issueRow).getByText(/zello-api#88.*주간 회의/)).toBeInTheDocument()
     expect(within(issueRow).getByText('박지훈')).toBeInTheDocument()
@@ -314,8 +315,8 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     localStorage.setItem('gyeol.issues.v1', JSON.stringify([{ id: 'ZELLO-44', title: '회의에서 수정한 작업', description: '기존 설명', repo: 'api', assignee: '김서연', priority: 'high', status: 'todo', pullRequestIds: [] }]))
     mount('/issues')
     const row = screen.getByRole('button', { name: /ZELLO-44.*회의에서 수정한 작업/ })
-    expect(row).toHaveTextContent('zello-api')
-    expect(row).not.toHaveTextContent('#132')
+    expect(row.closest('article')).toHaveTextContent('zello-api')
+    expect(row.closest('article')).not.toHaveTextContent('#132')
     await user.click(row)
     const editor = screen.getByRole('dialog', { name: '이슈 상세' })
     expect(within(editor).getByLabelText('담당자')).toHaveValue('김서연')

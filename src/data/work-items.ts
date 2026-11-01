@@ -19,6 +19,9 @@ export type Issue = {
   source?: IssueSource
   meetingDate?: string
   acceptanceCriteria?: string
+  plannedWeekStart?: string
+  completedAt?: string | null
+  boardOrder?: number
 }
 export type PullRequest = {
   id: string
