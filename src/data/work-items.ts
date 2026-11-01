@@ -30,7 +30,8 @@ export type PullRequest = {
   branch: string
   base: string
   status: 'open' | 'merged' | 'closed' | 'draft'
-  review: 'pending' | 'approved' | 'changes_requested'
+  /** unknown은 열려 있을 때 리뷰를 수집한 적이 없는 PR(처음부터 닫힌 채 수집됨, 초안 등). */
+  review: 'pending' | 'approved' | 'changes_requested' | 'unknown'
   checks: 'passing' | 'failing' | 'running' | 'unknown'
   summary?: string
   reviewers?: string[]
@@ -87,11 +88,12 @@ export function hydratePullRequest(pr: PullRequest): PullRequest {
 // repo에는 저장소 이름을 넣는다. repositoryRef가 목록에서 못 찾으면 이름 그대로 표시한다.
 export function fromServerPullRequest(item: PullRequestItem, projectId?: string): PullRequest {
   const status = item.state === 'MERGED' ? 'merged' : item.state === 'CLOSED' ? 'closed' : item.draft ? 'draft' : 'open'
-  const review = item.reviewDecision === 'APPROVED' ? 'approved' : item.reviewDecision === 'CHANGES_REQUESTED' ? 'changes_requested' : 'pending'
+  const review = item.reviewDecision === 'APPROVED' ? 'approved' : item.reviewDecision === 'CHANGES_REQUESTED' ? 'changes_requested'
+    : item.reviewDecision === 'PENDING' ? 'pending' : 'unknown'
   return {
     id: item.id, number: item.number, repo: item.repositoryName, title: item.title, author: item.author?.login ?? '알 수 없음',
     branch: item.headBranch, base: item.baseBranch, status, review, checks: 'unknown', summary: item.teamSummary ?? undefined,
-    url: item.url, live: true, projectId,
+    reviewers: item.reviewers.map(reviewer => reviewer.login), url: item.url, live: true, projectId,
   }
 }
 export function needsMyReview(pr: PullRequest) {

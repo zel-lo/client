@@ -17,6 +17,7 @@ export function useLivePullRequests(enabled: boolean, pathname: string, userId?:
   const [project, setProject] = useState<Project | null>(null)
   const [all, setAll] = useState<PullRequestPage | null>(null)
   const [mine, setMine] = useState<PullRequestPage | null>(null)
+  const [requested, setRequested] = useState<PullRequestPage | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [reauth, setReauth] = useState(false)
@@ -35,19 +36,20 @@ export function useLivePullRequests(enabled: boolean, pathname: string, userId?:
       if (pending.signal.aborted) return
       setProjects(projects)
       if (current) { preferred.current = current.id; if (userId) rememberProjectForUser(userId, current.id) }
-      if (projectId.current !== current?.id) { setAll(null); setMine(null); setLoadedAt(null) }
+      if (projectId.current !== current?.id) { setAll(null); setMine(null); setRequested(null); setLoadedAt(null) }
       projectId.current = current?.id ?? null
       setProject(current)
-      if (!current) { setAll(null); setMine(null); setError(''); return }
-      const [everything, authored] = await Promise.all([
+      if (!current) { setAll(null); setMine(null); setRequested(null); setError(''); return }
+      const [everything, authored, reviewing] = await Promise.all([
         listPullRequests(current.id, { state: 'all' }, pending.signal),
         listPullRequests(current.id, { state: 'open', author: 'me' }, pending.signal),
+        listPullRequests(current.id, { state: 'open', reviewer: 'me' }, pending.signal),
       ])
       if (pending.signal.aborted) return
-      setAll(everything); setMine(authored); setError(''); setReauth(false); setLoadedAt(new Date())
+      setAll(everything); setMine(authored); setRequested(reviewing); setError(''); setReauth(false); setLoadedAt(new Date())
     } catch (cause) {
       if (pending.signal.aborted) return
-      setAll(null); setMine(null); setLoadedAt(null)
+      setAll(null); setMine(null); setRequested(null); setLoadedAt(null)
       if (cause instanceof ProjectApiError && ['PROJECT_NOT_FOUND', ...reauthCodes].includes(cause.code)) {
         setProject(null); projectId.current = null
       }
@@ -63,7 +65,7 @@ export function useLivePullRequests(enabled: boolean, pathname: string, userId?:
   useEffect(() => {
     if (!enabled) {
       controller.current?.abort()
-      setProjects([]); setProject(null); setAll(null); setMine(null); setError(''); setLoading(false); projectId.current = null
+      setProjects([]); setProject(null); setAll(null); setMine(null); setRequested(null); setError(''); setLoading(false); projectId.current = null
       return
     }
     preferred.current = preferredProject(userId)
@@ -91,13 +93,14 @@ export function useLivePullRequests(enabled: boolean, pathname: string, userId?:
 
   const pullRequests = useMemo<PullRequest[]>(() => all?.items.map(item => fromServerPullRequest(item, project?.id)) ?? [], [all, project])
   const authored = useMemo<PullRequest[]>(() => mine?.items.map(item => fromServerPullRequest(item, project?.id)) ?? [], [mine, project])
+  const reviews = useMemo<PullRequest[]>(() => requested?.items.map(item => fromServerPullRequest(item, project?.id)) ?? [], [requested, project])
   return {
     active: enabled && project !== null, project, projects, selectProject: (id: string) => {
       if (!projects.some(item => item.id === id) || projectId.current === id) return
       controller.current?.abort(); preferred.current = id; projectId.current = null
-      setProject(null); setAll(null); setMine(null); setLoadedAt(null); setLoading(true)
+      setProject(null); setAll(null); setMine(null); setRequested(null); setLoadedAt(null); setLoading(true)
       if (userId) selectProjectForUser(userId, id); else void load()
-    }, pullRequests, authored, loading: loading && !all, error, reauth, loadedAt, sync, reload: load,
+    }, pullRequests, authored, reviews, reviewCount: requested?.counts.open ?? 0, loading: loading && !all, error, reauth, loadedAt, sync, reload: load,
     openCount: all?.counts.open ?? 0, authoredCount: mine?.counts.open ?? 0, hasMore: Boolean(all?.hasNext),
   }
 }

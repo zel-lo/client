@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, GitBranch } from 'lucide-react'
-import { createPullRequest, listBranches, listConnectedRepositories, ProjectApiError } from '../lib/project-api'
-import type { BranchList, ConnectedRepository, PullRequestItem } from '../lib/project-api'
+import { createPullRequest, listBranches, listConnectedRepositories, listReviewerCandidates, ProjectApiError } from '../lib/project-api'
+import type { BranchList, ConnectedRepository, PullRequestItem, ReviewerCandidates } from '../lib/project-api'
+import { MarkdownEditor } from './markdown'
 
 const unknownOutcome = 'GITHUB_RESULT_UNKNOWN'
 
@@ -19,6 +20,10 @@ export function CreateLivePullRequest({ projectId, onCreated, onCancel }: {
   const [base, setBase] = useState('')
   const [title, setTitle] = useState('')
   const [summary, setSummary] = useState('')
+  const [body, setBody] = useState('')
+  const [candidates, setCandidates] = useState<ReviewerCandidates | null>(null)
+  const [candidateError, setCandidateError] = useState('')
+  const [reviewers, setReviewers] = useState<string[]>([])
   const [isDraft, setIsDraft] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -45,14 +50,28 @@ export function CreateLivePullRequest({ projectId, onCreated, onCancel }: {
     return () => controller.abort()
   }, [projectId, repoId])
 
+  // 리뷰어는 선택 항목이라, 후보를 못 불러와도 PR 작성은 막지 않는다.
+  useEffect(() => {
+    if (!repoId) return
+    const controller = new AbortController()
+    setCandidates(null); setReviewers([]); setCandidateError('')
+    listReviewerCandidates(projectId, repoId, controller.signal).then(setCandidates)
+      .catch(() => { if (!controller.signal.aborted) setCandidateError('리뷰어 후보를 불러오지 못했어요. 리뷰어 없이 만들 수 있어요.') })
+    return () => controller.abort()
+  }, [projectId, repoId])
+
+  function toggleReviewer(login: string) {
+    setReviewers(current => current.includes(login) ? current.filter(item => item !== login) : [...current, login])
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault()
     if (!valid || busy) return
     setBusy(true); setError('')
     try {
       onCreated(await createPullRequest(projectId, {
-        repositoryId: repoId, title: title.trim(), headBranch: head, baseBranch: base, teamSummary: summary.trim(), draft: isDraft,
-        requestKey: requestKey.current,
+        repositoryId: repoId, title: title.trim(), headBranch: head, baseBranch: base, teamSummary: summary.trim(), body: body.trim(),
+        draft: isDraft, requestKey: requestKey.current, reviewers,
       }))
     } catch (cause) {
       if (!(cause instanceof ProjectApiError && cause.code === unknownOutcome)) requestKey.current = crypto.randomUUID()
@@ -72,8 +91,16 @@ export function CreateLivePullRequest({ projectId, onCreated, onCancel }: {
     {branches?.hasMore && <p className="help-text">브랜치가 많아 일부만 보여요. 목록에 없는 브랜치는 GitHub에서 직접 PR을 만들어 주세요.</p>}
     {branches && !headOptions.length && <p className="help-text">PR로 만들 수 있는 다른 브랜치가 없어요. 먼저 브랜치를 만들어 푸시해 주세요.</p>}
     <label>팀을 위한 변경 요약<textarea required rows={3} maxLength={3000} value={summary} disabled={busy} onChange={event => setSummary(event.target.value)} placeholder="무엇을 바꿨고, 사용자가 어떤 차이를 확인할 수 있나요?" /></label>
+    <MarkdownEditor label="GitHub PR 본문" optional value={body} onChange={setBody} disabled={busy} maxLength={60000} placeholder="리뷰어가 볼 구현 내용, 테스트 방법 등을 적어주세요. GitHub에 그대로 올라가요." />
+    <fieldset className="reviewer-options" disabled={busy}><legend>리뷰어 <span className="optional">선택</span></legend>
+      {!candidates && !candidateError && repoId && <p className="help-text">리뷰어 후보를 불러오는 중…</p>}
+      {candidateError && <p className="help-text">{candidateError}</p>}
+      {candidates && !candidates.users.length && <p className="help-text">지정할 수 있는 사람이 없어요. 저장소에 협업자를 추가하면 여기에 나타나요.</p>}
+      {candidates && candidates.users.length > 0 && <div>{candidates.users.map(user => <label key={user.login}><input type="checkbox" checked={reviewers.includes(user.login)} onChange={() => toggleReviewer(user.login)} />{user.login}</label>)}</div>}
+      {candidates?.hasMore && <p className="help-text">사람이 많아 일부만 보여요.</p>}
+    </fieldset>
     <label className="inline-checkbox"><input type="checkbox" checked={isDraft} disabled={busy} onChange={event => setIsDraft(event.target.checked)} />아직 작업 중이에요 · 초안으로 등록</label>
-    <p className="help-text"><GitBranch size={12} />위 요약은 GitHub PR 본문으로 들어가요. 해결할 이슈 연결은 이슈 기능이 준비되면 추가됩니다.</p>
+    <p className="help-text"><GitBranch size={12} />변경 요약은 zello에서만, GitHub PR 본문은 GitHub에 저장돼요. 해결할 이슈 연결은 이슈 기능이 준비되면 추가됩니다.</p>
     {error && <p className="form-error" role="alert">{error}</p>}
     <div className="form-actions"><span className="help-text">제출하면 GitHub에 실제 PR이 만들어져요.</span><button type="button" className="button" onClick={onCancel}>취소</button><button className="button button-dark" disabled={!valid || busy} type="submit">{busy ? '만드는 중…' : isDraft ? 'PR 초안 등록' : '코드 검토 요청'}<ArrowRight size={14} /></button></div>
   </form>
