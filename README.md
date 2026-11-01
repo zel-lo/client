@@ -23,6 +23,10 @@ npm run preview
 
 정적 빌드 결과는 `dist/`에 생성됩니다.
 
+## CI와 컨테이너 이미지 배포
+
+`main` 대상 PR과 `main` push에서 GitHub Actions가 테스트·빌드와 Docker 검증을 실행합니다. `main`에서는 검증을 통과한 이미지를 GHCR에 업로드합니다. 실행 방법과 운영 배포 범위는 [CI_CD.md](CI_CD.md)를 참고하세요.
+
 ## 주요 화면
 
 - 메인 소개: `/#/`, GitHub 로그인: `/#/login`, 회원가입: `/#/signup`
