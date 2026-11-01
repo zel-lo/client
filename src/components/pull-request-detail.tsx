@@ -28,6 +28,10 @@ export function PullRequestDetail({ pr, repos, issues, onViewIssue, canEdit = fa
   const detail = loaded?.id === pr.id ? loaded : null
   const githubBody = detail?.body?.trim() ?? ''
   const activity = activities.find(item => item.id === pr.activityId)
+  // 실제 PR은 상세를 열 때 서버가 GitHub에서 받아 온 값을 쓴다.
+  const stats = pr.live
+    ? detail?.changedFiles != null ? { files: detail.changedFiles, additions: detail.additions ?? 0, deletions: detail.deletions ?? 0 } : null
+    : activity ? { files: activity.files, additions: activity.additions, deletions: activity.deletions } : null
   // 실제 PR은 zello의 팀 요약만 보여준다. GitHub 본문으로 대신 채우지 않는다.
   const summary = pr.live ? (detail ? detail.teamSummary ?? '' : pr.summary ?? '') : pr.summary || activity?.summary || ''
   const reviewers = detail ? detail.reviewers.map(item => item.login) : pr.reviewers ?? []
@@ -57,8 +61,9 @@ export function PullRequestDetail({ pr, repos, issues, onViewIssue, canEdit = fa
     </section>
     {githubBody && <section className="detail-summary detail-github-body" aria-label="GitHub PR 본문"><span className="eyebrow">GitHub PR 본문</span><MarkdownView source={githubBody} /></section>}
     {pr.live && pr.url && <p className="help-text"><ExternalLink size={12} />제목·본문·리뷰어는 <a className="subtle-link" href={pr.url} target="_blank" rel="noopener noreferrer">GitHub에서 수정</a>할 수 있어요.</p>}
-    {activity && <div className="diff-summary" aria-label="변경 파일 요약"><div><strong>{activity.files}</strong><span>변경 파일</span></div><div><strong className="diff-add">+{activity.additions}</strong><span>추가한 줄</span></div><div><strong className="diff-delete">−{activity.deletions}</strong><span>삭제한 줄</span></div></div>}
-    {!activity && <p className="help-text"><FileText size={12} />{pr.live ? '변경 파일 정보는 아직 수집하지 않아요. GitHub에서 확인해 주세요.' : '파일별 변경 내용은 실제 GitHub 연결 후 수집됩니다.'}</p>}
+    {stats && <div className="diff-summary" aria-label="변경 파일 요약"><div><strong>{stats.files.toLocaleString()}</strong><span>변경 파일</span></div><div><strong className="diff-add">+{stats.additions.toLocaleString()}</strong><span>추가한 줄</span></div><div><strong className="diff-delete">−{stats.deletions.toLocaleString()}</strong><span>삭제한 줄</span></div></div>}
+    {!stats && <p className="help-text"><FileText size={12} />{!pr.live ? '파일별 변경 내용은 실제 GitHub 연결 후 수집됩니다.' : detail ? '변경 규모를 GitHub에서 받지 못했어요. GitHub에서 확인해 주세요.' : '변경 규모를 불러오는 중…'}</p>}
+    {stats && pr.live && pr.url && <p className="help-text"><FileText size={12} />파일별 변경 내용은 <a className="subtle-link" href={`${pr.url}/files`} target="_blank" rel="noopener noreferrer">GitHub에서</a> 확인할 수 있어요.</p>}
     <dl className="detail-properties"><div><dt>리뷰어</dt><dd>{reviewers.length ? reviewers.join(', ') : '지정되지 않았어요'}</dd></div><div><dt>코드 검토</dt><dd>{reviewSummary(pr)}</dd></div><div><dt>CI 검사</dt><dd className={`check-state check-${pr.checks}`}>{checkLabels[pr.checks]}</dd></div><div><dt>코드 병합</dt><dd>{pr.status === 'merged' ? <><CheckCircle2 size={13} />기본 브랜치에 반영됨</> : '아직 병합되지 않았어요'}</dd></div><div><dt>서비스 배포</dt><dd>{pr.live ? '수집 전' : activity?.deployed ? '배포 완료' : '아직 배포되지 않았어요'}</dd></div></dl>
     <div className="pr-linked-issues"><h3>이 변경으로 해결하는 이슈</h3>{linked.map(issue => <button className="command-item" key={issue.id} onClick={() => onViewIssue(issue)}><CircleDot size={14} /><span><small>{issue.id} · {repositoryRef(issue.repo, issue.githubNumber, repos, issue.id)} · {issue.assignee || '담당자 미지정'}</small>{issue.title}</span><ChevronRight size={14} /></button>)}{!linked.length && <p className="help-text">연결된 이슈가 없어요. 할 일 상세에서 이 PR을 연결해 주세요.</p>}</div><p className="work-demo-note">검토·CI·병합·배포는 서로 다른 상태입니다. {pr.live ? 'CI와 배포 상태는 아직 수집하지 않아요.' : '현재 표시되는 정보는 목데이터예요.'}</p>
   </div>
