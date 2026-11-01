@@ -36,7 +36,7 @@ const page = (items: PullRequestItem[], path = ''): PullRequestPage => {
 const connectedRepo = { id: '40', projectId: '7', githubRepositoryId: '30', installationId: null, owner: 'sinheyy', name: 'zello-test', htmlUrl: 'https://github.com/sinheyy/zello-test', description: null, language: null, defaultBranch: 'main', privateRepository: false, status: 'CONNECTED', initialSyncCompleted: false }
 type CreateFailure = { status: number; code: string; message: string }
 
-function backend({ projects = [project], everything = [pull('1', 1), pull('2', 2, { author: { login: 'other', avatarUrl: null }, draft: true }), pull('3', 3, { state: 'MERGED', mergedAt: '2026-10-30T00:00:00Z' })], mine = [pull('1', 1)], requested = [pull('4', 4, { author: { login: 'teammate', avatarUrl: null } })], failure = '', createFailures = [] as CreateFailure[], detailBody = 'GitHub에 적은 본문\n두 번째 줄', detailStats = { changedFiles: 4, additions: 1200, deletions: 35 } as Partial<PullRequestItem>, createWarning = '' } = {}) {
+function backend({ projects = [project], everything = [pull('1', 1), pull('2', 2, { author: { login: 'other', avatarUrl: null }, draft: true }), pull('3', 3, { state: 'MERGED', mergedAt: '2026-10-30T00:00:00Z' })], mine = [pull('1', 1)], requested = [pull('4', 4, { author: { login: 'teammate', avatarUrl: null } })], failure = '', createFailures = [] as CreateFailure[], detailBody = 'GitHub에 적은 본문\n두 번째 줄', detailStats = { changedFiles: 4, additions: 1200, deletions: 35 } as Partial<PullRequestItem>, createWarning = '', detailActions = undefined as PullRequestItem['actions'], mergeFailure = '' } = {}) {
   const fetcher = vi.fn(async (path: string, init?: RequestInit) => {
     if (path === '/api/me') return Response.json(user)
     if (path === '/api/projects') return Response.json(projects)
@@ -53,11 +53,18 @@ function backend({ projects = [project], everything = [pull('1', 1), pull('2', 2
       if (rejected) return Response.json({ code: rejected.code, message: rejected.message }, { status: rejected.status })
       return Response.json({ ...pull('9', 9), ...(createWarning ? { warning: createWarning } : {}) }, { status: 201 })
     }
+    if (path.endsWith('/reviews') && init?.method === 'POST') {
+      return Response.json({ ...pull('1', 1), reviewDecision: 'CHANGES_REQUESTED', body: detailBody, actions: { canReview: true, canMerge: false, mergeState: 'blocked' } })
+    }
+    if (path.endsWith('/merge') && init?.method === 'POST') {
+      if (mergeFailure) return Response.json({ code: 'PULL_REQUEST_HEAD_CHANGED', message: mergeFailure }, { status: 409 })
+      return Response.json({ ...pull('1', 1), state: 'MERGED', mergedAt: '2026-11-01T00:00:00Z', body: detailBody, actions: { canReview: false, canMerge: false } })
+    }
     if (/\/pull-requests\/\d+$/.test(path) && init?.method === 'PATCH') {
       const sent = JSON.parse(init.body as string) as { teamSummary: string; version: number }
       return Response.json({ ...pull(path.split('/').pop()!, 1), teamSummary: sent.teamSummary || null, version: sent.version + 1, body: detailBody })
     }
-    if (/\/pull-requests\/\d+$/.test(path)) return Response.json({ ...pull(path.split('/').pop()!, 1), reviewers: [{ login: 'teammate', avatarUrl: null }], ...detailStats, body: detailBody })
+    if (/\/pull-requests\/\d+$/.test(path)) return Response.json({ ...(everything.find(item => item.id === path.split('/').pop()) ?? pull(path.split('/').pop()!, 1)), reviewers: [{ login: 'teammate', avatarUrl: null }], ...detailStats, body: detailBody, ...(detailActions ? { actions: detailActions } : {}) })
     if (path.includes('/pull-requests?') && path.includes('reviewer=me')) return Response.json(page(requested))
     if (path.includes('/pull-requests?') && path.includes('author=me')) return Response.json(page(mine))
     if (path.includes('/pull-requests?')) return Response.json(page(everything, path))
@@ -152,6 +159,86 @@ describe('실제 PR 연결', () => {
     expect(reviewSummary({ status: 'closed', review: 'unknown' })).toBe('병합하지 않고 닫힘')
     expect(reviewSummary({ status: 'open', review: 'pending' })).toBe('검토 대기')
     expect(reviewSummary({ status: 'draft', review: 'unknown' })).toBe('초안 · 아직 검토 요청 전')
+  })
+
+  it('리뷰어는 상세에서 수정 요청을 의견과 함께 제출하고, 병합할 수 없는 사유를 본다', async () => {
+    const fetcher = backend({ detailActions: { canReview: true, canMerge: false, mergeState: 'blocked', headSha: 'a'.repeat(40) } })
+    mount('/pull-requests')
+    const control = userEvent.setup()
+    await control.click(await screen.findByRole('button', { name: /실제 PR 1/ }))
+    const drawer = screen.getByRole('dialog', { name: 'Pull request 상세' })
+    const form = await within(drawer).findByRole('region', { name: '리뷰 남기기' })
+    await control.click(within(form).getByRole('radio', { name: /^수정 요청/ }))
+    const submit = within(form).getByRole('button', { name: '리뷰 제출' })
+    expect(submit).toBeDisabled()
+    await control.type(within(form).getByRole('textbox', { name: /리뷰 의견/ }), '변수 이름을 바꿔 주세요')
+    await control.click(submit)
+    expect(await within(form).findByText('수정 요청 리뷰를 GitHub에 남겼어요.')).toBeInTheDocument()
+    expect(fetcher).toHaveBeenCalledWith('/api/projects/7/pull-requests/1/reviews', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ event: 'REQUEST_CHANGES', body: '변수 이름을 바꿔 주세요' }),
+    }))
+    expect(within(drawer).getByText('코드 검토').nextElementSibling).toHaveTextContent('수정 요청')
+    const merge = within(drawer).getByRole('region', { name: '병합' })
+    expect(within(merge).getByText(/브랜치 보호 규칙을 아직 충족하지 않았어요/)).toBeInTheDocument()
+    expect(within(merge).getByRole('button', { name: '병합하기' })).toBeDisabled()
+    expect(within(merge).getByRole('link', { name: 'GitHub에서 확인' })).toHaveAttribute('href', 'https://github.com/sinheyy/zello-test/pull/1')
+  })
+
+  it('승인은 의견 없이 제출하고, 병합 상태를 계산 중이면 다시 확인할 수 있다', async () => {
+    const fetcher = backend({ detailActions: { canReview: true, canMerge: false, mergeState: 'unknown' } })
+    mount('/pull-requests')
+    const control = userEvent.setup()
+    await control.click(await screen.findByRole('button', { name: /실제 PR 1/ }))
+    const drawer = screen.getByRole('dialog', { name: 'Pull request 상세' })
+    const form = await within(drawer).findByRole('region', { name: '리뷰 남기기' })
+    const detailCalls = () => fetcher.mock.calls.filter(([path]) => path === '/api/projects/7/pull-requests/1').length
+    const before = detailCalls()
+    await control.click(within(drawer).getByRole('button', { name: '다시 확인' }))
+    await waitFor(() => expect(detailCalls()).toBe(before + 1))
+    await control.click(within(form).getByRole('button', { name: '리뷰 제출' }))
+    await waitFor(() => expect(fetcher).toHaveBeenCalledWith('/api/projects/7/pull-requests/1/reviews', expect.objectContaining({
+      body: JSON.stringify({ event: 'APPROVE', body: null }),
+    })))
+  })
+
+  it('리뷰어가 아니면 리뷰 영역 없이 병합 상태만 보인다', async () => {
+    backend({ detailActions: { canReview: false, canMerge: false, mergeState: 'dirty' } })
+    mount('/pull-requests')
+    await userEvent.setup().click(await screen.findByRole('button', { name: /실제 PR 1/ }))
+    const drawer = screen.getByRole('dialog', { name: 'Pull request 상세' })
+    const merge = await within(drawer).findByRole('region', { name: '병합' })
+    expect(within(merge).getByText(/충돌이 있어요/)).toBeInTheDocument()
+    expect(within(drawer).queryByRole('region', { name: '리뷰 남기기' })).not.toBeInTheDocument()
+  })
+
+  it('충돌 없는 PR은 확인 후 화면을 연 시점의 커밋으로 병합한다', async () => {
+    const fetcher = backend({ detailActions: { canReview: false, canMerge: true, mergeState: 'clean', headSha: 'a'.repeat(40) } })
+    mount('/pull-requests')
+    const control = userEvent.setup()
+    await control.click(await screen.findByRole('button', { name: /실제 PR 1/ }))
+    const drawer = screen.getByRole('dialog', { name: 'Pull request 상세' })
+    const merge = await within(drawer).findByRole('region', { name: '병합' })
+    expect(within(merge).queryByRole('link', { name: 'GitHub에서 확인' })).not.toBeInTheDocument()
+    await control.click(within(merge).getByRole('button', { name: '병합하기' }))
+    expect(within(merge).getByText(/브랜치는 삭제하지 않아요/)).toBeInTheDocument()
+    await control.click(within(merge).getByRole('button', { name: '병합 확인' }))
+    await waitFor(() => expect(within(drawer).queryByRole('region', { name: '병합' })).not.toBeInTheDocument())
+    expect(fetcher).toHaveBeenCalledWith('/api/projects/7/pull-requests/1/merge', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ sha: 'a'.repeat(40) }),
+    }))
+    expect(within(drawer).getByText('기본 브랜치에 반영됨')).toBeInTheDocument()
+  })
+
+  it('병합이 거절되면 사유를 보여주고 다시 시도할 수 있다', async () => {
+    backend({ detailActions: { canReview: false, canMerge: true, mergeState: 'clean', headSha: 'a'.repeat(40) }, mergeFailure: 'PR에 새 커밋이 올라왔어요.' })
+    mount('/pull-requests')
+    const control = userEvent.setup()
+    await control.click(await screen.findByRole('button', { name: /실제 PR 1/ }))
+    const merge = await within(screen.getByRole('dialog', { name: 'Pull request 상세' })).findByRole('region', { name: '병합' })
+    await control.click(within(merge).getByRole('button', { name: '병합하기' }))
+    await control.click(within(merge).getByRole('button', { name: '병합 확인' }))
+    expect(await within(merge).findByRole('alert')).toHaveTextContent('PR에 새 커밋이 올라왔어요.')
+    expect(within(merge).getByRole('button', { name: '병합하기' })).toBeEnabled()
   })
 
   it('승인받고 병합된 PR 상세는 검토 대기가 아니라 승인 후 병합으로 보인다', async () => {

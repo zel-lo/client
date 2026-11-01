@@ -473,7 +473,7 @@ h1 { font-size: 29px; line-height: 1.4; font-weight: 700; letter-spacing: -.9px;
 .dialog-form > p { font-size: 12px; color: var(--muted-foreground); line-height: 1.9; margin: 10px 0 23px; }
 .form-hero-icon { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; margin-bottom: 18px; }
 .dialog-form > label, .settings-form > label, .settings-columns label, .note-edit label { display: block; font-size: 13px; line-height: 1.5; color: var(--text-secondary); font-weight: 500; margin-top: 24px; }
-input:not([type='checkbox']), textarea, .settings-form select { width: 100%; min-height: 48px; background: var(--control-bg); color: var(--foreground); border: 1px solid transparent; border-radius: var(--control-radius); padding: 13px 15px; font-size: 14px; margin-top: 9px; box-shadow: none; transition: background-color .16s, border-color .16s, box-shadow .16s; }
+input:not([type='checkbox']):not([type='radio']), textarea, .settings-form select { width: 100%; min-height: 48px; background: var(--control-bg); color: var(--foreground); border: 1px solid transparent; border-radius: var(--control-radius); padding: 13px 15px; font-size: 14px; margin-top: 9px; box-shadow: none; transition: background-color .16s, border-color .16s, box-shadow .16s; }
 input::placeholder, textarea::placeholder { color: var(--subtle-foreground); }
 input[readonly] { background: var(--surface); color: var(--muted-foreground); }
 input[aria-invalid='true'] { border-color: var(--git-red); }
@@ -517,6 +517,22 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .detail-summary + .detail-github-body { margin-top: -12px; background: var(--card); }
 .summary-editor .form-error { color: var(--git-red); font-size: 11px; margin: 10px 0 0; }
 .summary-editor .form-actions { margin-top: 12px; padding-top: 0; border-top: 0; }
+.pr-action .form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 14px; padding-top: 0; border-top: 0; }
+.pr-action .form-actions .button { display: inline-flex; align-items: center; gap: 6px; }
+.pr-action .form-error { color: var(--git-red); font-size: 11px; margin: 10px 0 0; }
+.pr-action .form-success { color: var(--git-green); font-size: 11px; margin: 10px 0 0; }
+.review-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; min-width: 0; margin: 12px 0; border: 0; padding: 0; }
+.review-options legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.review-options label { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--card); cursor: pointer; }
+.review-options label.selected { border-color: var(--foreground); }
+.review-options label span { display: grid; gap: 2px; }
+.review-options strong { font-size: 12px; font-weight: 600; }
+.review-options small { font-size: 11px; color: var(--muted-foreground); line-height: 1.5; }
+.review-options input[type='radio'] { width: 14px; height: 14px; margin: 2px 0 0; accent-color: var(--primary); flex-shrink: 0; }
+.detail-summary .merge-state { margin-top: 8px; font-size: 12px; line-height: 1.7; }
+.detail-summary .merge-state.merge-ready { color: var(--git-green); }
+.merge-confirm { margin-top: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--card); }
+.detail-summary .merge-confirm p { margin-top: 0; font-size: 12px; }
 /* GitHub 마크다운 스타일을 앱 색상 변수로 맞춘 것. 다크 모드에서도 같은 변수를 따른다. */
 .markdown-body { font-size: 13px; line-height: 1.75; color: var(--foreground); overflow-wrap: anywhere; margin-top: 10px; }
 .markdown-body > :first-child { margin-top: 0; }
