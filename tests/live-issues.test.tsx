@@ -24,6 +24,12 @@ function backend({ viewer = false, conflict = false, saved = [] as LiveIssue[], 
       if (failPublish && publishAttempts++ === 0) { rows = rows.map(row => ({ ...row, publishStatus: 'FAILED', lastPublishError: '저장소의 이슈 권한을 확인해 주세요.', version: row.version + 1 })); return Response.json({ code: 'GITHUB_ACCESS_RESTRICTED', message: '저장소의 이슈 권한을 확인해 주세요.' }, { status: 403 }) }
       rows = rows.map(row => ({ ...row, publishStatus: 'PUBLISHED', number: 7, url: 'https://github.com/team/server/issues/7', githubState: 'OPEN', version: row.version + 1 })); return Response.json(rows[0]) }
     if (input.startsWith('/api/projects/1/issues/20?') && init?.method === 'DELETE') { rows = rows.map(row => ({ ...row, archived: true })); return new Response(null, { status: 204 }) }
+    if (input === '/api/projects/1/issues/20/branch') {
+      const created = init?.method === 'POST' && !rows[0].workBranch
+      if (init?.method === 'POST') rows = rows.map(row => ({ ...row, workBranch: `feat/${row.number}`, workBranchBase: 'main', status: 'IN_PROGRESS', version: row.version + 1 }))
+      return Response.json({ repository: 'team/server', name: `feat/${rows[0].number}`, baseBranch: 'main', url: `https://github.com/team/server/tree/feat/${rows[0].number}`,
+        commands: `git fetch origin\ngit switch feat/${rows[0].number}`, ready: Boolean(rows[0].workBranch), created, issue: rows[0] })
+    }
     if (input === '/api/projects/1/issues/20') return Response.json(rows[0])
     if (input.startsWith('/api/projects/1/issues?')) {
       const params = new URL(input, 'http://local').searchParams
@@ -121,6 +127,24 @@ describe('실제 팀 작업', () => {
     expect(writes.map(([path]) => path)).toEqual(['/api/projects/1/issues', '/api/projects/1/issues/20/publish'])
     expect(JSON.parse(writes[1][1]!.body as string)).toEqual({ version: 0 })
   })
+  it('새 작업 등록 후 창이 닫혀도 카드에서 다시 열어 작업 브랜치를 준비한다', async () => {
+    const { fetcher, mount, notify } = backend(); mount(); const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: '새 작업 등록' }))
+    await user.type(screen.getByRole('textbox', { name: '작업 제목' }), '브랜치를 준비할 작업')
+    await user.click(screen.getByRole('button', { name: '저장하고 GitHub에 만들기' }))
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Z-unique을 등록하고 GitHub 이슈도 만들었어요.'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: /브랜치를 준비할 작업/ }))
+    const dialog = screen.getByRole('dialog', { name: '작업 상세' })
+    const start = within(dialog).getByRole('button', { name: '작업 시작' })
+    await waitFor(() => expect(start).toBeEnabled())
+    await user.click(start)
+    expect(await within(dialog).findByRole('button', { name: 'Git 명령어 복사' })).toBeInTheDocument()
+    expect(within(dialog).getByLabelText('작업 브랜치 전환 명령어')).toHaveTextContent('git switch feat/7')
+    expect(fetcher).toHaveBeenCalledWith('/api/projects/1/issues/20/branch', expect.objectContaining({ method: 'POST', body: JSON.stringify({ version: 1 }) }))
+    expect(within(dialog).getByRole('combobox', { name: '작업 상태' })).toHaveValue('IN_PROGRESS')
+  })
+
   it('GitHub 생성 실패는 로컬 작업을 보존해 토스트로 알리고, 카드에서 같은 작업을 다시 발행한다', async () => {
     const { fetcher, mount, notify } = backend({ failPublish: true }); mount(); const user = userEvent.setup()
     await screen.findByText('아직 표시할 작업이 없어요')

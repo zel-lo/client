@@ -120,6 +120,7 @@ export type IssueDetails = {
 export type LiveIssue = IssueDetails & {
   id: string; version: number; key: string; repositoryId: string; repositoryOwner: string; repositoryName: string
   number: number; url: string; githubState: 'OPEN' | 'CLOSED' | null; archived: boolean; publishStatus: 'LOCAL' | 'PENDING' | 'PUBLISHED' | 'FAILED' | 'UNKNOWN'; lastPublishError: string | null
+  workBranch?: string | null; workBranchBase?: string | null
   pullRequests?: LinkedPullRequest[]
   boardOrder?: number; completedAt?: string | null
 }
@@ -146,5 +147,16 @@ export async function changeIssuePullRequest(projectId: string, issue: LiveIssue
   const result = await mutate<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}/pull-requests/${encodeURIComponent(pullId)}?version=${issue.version}`, linked ? 'POST' : 'DELETE')
   window.dispatchEvent(new Event('zello:issues-updated'))
   window.dispatchEvent(new Event('zello:pull-requests-updated'))
+  return result
+}
+
+export type IssueWorkBranch = {
+  repository: string; name: string; baseBranch: string; url: string; commands: string; ready: boolean; created: boolean; issue: LiveIssue
+}
+export const getIssueWorkBranch = (projectId: string, issueId: string, signal?: AbortSignal) =>
+  json<IssueWorkBranch>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issueId)}/branch`, { signal })
+export async function startIssueWorkBranch(projectId: string, issue: LiveIssue) {
+  const result = await mutate<IssueWorkBranch>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}/branch`, 'POST', { version: issue.version })
+  window.dispatchEvent(new Event('zello:issues-updated'))
   return result
 }

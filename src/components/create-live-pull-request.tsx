@@ -48,10 +48,11 @@ export function CreateLivePullRequest({ projectId, initialIssue, onCreated, onCa
     setLoadingBranches(true); setBranches(null); setHead(''); setBase('')
     listBranches(projectId, repoId, controller.signal).then(list => {
       setBranches(list); setBase(list.defaultBranch)
+      if (initialIssue?.repositoryId === repoId && initialIssue.workBranch && initialIssue.workBranch !== list.defaultBranch && list.branches.includes(initialIssue.workBranch)) setHead(initialIssue.workBranch)
     }).catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : '브랜치를 불러오지 못했어요.') })
       .finally(() => { if (!controller.signal.aborted) setLoadingBranches(false) })
     return () => controller.abort()
-  }, [projectId, repoId])
+  }, [projectId, repoId, initialIssue?.workBranch])
 
   // 리뷰어는 선택 항목이라, 후보를 못 불러와도 PR 작성은 막지 않는다.
   useEffect(() => {

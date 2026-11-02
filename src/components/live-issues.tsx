@@ -1,3 +1,4 @@
+import { IssueWorkBranchPanel } from './issue-work-branch'
 import { IssuePullRequestLinks } from './issue-pr-links'
 import { MarkdownEditor } from './markdown'
 import { createPortal } from 'react-dom'
@@ -336,6 +337,7 @@ function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, pe
       {issue.url && <a className="button issue-meta-link" href={issue.url} target="_blank" rel="noopener noreferrer"><Github size={14} />GitHub에서 보기<ArrowUpRight size={13} /></a>}
     </div>}
     {!canWrite && <p className="help-text">조회 전용 멤버는 작업을 변경할 수 없어요.</p>}
+    {issue && <IssueWorkBranchPanel projectId={projectId} issue={issue} canWrite={canWrite} disabled={disabled || !!dirty || stale} onBusyChange={setBusy} onChanged={next => { setForm(detailsFor(next)); setGithubState(next.githubState); onChanged(next) }} />}
     <label>연결 저장소<select required value={repoId} disabled={disabled || !!issue} onChange={event => { setRepoId(event.target.value); setAssigneesPage(1); setAssignees([]); setForm(current => ({ ...current, assignee: null })) }}>{!repoId && <option value="">저장소 선택</option>}{repositories.map(repo => <option key={repo.id} value={repo.id}>{repo.owner}/{repo.name}</option>)}</select></label>
     {!repositories.length && <Link className="reference-link" to="/settings?tab=repositories">먼저 저장소 연결하기</Link>}
     <label>작업 제목<input autoFocus required maxLength={255} value={form.title} disabled={disabled} onChange={event => setForm({ ...form, title: event.target.value })} placeholder="어떤 작업을 할까요?" /></label>
@@ -351,7 +353,7 @@ function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, pe
     <p className="help-text">이 저장소에 이슈를 배정할 수 있는 프로젝트 멤버만 표시해요. 회의 내용은 zello에 보관하고, 발행할 때 우선순위 라벨도 자동으로 준비해요.</p>
     {issue?.publishStatus === 'PUBLISHED' && <label>GitHub 이슈 상태<select value={githubState ?? 'OPEN'} disabled={disabled} onChange={event => { const state = event.target.value as 'OPEN' | 'CLOSED'; setGithubState(state); setForm({ ...form, status: state === 'CLOSED' ? 'DONE' : form.status === 'DONE' ? 'TODO' : form.status }) }}><option value="OPEN">열림</option><option value="CLOSED">닫힘 · 완료</option></select></label>}
     {issue && <IssuePullRequestLinks projectId={projectId} issue={issue} canWrite={canWrite} disabled={disabled || !!dirty} onBusyChange={setBusy} onChanged={next => { setForm(detailsFor(next)); setGithubState(next.githubState); onChanged(next) }} />}
-    {dirty && <p className="help-text">수정한 내용을 먼저 저장하면 PR을 연결할 수 있어요.</p>}
+    {dirty && <p className="help-text">수정한 내용을 먼저 저장하면 작업 시작과 PR 연결을 사용할 수 있어요.</p>}
     {error && <p className="form-error" role="alert">{error}</p>}{notice && <p className="connection-notice" role="status">{notice}</p>}
     {stale && issue && <button className="button" type="button" disabled={busy} onClick={() => { void getIssue(projectId, issue.id).then(onChanged).then(() => onClose()).catch(report) }}>최신 내용을 다시 열기</button>}
     {!issue && canWrite && <label className="issue-publish-choice"><input type="checkbox" checked={publishAfterSave} disabled={busy} onChange={event => setPublishAfterSave(event.target.checked)} /><span><strong>저장하고 GitHub에도 이슈 만들기</strong><small>선택한 저장소에 실제 이슈가 생성돼요. 체크를 끄면 zello에만 저장합니다.</small></span></label>}
