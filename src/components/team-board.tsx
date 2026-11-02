@@ -5,7 +5,7 @@ import type { CollisionDetection, DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { DropdownMenu, Popover } from 'radix-ui'
-import { Archive, ArrowRight, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Circle, CircleAlert, CircleDot, Github, GitPullRequest, GripVertical, LayoutList, Columns3, LoaderCircle, Mic, MoreHorizontal, Plus, RotateCcw, UserRound, X } from 'lucide-react'
+import { Archive, ArrowRight, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Circle, CircleAlert, CircleDot, Github, GitBranch, GitPullRequest, GripVertical, LayoutList, Columns3, LoaderCircle, Mic, MoreHorizontal, Plus, RotateCcw, UserRound, X } from 'lucide-react'
 import type { IssueStatus } from '../data/work-items'
 import { BrandMark } from './brand-mark'
 import { shiftWeek, startOfWeek, weekLabel, projectWeeks, projectWeekCount, projectWeekNumber, today } from '../lib/work-weeks'
@@ -26,9 +26,14 @@ export type BoardItem = {
   sourceLabel: string; meetingDate?: string | null; plannedWeekStart: string; completedAt?: string | null
   attention?: { label: string; tone: 'warning' | 'danger' | 'info' | 'success' }
   references?: { id: string; label: string }[]; locked?: boolean
+  /** 이슈 번호로 만든 작업 브랜치. */
+  branch?: string | null
+  /** 이 카드를 다른 열에 놓으면 일어나는 일. 끄는 동안 열 위에 보여준다. */
+  dropHints?: Partial<Record<IssueStatus, DropHint>>
   /** 실제 작업의 GitHub 발행 상태. 샘플 작업은 없다. */
   github?: { state: 'published' | 'local' | 'pending' | 'failed'; url?: string }
 }
+export type DropHint = { label: string; tone: 'action' | 'blocked' }
 export type AssigneePage = { items: { login: string }[]; hasNext: boolean }
 export type BoardMove = { id: string; status: IssueStatus; beforeId: string | null }
 export type BoardActions = {
@@ -126,7 +131,7 @@ function CardContent({ item, week, canWrite, busy, actions, overlay = false, chi
     <button type="button" className="board-card-title" aria-label={`${item.key} ${item.title}`} tabIndex={overlay ? -1 : 0} onClick={() => actions.onOpen(item.id)}>{item.title}</button>
     <div className="board-card-context"><span className="board-card-key mono">{item.key}</span>{carry && <span className="board-carry" title={`원래 계획: ${weekLabel(item.plannedWeekStart)}`}><RotateCcw size={11} />{shiftWeek(week, -1) === item.plannedWeekStart ? '전주 이월' : '이전 주 이월'}</span>}</div>
     {item.attention && <div className={`board-attention board-attention-${item.attention.tone}`}><CircleDot size={12} /><span>{item.attention.label}</span></div>}
-    <div className="board-card-footer"><div className="board-card-links">{item.references?.length ? item.references.slice(0, 2).map(reference => <button type="button" tabIndex={overlay ? -1 : 0} key={reference.id} onClick={() => actions.onReference?.(reference.id)}><GitPullRequest size={12} />{reference.label}</button>) : <span className="board-card-source" title={item.meetingDate ? `${item.sourceLabel} · ${item.meetingDate}` : item.sourceLabel}>{item.sourceLabel}</span>}</div>
+    <div className="board-card-footer"><div className="board-card-links">{item.branch && <span className="board-card-branch" title={`작업 브랜치 ${item.branch}`}><GitBranch size={12} />{item.branch}</span>}{item.references?.length ? item.references.slice(0, 2).map(reference => <button type="button" tabIndex={overlay ? -1 : 0} key={reference.id} onClick={() => actions.onReference?.(reference.id)}><GitPullRequest size={12} />{reference.label}</button>) : !item.branch && <span className="board-card-source" title={item.meetingDate ? `${item.sourceLabel} · ${item.meetingDate}` : item.sourceLabel}>{item.sourceLabel}</span>}</div>
       {overlay ? <span className="board-assignee">{item.assignee ?? '담당자 지정'}</span> : <AssigneePicker item={item} disabled={!canWrite || busy || !!item.locked} onAssign={actions.onAssign} loadAssignees={actions.loadAssignees} />}
     </div>
   </>
@@ -143,10 +148,12 @@ function WorkCard({ item, week, canWrite, busy, actions }: { item: BoardItem; we
   </article>
 }
 
-function BoardColumn({ state, items, week, canWrite, busyId, disabled, actions, onCreate }: { state: typeof boardStates[number]; items: BoardItem[]; week: string; canWrite: boolean; busyId: string | null; disabled: boolean; actions: BoardActions; onCreate?: () => void }) {
+function BoardColumn({ state, items, week, canWrite, busyId, disabled, actions, onCreate, dragging }: { state: typeof boardStates[number]; items: BoardItem[]; week: string; canWrite: boolean; busyId: string | null; disabled: boolean; actions: BoardActions; onCreate?: () => void; dragging?: BoardItem }) {
   const { setNodeRef, isOver } = useDroppable({ id: `column:${state.id}`, data: { status: state.id, type: 'column' }, disabled: !canWrite || disabled })
-  return <section ref={setNodeRef} className={`board-column board-column-${state.id} ${isOver ? 'is-over' : ''}`} aria-label={`${state.label} 열`}>
+  const hint = dragging && dragging.status !== state.id ? dragging.dropHints?.[state.id] : undefined
+  return <section ref={setNodeRef} className={`board-column board-column-${state.id} ${isOver ? 'is-over' : ''} ${hint ? `has-drop-hint is-${hint.tone}` : ''}`} aria-label={`${state.label} 열`}>
     <div className="board-column-heading"><state.icon size={16} /><h3>{state.label}</h3><span className="board-column-count">{items.length}</span>{onCreate && canWrite && state.id === 'todo' && <button type="button" className="icon-button tiny" aria-label="이번 주 작업 추가" disabled={disabled} onClick={onCreate}><Plus size={15} /></button>}</div><p className="board-column-hint">{state.hint}</p>
+    {hint && <div className={`board-drop-hint is-${hint.tone}`} role="note">{hint.tone === 'blocked' ? <CircleAlert size={13} /> : state.id === 'in_review' ? <GitPullRequest size={13} /> : state.id === 'in_progress' ? <GitBranch size={13} /> : <ArrowRight size={13} />}<span>{hint.label}</span></div>}
     <SortableContext items={items.map(item => item.id)} strategy={verticalListSortingStrategy}><div className="board-column-cards">{items.map(item => <WorkCard key={item.id} item={item} week={week} canWrite={canWrite && !disabled && !busyId} busy={busyId === item.id} actions={actions} />)}
       {!items.length && <div className="board-column-empty"><state.icon size={20} strokeWidth={1.3} /><p>{state.id === 'done' ? '마무리한 일이 여기에 모여요' : state.id === 'backlog' ? '다음에 할 일을 모아두세요' : '아직 작업이 없어요'}</p>{canWrite && <span>카드를 이곳으로 옮겨주세요</span>}</div>}
     </div></SortableContext>
@@ -193,12 +200,17 @@ export function TeamBoard({ items, week, actions, canWrite = true, busyId = null
     {meeting && <div className="meeting-summary"><div><span className="week-eyebrow"><Mic size={12} />이번 회의에서 함께 확인해요</span><strong>먼저 확인할 작업이 {attention.length}개 있어요</strong><p>담당자 미지정과 확인이 필요한 작업을 모았어요.</p></div><button className="button" type="button" aria-pressed={attentionOnly} onClick={() => setAttentionOnly(value => !value)}>{attentionOnly ? '모든 작업 보기' : '확인할 작업만 보기'}<ArrowRight size={14} /></button></div>}
     <DndContext id={id} sensors={sensors} collisionDetection={collisionDetection} onDragStart={event => setActiveId(String(event.active.id))} onDragCancel={() => setActiveId(null)} onDragEnd={event => { void drop(event) }} accessibility={{ screenReaderInstructions: { draggable: 'Space 또는 Enter로 카드를 들고, 방향키로 옮긴 뒤 다시 눌러 놓으세요. Escape로 취소합니다.' }, announcements: {
       onDragStart: ({ active }) => `${items.find(item => item.id === active.id)?.key ?? '작업'}을 들었어요.`,
-      onDragOver: ({ over }) => over ? `${boardStates.find(state => state.id === over.data.current?.status)?.label ?? ''} 위치예요.` : '보드 밖이에요. 놓으면 취소해요.',
+      onDragOver: ({ over }) => {
+        if (!over) return '보드 밖이에요. 놓으면 취소해요.'
+        const status = over.data.current?.status as IssueStatus | undefined
+        const hint = active && active.status !== status && status ? active.dropHints?.[status] : undefined
+        return `${boardStates.find(state => state.id === status)?.label ?? ''} 위치예요.${hint ? ` ${hint.label}` : ''}`
+      },
       onDragEnd: ({ over }) => over ? '작업 위치를 저장해요.' : '이동을 취소했어요.',
       onDragCancel: () => '이동을 취소했어요.',
     } }}>
       <div className="board-scroll" tabIndex={0} role="region" aria-label="주간 작업 보드" aria-describedby={`${id}-help`}><div className={`board-columns ${showBacklog ? 'with-backlog' : ''}`}>
-        {boardStates.filter(state => showBacklog || state.id !== 'backlog').map(state => <BoardColumn key={state.id} state={state} items={filtered.filter(item => item.status === state.id)} week={week} canWrite={canWrite} busyId={busyId} disabled={disabled} actions={actions} onCreate={onCreate} />)}
+        {boardStates.filter(state => showBacklog || state.id !== 'backlog').map(state => <BoardColumn key={state.id} state={state} items={filtered.filter(item => item.status === state.id)} week={week} canWrite={canWrite} busyId={busyId} disabled={disabled} actions={actions} onCreate={onCreate} dragging={active} />)}
       </div></div>
       <DragOverlay dropAnimation={null}>{active && <div className="board-card board-card-overlay" aria-hidden="true"><CardContent item={active} week={week} canWrite={false} busy={false} actions={actions} overlay /></div>}</DragOverlay>
     </DndContext>

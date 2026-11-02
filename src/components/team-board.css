@@ -159,3 +159,13 @@
 .board-toolbar input[type="checkbox"] { min-height: 0; width: 14px; height: 14px; padding: 0; margin: 0; accent-color: var(--brand); }
 
 .board-assignee:disabled { opacity: 1; cursor: default; }
+.board-card-branch { max-width: 125px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 4px; flex-shrink: 1; border-radius: 5px; padding: 3px 5px; background: var(--git-green-bg); color: var(--git-green); font: 10px/1.4 var(--font-mono); }
+.board-drop-hint { display: flex; align-items: flex-start; gap: 6px; margin: -6px 0 12px; padding: 8px 10px; border-radius: 8px; font-size: 11px; line-height: 1.5; }
+.board-drop-hint > svg { flex-shrink: 0; margin-top: 2px; }
+.board-drop-hint.is-action { color: var(--brand); background: var(--accent-bg); border: 1px dashed var(--accent-line); }
+.board-drop-hint.is-blocked { color: var(--muted-foreground); background: var(--control-bg); border: 1px dashed var(--line); }
+.board-column.has-drop-hint.is-blocked .board-column-cards { opacity: .55; }
+.board-move-panel { display: grid; gap: 14px; }
+.board-move-panel .pr-checklist { max-height: 300px; overflow-y: auto; }
+.board-move-panel .pr-checklist small { display: block; }
+.board-move-recommend { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: var(--git-green-bg); color: var(--git-green); font-size: 10px; font-weight: 600; }

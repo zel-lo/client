@@ -1,5 +1,6 @@
 import { IssueWorkBranchPanel } from './issue-work-branch'
 import { IssuePullRequestLinks } from './issue-pr-links'
+import { LinkPullRequestPanel, StartWorkPanel } from './board-move-dialogs'
 import { MarkdownEditor } from './markdown'
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
@@ -9,7 +10,7 @@ import { Archive, ArrowUpRight, CircleDot, Github, Plus, RefreshCw, X } from 'lu
 import { archiveIssue, createIssue, getIssue, listAssignees, listConnectedRepositories, listIssues, publishIssue, restoreIssue, syncIssues, updateIssue, ProjectApiError } from '../lib/project-api'
 import type { ConnectedRepository, IssueDetails, IssuePage, LiveIssue, Project } from '../lib/project-api'
 import { TeamBoard, WeekNavigation, WorkViewToggle } from './team-board'
-import type { BoardActions, BoardItem, BoardMove } from './team-board'
+import type { BoardActions, BoardItem, BoardMove, DropHint } from './team-board'
 import type { IssueStatus } from '../data/work-items'
 import { startOfWeek, validWeek, projectWeeks, weekLabel } from '../lib/work-weeks'
 import { useWorkWeek } from '../hooks/use-work-week'
@@ -22,6 +23,25 @@ const priorities = { HIGH: '높음', MEDIUM: '보통', LOW: '낮음' }
 const publication = { LOCAL: 'zello에 저장됨', PENDING: 'GitHub 발행 중', PUBLISHED: 'GitHub에 발행됨', FAILED: 'GitHub 발행 실패', UNKNOWN: 'GitHub 발행 확인 필요' }
 const reauthCodes = ['AUTHENTICATION_REQUIRED', 'GITHUB_REAUTH_REQUIRED', 'ACCOUNT_INACTIVE']
 const blank = (): IssueDetails => ({ title: '', description: '', acceptanceCriteria: '', status: 'TODO', priority: 'MEDIUM', source: 'REQUEST', meetingDate: null, meetingContext: '', assignee: null })
+
+const flowStates: IssueStatus[] = ['todo', 'in_progress', 'in_review']
+/** 열린 PR이 있으면 서버가 PR 상태로 단계를 정한다. 초안·수정 요청은 작업 중, 그 밖은 검토 중. */
+function pullRequestStage(issue: LiveIssue): IssueStatus | null {
+  const open = (issue.pullRequests ?? []).filter(pull => pull.state === 'OPEN')
+  if (!open.length) return null
+  return open.some(pull => pull.draft || pull.reviewDecision === 'CHANGES_REQUESTED') ? 'in_progress' : 'in_review'
+}
+const canStartBranch = (issue: LiveIssue) => issue.publishStatus === 'PUBLISHED' && !issue.workBranch && (issue.status === 'TODO' || issue.status === 'BACKLOG')
+function dropHintsFor(issue: LiveIssue): Partial<Record<IssueStatus, DropHint>> {
+  const stage = pullRequestStage(issue)
+  if (stage) return Object.fromEntries(flowStates.filter(state => state !== stage).map(state => [state, { label: '연결된 PR 상태로 단계가 정해져요', tone: 'blocked' }]))
+  return {
+    ...(canStartBranch(issue) ? { in_progress: { label: `놓으면 feat/${issue.number} 브랜치를 만들 수 있어요`, tone: 'action' } } : {}),
+    in_review: { label: '놓으면 검토받을 PR을 골라 연결해요', tone: 'action' },
+    ...(issue.publishStatus === 'PUBLISHED' ? { done: { label: '놓으면 GitHub 이슈도 닫아요', tone: 'action' } } : {}),
+  }
+}
+type BoardFlow = { kind: 'start' | 'link' | 'guard'; issue: LiveIssue; move: BoardMove; done?: boolean }
 
 function detailsFor(issue: LiveIssue): IssueDetails {
   return { title: issue.title, description: issue.description ?? '', status: issue.status, priority: issue.priority, source: issue.source,
@@ -70,6 +90,8 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
   const [editing, setEditing] = useState<LiveIssue | 'new' | null>(null)
   const [opening, setOpening] = useState(false)
   const [pendingMove, setPendingMove] = useState<BoardMove | null>(null)
+  const [flow, setFlow] = useState<BoardFlow | null>(null)
+  const [flowBusy, setFlowBusy] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [queryInput, setQueryInput] = useState('')
   const [query, setQuery] = useState('')
@@ -191,6 +213,12 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
       if (!patch.status) throw cause
     } finally { mutating.current = false; if (mounted.current) setBusyId(null) }
   }
+  function finishFlow(saved: LiveIssue, message: string) {
+    if (!mounted.current) return
+    setResult(current => current ? { ...current, items: current.items.map(item => item.id === saved.id ? saved : item) } : current)
+    setNotice(message); setError('')
+    setPage(1); setRevision(value => value + 1)
+  }
   async function sync() {
     if (!project || syncing || busy) return
     const id = project.id
@@ -207,11 +235,22 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
   const filtered = (result?.items ?? []).filter(item => (!repositoryId || item.repositoryId === repositoryId) && (assigneeFilter === 'all' || (assigneeFilter === 'unassigned' ? !item.assignee : item.assignee === assigneeFilter)) && (params.get('focus') !== 'unassigned' || !item.assignee))
   const boardItems: BoardItem[] = filtered.map(item => ({ id: item.id, key: item.key, title: item.title, status: item.status.toLowerCase() as IssueStatus, priority: item.priority.toLowerCase() as BoardItem['priority'], repositoryId: item.repositoryId, repositoryName: item.repositoryName, number: item.number, assignee: item.assignee, sourceLabel: sources[item.source], meetingDate: item.meetingDate, plannedWeekStart: item.plannedWeekStart ?? week, completedAt: item.completedAt,
     github: { state: item.publishStatus === 'PUBLISHED' ? 'published' : item.publishStatus === 'LOCAL' ? 'local' : item.publishStatus === 'PENDING' ? 'pending' : 'failed', url: item.url || undefined },
-    references: (item.pullRequests ?? []).map(pull => ({ id: pull.id, label: `#${pull.number}` })),
+    references: (item.pullRequests ?? []).map(pull => ({ id: pull.id, label: `#${pull.number}${pull.state === 'OPEN' && pull.draft ? ' 초안' : ''}` })),
+    branch: item.workBranch ?? null, dropHints: canWrite ? dropHintsFor(item) : undefined,
     locked: item.publishStatus === 'PENDING' || item.publishStatus === 'UNKNOWN',
     attention: item.publishStatus === 'FAILED' ? { label: 'GitHub 발행을 다시 확인해 주세요', tone: 'danger' } : item.publishStatus === 'UNKNOWN' || item.publishStatus === 'PENDING' ? { label: 'GitHub 발행 결과 확인 중', tone: 'warning' } : !item.assignee && item.status !== 'DONE' ? { label: '함께할 담당자를 지정해 주세요', tone: 'warning' } : undefined,
   }))
-  const actions: BoardActions = { onOpen: id => { const item = result?.items.find(item => item.id === id); if (item) void open(item) }, onMove: move => { const item = result?.items.find(item => item.id === move.id); if (item?.publishStatus === 'PUBLISHED' && (move.status === 'done' || item.status === 'DONE') && item.status !== move.status.toUpperCase()) { setPendingMove(move); return }; return change(move.id, { status: move.status }, { beforeId: move.beforeId }) }, onAssign: (id, login) => change(id, { assignee: login }), loadAssignees: loadPeople, onReference: id => { navigate(`/pull-requests?pr=${encodeURIComponent(id)}`) } }
+  const actions: BoardActions = { onOpen: id => { const item = result?.items.find(item => item.id === id); if (item) void open(item) }, onMove: move => {
+    const item = result?.items.find(item => item.id === move.id)
+    if (item?.publishStatus === 'PUBLISHED' && (move.status === 'done' || item.status === 'DONE') && item.status !== move.status.toUpperCase()) { setPendingMove(move); return }
+    if (item && item.status.toLowerCase() !== move.status) {
+      const stage = pullRequestStage(item)
+      if (stage && flowStates.includes(move.status) && move.status !== stage) { setFlow({ kind: 'guard', issue: item, move }); return }
+      if (!stage && move.status === 'in_review') { setFlow({ kind: 'link', issue: item, move }); return }
+      if (move.status === 'in_progress' && canStartBranch(item)) { setFlow({ kind: 'start', issue: item, move }); return }
+    }
+    return change(move.id, { status: move.status }, { beforeId: move.beforeId })
+  }, onAssign: (id, login) => change(id, { assignee: login }), loadAssignees: loadPeople, onReference: id => { navigate(`/pull-requests?pr=${encodeURIComponent(id)}`) } }
   return <section className="live-issues" aria-label={mineOnly ? '실제 맡은 작업' : '실제 팀 작업'}>
     {headerActionsHost ? <><h2 className="sr-only">팀의 작업 <span>{result?.total ?? 0}</span></h2>{createPortal(<div className="issue-actions"><button className="button" disabled={syncing || busy || loading} onClick={() => void sync()}><RefreshCw size={14} className={syncing ? 'board-saving' : ''} />{syncing ? 'GitHub 확인 중…' : 'GitHub 이슈 가져오기'}</button>{canWrite && <button className="button button-dark" disabled={busy} onClick={() => { setError(''); setEditing('new') }}><Plus size={14} />새 작업 등록</button>}</div>, headerActionsHost)}</> : <div className="section-heading"><h2>{mineOnly ? '내가 맡은 작업' : '팀의 작업'} <span className="count-text">{result?.total ?? '—'}</span></h2><div className="issue-actions"><button className="button" disabled={syncing || busy || loading} onClick={() => void sync()}><RefreshCw size={14} className={syncing ? 'board-saving' : ''} />{syncing ? 'GitHub 확인 중…' : 'GitHub 이슈 가져오기'}</button>{canWrite && <button className="button button-dark" disabled={busy} onClick={() => { setError(''); setEditing('new') }}><Plus size={14} />새 작업 등록</button>}</div></div>}
     {error && <div className="connection-error" role="alert">{error}{reauth ? <Link to="/login?reauth=github">GitHub 다시 로그인</Link> : <button className="button" disabled={loading || busy} onClick={() => { setPage(1); setRevision(value => value + 1) }}>다시 불러오기</button>}</div>}
@@ -237,6 +276,17 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
       {view === 'board' ? <div className="board-pagination"><span>{result.items.length} / {result.total}개 작업 표시</span>{result.hasNext && <button className="button" disabled={loading || busy} onClick={() => setPage(value => value + 1)}>{loading ? '불러오는 중…' : '작업 더 불러오기'}</button>}</div> : <div className="connection-pagination"><button className="button" disabled={page === 1 || loading || busy} onClick={() => setPage(value => value - 1)}>이전 작업</button><span>{page} 페이지</span><button className="button" disabled={!result.hasNext || loading || busy} onClick={() => setPage(value => value + 1)}>다음 작업</button></div>}
     </>}
     <p className="help-text">{mineOnly ? '현재 맡은 미완료 작업을 모았어요.' : '미완료 작업은 원래 계획 주차를 유지하며 다음 주에도 표시돼요. 완료한 작업은 완료한 주에 남아요.'} 새 작업은 zello에 저장한 뒤 GitHub에도 만들 수 있어요.</p>
+    {flow && project && <IssueDialog busy={flowBusy} title={flow.kind === 'start' ? flow.done ? '작업 브랜치를 준비했어요' : '작업을 시작할까요?' : flow.kind === 'link' ? '어떤 PR로 검토를 받을까요?' : 'PR 상태로 단계가 정해져요'} onClose={() => { if (!flowBusy) setFlow(null) }}>
+      {flow.kind === 'start' ? <StartWorkPanel projectId={project.id} issue={flow.issue} onBusyChange={setFlowBusy} onClose={() => setFlow(null)}
+        onPlainMove={() => { const move = flow.move; setFlow(null); void change(move.id, { status: move.status }, { beforeId: move.beforeId }) }}
+        onStarted={saved => { setFlow(current => current && { ...current, done: true }); finishFlow(saved, `${saved.key} 작업 브랜치를 준비하고 작업 중으로 옮겼어요.`) }} />
+      : flow.kind === 'link' ? <LinkPullRequestPanel projectId={project.id} issue={flow.issue} onBusyChange={setFlowBusy} onClose={() => setFlow(null)}
+        onLinked={(saved, pull) => { setFlow(null); finishFlow(saved, saved.status === 'IN_REVIEW' ? `${saved.key}에 #${pull.number}을 연결하고 검토 중으로 옮겼어요.` : `${saved.key}에 #${pull.number}을 연결했어요. ${pull.draft ? '초안 PR이라' : '수정 요청을 받은 PR이라'} 작업 중에 남아요.`) }} />
+      : <div className="dialog-form board-move-panel"><p><strong>{flow.issue.key}</strong>에는 열린 PR이 연결돼 있어서 단계가 PR 상태를 따라가요. 초안이나 수정 요청은 작업 중, 검토를 기다리면 검토 중이에요.</p>
+        <div className="pr-checklist">{(flow.issue.pullRequests ?? []).filter(pull => pull.state === 'OPEN').map(pull => <Link key={pull.id} className="linked-work-row reference-link" to={`/pull-requests?pr=${encodeURIComponent(pull.id)}`} onClick={() => setFlow(null)}>#{pull.number} · {pull.title} · {pull.draft ? '초안' : pull.reviewDecision === 'CHANGES_REQUESTED' ? '수정 요청' : '검토 중'}</Link>)}</div>
+        <p className="help-text">단계를 바꾸려면 GitHub에서 PR을 초안 또는 Ready for review로 바꾸거나, 작업 상세에서 PR 연결을 해제해 주세요.</p>
+        <div className="form-actions"><button type="button" className="button" onClick={() => { const issue = flow.issue; setFlow(null); void open(issue) }}>작업 상세 열기</button><button type="button" className="button button-dark" onClick={() => setFlow(null)}>확인</button></div></div>}
+    </IssueDialog>}
     {pendingMove && <IssueDialog busy={false} title={pendingMove.status === 'done' ? '작업을 완료할까요?' : '작업을 다시 시작할까요?'} onClose={() => setPendingMove(null)}><div className="dialog-form"><p>{pendingMove.status === 'done' ? '연결된 GitHub 이슈도 함께 닫아요. 서비스 배포 상태는 별도로 확인해 주세요.' : '연결된 GitHub 이슈도 다시 열어요.'}</p><div className="form-actions"><button className="button" onClick={() => setPendingMove(null)}>취소</button><button className="button button-dark" onClick={() => { const move = pendingMove; setPendingMove(null); void change(move.id, { status: move.status }, { beforeId: move.beforeId }) }}>{pendingMove.status === 'done' ? '완료하고 GitHub 이슈 닫기' : 'GitHub 이슈 다시 열고 이동'}</button></div></div></IssueDialog>}
     {opening && !editing && <IssueDialog busy={false} drawer onClose={() => { detailRequest.current?.abort(); setOpening(false) }}><div className="dialog-form"><LoadingState layout="detail" label="작업 상세를 불러오는 중" /></div></IssueDialog>}
     {editing && <IssueEditor projectId={project.id} issue={editing === 'new' ? null : editing} initialWeek={week} period={project} repositories={repositories} canWrite={canWrite} onClose={() => setEditing(null)} onChanged={item => { setEditing(item); setPage(1); setRevision(value => value + 1) }}
