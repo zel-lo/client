@@ -9,6 +9,8 @@ export type ConnectedRepository = {
   defaultBranch: string; privateRepository: boolean; status: string; initialSyncCompleted: boolean
 }
 export type Page<T> = { items: T[]; page: number; hasNext: boolean }
+export type LinkedIssue = { id: string; key: string; number: number | null; title: string; url: string | null; status: IssueDetails['status']; archived: boolean }
+export type LinkedPullRequest = { id: string; number: number; title: string; url: string; state: 'OPEN' | 'CLOSED' | 'MERGED'; draft: boolean; reviewDecision: PullRequestItem['reviewDecision'] }
 export type PullRequestItem = {
   id: string; repositoryId: string; repositoryOwner: string; repositoryName: string; number: number; url: string; title: string
   headBranch: string; baseBranch: string; state: 'OPEN' | 'CLOSED' | 'MERGED'; draft: boolean
@@ -22,6 +24,7 @@ export type PullRequestItem = {
   /** PR은 만들었지만 리뷰어 지정만 실패했을 때 담긴다. */
   warning?: string
   /** 상세 응답에만 있다. 리뷰·병합 버튼을 쓸 수 있는지와 GitHub 병합 상태. */
+  linkedIssues?: LinkedIssue[]
   actions?: PullRequestActions
 }
 /** mergeState는 GitHub mergeable_state(clean, dirty, blocked, behind, unstable, draft, unknown 등). headSha는 병합 요청에 그대로 보낸다. */
@@ -35,11 +38,12 @@ export type PullRequestQuery = {
   state?: 'open' | 'merged' | 'closed' | 'all'; author?: 'me'; reviewer?: 'me'; review?: 'pending' | 'changes_requested'; page?: number; size?: number
   /** 없으면 연결된 모든 저장소. */
   repositoryId?: string
+  unlinked?: boolean
 }
 export type BranchList = { defaultBranch: string; branches: string[]; hasMore: boolean }
 export type NewPullRequest = {
   repositoryId: string; title: string; headBranch: string; baseBranch: string; teamSummary: string; body: string; draft: boolean
-  requestKey: string; reviewers: string[]
+  requestKey: string; reviewers: string[]; issueIds?: string[]
 }
 export type PullRequestSync ={ collected: number; skippedRepositories: number; syncedAt: string }
 
@@ -83,6 +87,7 @@ export const listPullRequests = (projectId: string, options: PullRequestQuery = 
   if (options.reviewer) params.set('reviewer', options.reviewer)
   if (options.review) params.set('review', options.review)
   if (options.repositoryId) params.set('repositoryId', options.repositoryId)
+  if (options.unlinked) params.set('unlinked', 'true')
   return json<PullRequestPage>(`/api/projects/${encodeURIComponent(projectId)}/pull-requests?${params}`, { signal })
 }
 export const getPullRequest = (projectId: string, pullRequestId: string, signal?: AbortSignal) =>
@@ -115,6 +120,7 @@ export type IssueDetails = {
 export type LiveIssue = IssueDetails & {
   id: string; version: number; key: string; repositoryId: string; repositoryOwner: string; repositoryName: string
   number: number; url: string; githubState: 'OPEN' | 'CLOSED' | null; archived: boolean; publishStatus: 'LOCAL' | 'PENDING' | 'PUBLISHED' | 'FAILED' | 'UNKNOWN'; lastPublishError: string | null
+  pullRequests?: LinkedPullRequest[]
   boardOrder?: number; completedAt?: string | null
 }
 export type IssuePage = Page<LiveIssue> & { total: number }
@@ -135,3 +141,10 @@ export const syncIssues = (projectId: string) => mutate<{ collected: number; ski
 export const listAssignees = (projectId: string, repositoryId: string, page = 1, signal?: AbortSignal) => json<Page<{ id: number; login: string }>>(`/api/projects/${encodeURIComponent(projectId)}/repositories/${encodeURIComponent(repositoryId)}/assignees?page=${page}`, { signal })
 
 export const publishIssue = (projectId: string, issue: LiveIssue) => mutate<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}/publish`, 'POST', { version: issue.version })
+
+export async function changeIssuePullRequest(projectId: string, issue: LiveIssue, pullId: string, linked: boolean) {
+  const result = await mutate<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}/pull-requests/${encodeURIComponent(pullId)}?version=${issue.version}`, linked ? 'POST' : 'DELETE')
+  window.dispatchEvent(new Event('zello:issues-updated'))
+  window.dispatchEvent(new Event('zello:pull-requests-updated'))
+  return result
+}

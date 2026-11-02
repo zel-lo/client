@@ -86,3 +86,12 @@
   .project-setup-page .onboarding-intro { margin-top: 30px; }
   .project-setup-page .setup-steps { gap: 12px; justify-content: space-between; }
 }
+
+.issue-pr-links { border-top: 1px solid var(--border, #e5e7eb); margin-top: 20px; padding-top: 16px; }
+.issue-pr-links h3 { font-size: 14px; margin: 0 0 12px; }
+.linked-work-row, .linked-work-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+.linked-work-row > .reference-link { flex: 1 1 190px; overflow-wrap: anywhere; }
+.issue-link-picker { min-width: 0; margin: 12px 0; padding: 12px; border: 1px solid var(--border, #e5e7eb); border-radius: 8px; }
+.issue-link-picker legend { font-size: 13px; padding: 0 5px; }
+.issue-link-picker .pr-checklist { max-height: 240px; overflow: auto; margin-top: 10px; }
+.issue-pr-links select { max-width: 100%; }

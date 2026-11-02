@@ -76,6 +76,24 @@ function backend({ projects = [project], everything = [pull('1', 1), pull('2', 2
 const mount = (route: string) => render(<MemoryRouter initialEntries={[route]}><App /></MemoryRouter>)
 
 describe('실제 PR 연결', () => {
+  it('연결 PR 주소로 진입하면 해당 서버 PR 상세를 연다', async () => {
+    backend()
+    mount('/pull-requests?pr=1')
+    const drawer = await screen.findByRole('dialog', { name: 'Pull request 상세' })
+    expect(within(drawer).getByRole('heading', { name: '실제 PR 1' })).toBeInTheDocument()
+    expect(await within(drawer).findByRole('region', { name: '연결된 이슈' })).toBeInTheDocument()
+  })
+
+  it('실제 PR의 연결 이슈는 서버 응답에서 표시하고 실제 작업 주소를 사용한다', async () => {
+    backend({ everything: [pull('1', 1, { linkedIssues: [{ id: '99', key: 'ZELLO-99', title: '실제 연결 작업', number: 23, url: null, status: 'IN_REVIEW', archived: false }] })] })
+    mount('/pull-requests')
+    expect(await screen.findByRole('link', { name: /ZELLO-99/ })).toHaveAttribute('href', '/issues?issue=99')
+    await userEvent.setup().click(screen.getByRole('button', { name: /실제 PR 1/ }))
+    const drawer = screen.getByRole('dialog', { name: 'Pull request 상세' })
+    expect(await within(drawer).findByRole('link', { name: /실제 연결 작업/ })).toHaveAttribute('href', '/issues?issue=99')
+    expect(within(drawer).queryByText('컬렉션 검색 응답 속도 개선')).not.toBeInTheDocument()
+  })
+
   it('프로젝트가 있으면 코드 검토에 샘플 대신 서버의 PR을 보여주고 상태를 구분한다', async () => {
     backend()
     mount('/pull-requests')
@@ -297,6 +315,20 @@ describe('실제 PR 연결', () => {
     for (const condition of ['state=open', 'author=me', 'reviewer=me']) {
       await waitFor(() => expect(fetcher).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`${condition}.*repositoryId=40`)), expect.anything()))
     }
+  })
+
+  it('저장소와 이슈 미연결 필터를 함께 적용하고 연결 갱신 후에도 유지한다', async () => {
+    const fetcher = backend()
+    mount('/pull-requests?focus=unlinked')
+    await screen.findByRole('button', { name: /실제 PR 1(?!\d)/ })
+    await userEvent.setup().selectOptions(await screen.findByRole('combobox', { name: '저장소 필터' }), '40')
+    const filteredCalls = () => fetcher.mock.calls.filter(([path]) => path.includes('/pull-requests?') && path.includes('repositoryId=40') && path.includes('unlinked=true')).length
+    await waitFor(() => expect(filteredCalls()).toBeGreaterThan(0))
+    const before = filteredCalls()
+    window.dispatchEvent(new Event('zello:pull-requests-updated'))
+    await waitFor(() => expect(filteredCalls()).toBeGreaterThan(before))
+    expect(screen.getByRole('combobox', { name: '저장소 필터' })).toHaveValue('40')
+    expect(screen.getByRole('combobox', { name: 'PR 확인 필터' })).toHaveValue('unlinked')
   })
 
   it('코드 검토 표에 맡긴 리뷰어를 보여준다', async () => {

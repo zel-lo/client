@@ -38,6 +38,9 @@ import { ActivityChart } from './components/activity-chart'
 import { IssueEditor } from './components/issues-panel'
 import { PullRequestsPanel } from './components/pull-requests-panel'
 import { CreatePullRequest } from './components/create-pull-request'
+import { fromServerPullRequest as linkedServerPullRequest } from './data/work-items'
+import { getIssue, getPullRequest } from './lib/project-api'
+import type { LiveIssue } from './lib/project-api'
 import { CreateLivePullRequest } from './components/create-live-pull-request'
 import type { PullRequestDraft } from './components/create-pull-request'
 import { PullRequestDetail } from './components/pull-request-detail'
@@ -179,6 +182,7 @@ function WorkspaceApp() {
   const [storedPullRequests, setPullRequests] = useStored<PullRequest[]>('gyeol.pullrequests.v1', initialPullRequests)
   const pullRequests = useMemo(() => storedPullRequests.map(hydratePullRequest), [storedPullRequests])
   const [prIssue, setPrIssue] = useState<Issue | null>(null)
+  const [livePrIssue, setLivePrIssue] = useState<LiveIssue | null>(null)
   const [editingIssue, setEditingIssue] = useState<Issue | null>(null)
   const [selectedPr, setSelectedPr] = useState<PullRequest | null>(null)
   const [repoFilter, setRepoFilter] = useState('all')
@@ -195,6 +199,9 @@ function WorkspaceApp() {
     listConnectedRepositories(liveProjectId, controller.signal).then(setLiveRepos).catch(() => undefined)
     return () => controller.abort()
   }, [liveProjectId])
+
+  useEffect(() => { setSelectedPr(null); setLivePrIssue(null); setModal(current => current === 'pr' ? null : current) }, [live.project?.id])
+  useEffect(() => { if (location.pathname !== '/pull-requests') setSelectedPr(current => current?.live ? null : current) }, [location.pathname])
   const [liveIssueCount, setLiveIssueCount] = useState(0)
   const [liveMineCount, setLiveMineCount] = useState(0)
   useEffect(() => { setLiveIssueCount(0); setLiveMineCount(0) }, [live.project?.id, session.user?.id])
@@ -205,7 +212,7 @@ function WorkspaceApp() {
   const settingsTab = ['general', 'members', 'repositories', 'sync'].includes(searchParams.get('tab') ?? '') ? searchParams.get('tab')! : 'general'
   const showScope = !['/inbox', '/settings', '/repositories'].includes(location.pathname)
   function openIssue(issue: Issue | null) { if (session.user) { navigate(issue ? '/issues' : '/issues?new=1'); return }; setEditingIssue(issue); setModal('issue') }
-  function openPr(issue: Issue | null = null) { if (session.user && !live.project) { navigate('/onboarding'); return }; setPrIssue(issue); setModal('pr') }
+  function openPr(issue: Issue | null = null) { setLivePrIssue(null); if (session.user && !live.project) { navigate('/onboarding'); return }; setPrIssue(issue); setModal('pr') }
   const [period, setPeriod] = useState<Period>('week')
   const requestedType = new URLSearchParams(location.search).get('type')
   const eventFilter = requestedType && ['merge', 'commit', 'pr', 'issue', 'deploy'].includes(requestedType) ? requestedType : 'all'
@@ -216,6 +223,18 @@ function WorkspaceApp() {
   const [query, setQuery] = useState('')
   const [modal, setModal] = useState<'repo' | 'search' | 'note' | 'guide' | 'issue' | 'pr' | null>(null)
   const [detail, setDetail] = useState<Activity | null>(null)
+  useEffect(() => {
+    if (!live.project || location.pathname !== '/pull-requests') return
+    const params = new URLSearchParams(location.search)
+    const prId = params.get('pr'), issueId = params.get('createForIssue')
+    if (!prId && !issueId) return
+    const controller = new AbortController()
+    const projectId = live.project.id
+    const finish = () => { if (!controller.signal.aborted) { params.delete('pr'); params.delete('createForIssue'); navigate({ pathname: '/pull-requests', search: params.toString() }, { replace: true }) } }
+    if (prId) void getPullRequest(projectId, prId, controller.signal).then(pr => { if (!controller.signal.aborted) setSelectedPr(linkedServerPullRequest(pr, projectId)) }).catch(cause => { if (!controller.signal.aborted) notify(cause instanceof Error ? cause.message : 'PR을 불러오지 못했어요.') }).finally(finish)
+    else if (issueId) void getIssue(projectId, issueId, controller.signal).then(issue => { if (!controller.signal.aborted) { setLivePrIssue(issue); setModal('pr') } }).catch(cause => { if (!controller.signal.aborted) notify(cause instanceof Error ? cause.message : '이슈를 불러오지 못했어요.') }).finally(finish)
+    return () => controller.abort()
+  }, [live.project?.id, location.pathname, location.search])
   const [noteDetail, setNoteDetail] = useState<PatchNote | null>(null)
   const [day, setDay] = useState<ContributionDay | null>(null)
   const [theme, setTheme] = useTheme()
@@ -426,8 +445,8 @@ function WorkspaceApp() {
       navigate(`/issues${destination.size ? `?${destination}` : ''}`)
       notify(editingIssue ? `${id} 이슈를 저장했어요.` : `${id} 이슈를 만들었어요.`)
     }} /></Dialog>}
-    {modal === 'pr' && <Dialog title="새 Pull request" wide onClose={() => setModal(null)}>{live.active && live.project
-      ? <CreateLivePullRequest projectId={live.project.id} onCancel={() => setModal(null)} onCreated={pr => { setModal(null); notify(pr.warning ? `GitHub에 PR ${pr.repositoryName}#${pr.number}을 만들었어요. ${pr.warning}` : `GitHub에 PR ${pr.repositoryName}#${pr.number}을 만들었어요.`); void live.reload() }} />
+    {modal === 'pr' && <Dialog title="새 Pull request" wide onClose={() => { setModal(null); setLivePrIssue(null) }}>{live.active && live.project
+      ? <CreateLivePullRequest projectId={live.project.id} initialIssue={livePrIssue} onCancel={() => { setModal(null); setLivePrIssue(null) }} onCreated={pr => { setModal(null); setLivePrIssue(null); window.dispatchEvent(new Event('zello:issues-updated')); notify(pr.warning ? `GitHub에 PR ${pr.repositoryName}#${pr.number}을 만들었어요. ${pr.warning}` : `GitHub에 PR ${pr.repositoryName}#${pr.number}을 만들었어요.`); void live.reload() }} />
       : <CreatePullRequest repos={repos} issues={issues} defaultRepo={repoFilter} defaultIssue={prIssue} onSubmit={createPullRequest} onCancel={() => setModal(null)} />}</Dialog>}
     {selectedPr && <Dialog title="Pull request 상세" drawer onClose={() => setSelectedPr(null)}><PullRequestDetail pr={selectedPr} repos={repos} issues={issues} onViewIssue={issue => { setSelectedPr(null); openIssue(issue) }} canEdit={live.active && live.project?.role !== 'VIEWER'} onChanged={() => void live.reload()} /></Dialog>}
     {modal === 'repo' && <RepoDialog repos={repos} onClose={() => setModal(null)} onAdd={repo => { setRepos(current => [...current, repo]); setModal(null); notify(`${repo.name}을 데모 저장소로 추가했어요.`) }} />}

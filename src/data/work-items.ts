@@ -1,4 +1,4 @@
-import type { PullRequestItem } from '../lib/project-api'
+import type { LinkedIssue, PullRequestItem } from '../lib/project-api'
 
 /** Product records are separate from the historical activity feed. */
 export type IssueStatus = 'backlog' | 'todo' | 'in_progress' | 'in_review' | 'done'
@@ -39,6 +39,7 @@ export type PullRequest = {
   summary?: string
   reviewers?: string[]
   url?: string
+  linkedIssues?: LinkedIssue[]
   live?: boolean
   projectId?: string
 }
@@ -96,7 +97,7 @@ export function fromServerPullRequest(item: PullRequestItem, projectId?: string)
   return {
     id: item.id, number: item.number, repo: item.repositoryName, title: item.title, author: item.author?.login ?? '알 수 없음',
     branch: item.headBranch, base: item.baseBranch, status, review, checks: 'unknown', summary: item.teamSummary ?? undefined,
-    reviewers: item.reviewers.map(reviewer => reviewer.login), url: item.url, live: true, projectId,
+    reviewers: item.reviewers.map(reviewer => reviewer.login), url: item.url, live: true, projectId, linkedIssues: item.linkedIssues ?? [],
   }
 }
 export function needsMyReview(pr: PullRequest) {
