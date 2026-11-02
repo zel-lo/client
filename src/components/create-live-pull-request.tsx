@@ -4,21 +4,24 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, GitBranch } from 'lucide-react'
 import { createPullRequest, listBranches, listConnectedRepositories, listReviewerCandidates, ProjectApiError } from '../lib/project-api'
 import type { BranchList, ConnectedRepository, PullRequestItem, ReviewerCandidates } from '../lib/project-api'
+import { IssuePicker } from './issue-pr-links'
+import type { LiveIssue } from '../lib/project-api'
 import { MarkdownEditor } from './markdown'
 
 const unknownOutcome = 'GITHUB_RESULT_UNKNOWN'
 
 /** 프로젝트에 연결된 실제 저장소와 GitHub의 현재 브랜치로 PR을 만든다. */
-export function CreateLivePullRequest({ projectId, onCreated, onCancel }: {
-  projectId: string; onCreated: (pr: PullRequestItem) => void; onCancel: () => void;
+export function CreateLivePullRequest({ projectId, initialIssue, onCreated, onCancel }: {
+  projectId: string; initialIssue?: LiveIssue | null; onCreated: (pr: PullRequestItem) => void; onCancel: () => void;
 }) {
   const [repos, setRepos] = useState<ConnectedRepository[] | null>(null)
-  const [repoId, setRepoId] = useState('')
+  const [repoId, setRepoId] = useState(initialIssue?.repositoryId ?? '')
+  const [issueIds, setIssueIds] = useState<string[]>(initialIssue ? [initialIssue.id] : [])
   const [branches, setBranches] = useState<BranchList | null>(null)
   const [loadingBranches, setLoadingBranches] = useState(false)
   const [head, setHead] = useState('')
   const [base, setBase] = useState('')
-  const [title, setTitle] = useState('')
+  const [title, setTitle] = useState(initialIssue?.title ?? '')
   const [summary, setSummary] = useState('')
   const [body, setBody] = useState('')
   const [candidates, setCandidates] = useState<ReviewerCandidates | null>(null)
@@ -34,10 +37,10 @@ export function CreateLivePullRequest({ projectId, onCreated, onCancel }: {
   useEffect(() => {
     const controller = new AbortController()
     listConnectedRepositories(projectId, controller.signal).then(items => {
-      setRepos(items); setRepoId(items[0]?.id ?? '')
+      setRepos(items); setRepoId(initialIssue?.repositoryId ?? items[0]?.id ?? '')
     }).catch(cause => { if (!controller.signal.aborted) { setRepos([]); setError(cause instanceof Error ? cause.message : '저장소를 불러오지 못했어요.') } })
     return () => controller.abort()
-  }, [projectId])
+  }, [projectId, initialIssue?.repositoryId])
 
   useEffect(() => {
     if (!repoId) return
@@ -71,7 +74,7 @@ export function CreateLivePullRequest({ projectId, onCreated, onCancel }: {
     try {
       onCreated(await createPullRequest(projectId, {
         repositoryId: repoId, title: title.trim(), headBranch: head, baseBranch: base, teamSummary: summary.trim(), body: body.trim(),
-        draft: isDraft, requestKey: requestKey.current, reviewers,
+        draft: isDraft, requestKey: requestKey.current, reviewers, issueIds,
       }))
     } catch (cause) {
       if (!(cause instanceof ProjectApiError && cause.code === unknownOutcome)) requestKey.current = crypto.randomUUID()
@@ -82,7 +85,7 @@ export function CreateLivePullRequest({ projectId, onCreated, onCancel }: {
   const headOptions = (branches?.branches ?? []).filter(name => name !== base)
   return <form className="dialog-form" onSubmit={event => void submit(event)}><p>작업한 브랜치를 골라 GitHub에 Pull request를 만들고, 팀이 이해할 수 있게 변경 내용을 적어주세요.</p>
     {repos && !repos.length && <p className="help-text">연결된 저장소가 없어요. <Link to="/settings?tab=repositories">프로젝트 설정</Link>에서 저장소를 먼저 연결해 주세요.</p>}
-    <label>PR 저장소<select className="form-select" value={repoId} disabled={busy || !repos?.length} onChange={event => setRepoId(event.target.value)}>{repos?.map(item => <option key={item.id} value={item.id}>{item.owner}/{item.name}</option>)}</select></label>
+    <label>PR 저장소<select className="form-select" value={repoId} disabled={busy || !repos?.length} onChange={event => { setRepoId(event.target.value); setIssueIds([]) }}>{repos?.map(item => <option key={item.id} value={item.id}>{item.owner}/{item.name}</option>)}</select></label>
     <label>PR 제목<input autoFocus required maxLength={180} value={title} disabled={busy} onChange={event => setTitle(event.target.value)} placeholder="어떤 작업을 마쳤나요?" /></label>
     <div className="issue-fields">
       <label>작업 브랜치<select className="form-select" required value={head} disabled={busy || loadingBranches || !branches} onChange={event => setHead(event.target.value)}><option value="">{loadingBranches ? '브랜치를 불러오는 중…' : '브랜치 선택'}</option>{headOptions.map(name => <option key={name} value={name}>{name}</option>)}</select></label>
@@ -90,6 +93,7 @@ export function CreateLivePullRequest({ projectId, onCreated, onCancel }: {
     </div>
     {branches?.hasMore && <p className="help-text">브랜치가 많아 일부만 보여요. 목록에 없는 브랜치는 GitHub에서 직접 PR을 만들어 주세요.</p>}
     {branches && !headOptions.length && <p className="help-text">PR로 만들 수 있는 다른 브랜치가 없어요. 먼저 브랜치를 만들어 푸시해 주세요.</p>}
+    {repoId && <IssuePicker projectId={projectId} repositoryId={repoId} selected={issueIds} disabled={busy} onChange={setIssueIds} />}
     <label>팀을 위한 변경 요약<textarea required rows={3} maxLength={3000} value={summary} disabled={busy} onChange={event => setSummary(event.target.value)} placeholder="무엇을 바꿨고, 사용자가 어떤 차이를 확인할 수 있나요?" /></label>
     <MarkdownEditor label="GitHub PR 본문" optional value={body} onChange={setBody} disabled={busy} maxLength={60000} placeholder="리뷰어가 볼 구현 내용, 테스트 방법 등을 적어주세요. GitHub에 그대로 올라가요." />
     <fieldset className="reviewer-options" disabled={busy}><legend>리뷰어 <span className="optional">선택</span></legend>
@@ -100,7 +104,7 @@ export function CreateLivePullRequest({ projectId, onCreated, onCancel }: {
       {candidates?.hasMore && <p className="help-text">사람이 많아 일부만 보여요.</p>}
     </fieldset>
     <label className="inline-checkbox"><input type="checkbox" checked={isDraft} disabled={busy} onChange={event => setIsDraft(event.target.checked)} />아직 작업 중이에요 · 초안으로 등록</label>
-    <p className="help-text"><GitBranch size={12} />변경 요약은 zello에서만, GitHub PR 본문은 GitHub에 저장돼요. 해결할 이슈 연결은 이슈 기능이 준비되면 추가됩니다.</p>
+    <p className="help-text"><GitBranch size={12} />변경 요약은 zello에서만, GitHub PR 본문은 GitHub에 저장돼요. 선택한 이슈를 zello에 연결하고, GitHub에 발행된 이슈는 본문에 Closes 참조를 추가해요. 기본 브랜치 병합 시 GitHub 설정에 따라 이슈가 닫힐 수 있어요.</p>
     {error && <p className="form-error" role="alert">{error}</p>}
     <div className="form-actions"><span className="help-text">제출하면 GitHub에 실제 PR이 만들어져요.</span><button type="button" className="button" onClick={onCancel}>취소</button><button className="button button-dark" disabled={!valid || busy} type="submit">{busy ? '만드는 중…' : isDraft ? 'PR 초안 등록' : '코드 검토 요청'}<ArrowRight size={14} /></button></div>
   </form>

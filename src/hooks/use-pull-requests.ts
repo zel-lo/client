@@ -8,7 +8,7 @@ import type { Project, PullRequestPage, PullRequestQuery } from '../lib/project-
 const reauthCodes = ['AUTHENTICATION_REQUIRED', 'GITHUB_REAUTH_REQUIRED', 'ACCOUNT_INACTIVE']
 export const PULL_REQUEST_PAGE_SIZE = 30
 
-/** 코드 검토 화면 주소(?status=&focus=&page=)를 서버 목록 조건으로 바꾼다. 이슈 미연결 필터는 아직 화면에서만 거른다. */
+/** 코드 검토 화면 주소(?status=&focus=&page=)를 서버 목록 조건으로 바꾼다. 이슈 미연결 필터도 서버에서 처리한다. */
 export function codeReviewQuery(search: string): PullRequestQuery {
   const params = new URLSearchParams(search)
   const status = params.get('status')
@@ -17,6 +17,7 @@ export function codeReviewQuery(search: string): PullRequestQuery {
   return {
     state: status === 'merged' || status === 'all' ? status : 'open',
     review: focus === 'pending' ? 'pending' : focus === 'failing' ? 'changes_requested' : undefined,
+    unlinked: focus === 'unlinked' ? true : undefined,
     page: Number.isInteger(page) && page > 1 ? page : 1, size: PULL_REQUEST_PAGE_SIZE,
   }
 }
@@ -98,8 +99,9 @@ export function useLivePullRequests(enabled: boolean, pathname: string, userId?:
       if (selected) preferred.current = selected
       void load()
     }
+    window.addEventListener('zello:pull-requests-updated', refresh)
     window.addEventListener('zello:projects-changed', refresh)
-    return () => { window.removeEventListener('zello:projects-changed', refresh) }
+    return () => { window.removeEventListener('zello:projects-changed', refresh); window.removeEventListener('zello:pull-requests-updated', refresh) }
   }, [enabled, load])
 
   const sync = useCallback(async () => {

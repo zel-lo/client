@@ -37,9 +37,9 @@ export function PullRequestsPanel({ pullRequests, repos, issues, repoFilter, onS
     if (key !== 'page') next.delete('page')
     setParams(next)
   }
-  const unlinked = (pr: PullRequest) => !issues.some(issue => issue.pullRequestIds.includes(pr.id))
+  const unlinked = (pr: PullRequest) => pr.live ? !pr.linkedIssues?.length : !issues.some(issue => issue.pullRequestIds.includes(pr.id))
   const scoped = paging
-    ? pullRequests.filter(pr => focus !== 'unlinked' || unlinked(pr))
+    ? pullRequests
     : pullRequests.filter(pr => (repoFilter === 'all' || pr.repo === repoFilter) && (focus === 'all' || (focus === 'pending' ? pr.status === 'open' && pr.review === 'pending' : focus === 'failing' ? pr.status === 'open' && (pr.checks === 'failing' || pr.review === 'changes_requested') : focus === 'unlinked' ? unlinked(pr) : true)))
   const visible = paging ? scoped : scoped.filter(pr => filter === 'all' || (filter === 'open' ? pr.status === 'open' || pr.status === 'draft' : pr.status === filter))
   const tabCount = (value: string) => paging ? paging.counts[value as keyof PullRequestPaging['counts']]
@@ -59,7 +59,7 @@ export function PullRequestsPanel({ pullRequests, repos, issues, repoFilter, onS
       {visible.map(pr => {
         const linked = issues.filter(issue => issue.pullRequestIds.includes(pr.id))
         const Icon = pr.status === 'merged' ? GitMerge : pr.status === 'draft' ? CircleDashed : GitPullRequest
-        return <TableRow key={pr.id}><TableCell><button className="pr-work-title" onClick={() => onSelect(pr)}><Icon size={17} className={`pr-icon pr-icon-${pr.status}`} /><span>{pr.title}<small className="pr-work-meta">{repositoryRef(pr.repo, pr.number, repos)} · {pr.branch}</small></span></button>{linked.length > 0 && <span className="linked-issue-chips">{linked.map(issue => <button className="reference-link" key={issue.id} onClick={() => onSelectIssue(issue)}><Link2 size={10} />{repositoryRef(issue.repo, issue.githubNumber, repos, issue.id)}</button>)}</span>}</TableCell>
+        return <TableRow key={pr.id}><TableCell><button className="pr-work-title" onClick={() => onSelect(pr)}><Icon size={17} className={`pr-icon pr-icon-${pr.status}`} /><span>{pr.title}<small className="pr-work-meta">{repositoryRef(pr.repo, pr.number, repos)} · {pr.branch}</small></span></button>{pr.live && !!pr.linkedIssues?.length && <span className="linked-issue-chips">{pr.linkedIssues.map(issue => <Link className="reference-link" key={issue.id} to={`/issues?issue=${encodeURIComponent(issue.id)}`}><Link2 size={10} />{issue.key}{issue.number ? ` · #${issue.number}` : ''}</Link>)}</span>}{!pr.live && linked.length > 0 && <span className="linked-issue-chips">{linked.map(issue => <button className="reference-link" key={issue.id} onClick={() => onSelectIssue(issue)}><Link2 size={10} />{repositoryRef(issue.repo, issue.githubNumber, repos, issue.id)}</button>)}</span>}</TableCell>
         <TableCell><span className={`review-state review-${pr.review}`}>{pr.status === 'open' ? reviewLabels[pr.review] : statusLabels[pr.status]}</span></TableCell>
         <TableCell className="table-secondary">{pr.reviewers?.length ? pr.reviewers.join(', ') : <span className="muted">지정 안 함</span>}</TableCell>
         <TableCell className="table-secondary">{pr.author}</TableCell></TableRow>
