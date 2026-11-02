@@ -28,7 +28,7 @@ export function CreatePullRequest({ repos, issues, defaultRepo, defaultIssue, on
     if (!validIds.length) return
     onSubmit({ title: title.trim(), summary: summary.trim(), repo, branch: branch.trim(), base: base.trim(), author: CURRENT_USER, status: isDraft ? 'draft' : 'open', review: 'pending', checks: 'running', issueIds: validIds })
   }
-  return <form className="dialog-form" onSubmit={submit}><h2>이슈에서 코드 검토까지</h2><p>작업한 브랜치와 해결할 이슈를 연결하고, 팀이 이해할 수 있게 변경 내용을 적어주세요.</p>
+  return <form className="dialog-form" onSubmit={submit}><p>작업한 브랜치와 해결할 이슈를 연결하고, 팀이 이해할 수 있게 변경 내용을 적어주세요.</p>
     <label>PR 저장소<select className="form-select" value={repo} onChange={event => { setRepo(event.target.value); setIssueIds([]); setBranch(''); setBase(repos.find(item => item.id === event.target.value)?.branch ?? 'main') }}>{repos.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
     <label>PR 제목<input autoFocus required maxLength={180} value={title} onChange={event => setTitle(event.target.value)} placeholder="어떤 작업을 마쳤나요?" /></label>
     <div className="issue-fields"><label>작업 브랜치<input required list="demo-pr-branches" value={branch} onChange={event => setBranch(event.target.value)} placeholder="feat/collection-share" /><datalist id="demo-pr-branches">{[...new Set(activities.filter(activity => activity.repo === repo).map(activity => activity.branch))].filter(name => name !== base && name !== '기획 중').map(name => <option key={name} value={name} />)}</datalist></label><label>대상 브랜치<input required value={base} onChange={event => setBase(event.target.value)} /></label></div>

@@ -28,9 +28,11 @@
 .workspace-page-content > .demo-team-work > .week-navigation { margin-top: 0; }
 .live-issues > :is(.connection-notice, .connection-error) { margin-bottom: var(--workspace-section-gap); }
 .board-toolbar { align-items: center; row-gap: 10px; margin: var(--workspace-section-gap) 0 16px; }
-.board-toolbar .board-search { height: 40px; }
-.board-toolbar > select { height: 40px; }
-.board-toolbar .work-view-toggle { min-height: 40px; }
+.board-toolbar .board-search { height: 44px; min-height: 44px; margin-top: 0; padding: 8px 11px; border-radius: 11px; color: var(--text-secondary); font-size: 14px; }
+.board-toolbar select { height: 44px; min-height: 44px; }
+/* 보기·상태 탭을 옆의 검색창, 선택칸과 같은 44px로 맞춘다. */
+.board-toolbar .work-view-toggle, .pr-filter-row .segmented-tabs { height: 44px; }
+.board-toolbar .work-view-toggle button, .pr-filter-row .segmented-tabs button { height: 36px; min-height: 36px; padding-top: 0; padding-bottom: 0; }
 .board-overview { min-height: 34px; margin-bottom: 16px; }
 .page-footer { margin-top: 32px; }
 
@@ -85,4 +87,104 @@
   .member-invitations, .membership-history { padding: 18px; }
   .project-setup-page .onboarding-intro { margin-top: 30px; }
   .project-setup-page .setup-steps { gap: 12px; justify-content: space-between; }
+}
+.my-work-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pr-filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.pr-filter-row .work-filter-bar { margin: 0; }
+.pr-filter-row .work-filter-bar select { height: 44px; min-height: 44px; font-size: 14px; }
+/* 모바일은 키우기 전 글자 크기를 유지한다. */
+@media (max-width: 767px) {
+  .board-toolbar select, .board-toolbar input, .board-toolbar .board-search { font-size: 12px; }
+  .board-toolbar .inline-checkbox { font-size: 11px; }
+  .pr-filter-row .work-filter-bar select { font-size: 10px; }
+  .tab-count { font-size: 9px; }
+  .count-text { font-size: 11px; }
+  [data-slot="table-head"] { font-size: 12px; }
+  .pr-work-title { font-size: 12px; }
+  .pr-work-meta { font-size: 10px; }
+  .review-state, .check-state { font-size: 10px; }
+  .table-secondary { font-size: 11px; }
+  .linked-issue-chips > span { font-size: 9px; }
+  .reference-link { font-size: 10px; }
+  .board-column-heading h3 { font-size: 13px; }
+  .board-column-hint { font-size: 10px; }
+  :root .week-eyebrow, :root .week-current, :root .board-summary, :root .board-display-actions > button, :root .project-week-select { font-size: 11px; }
+  :root .week-range { font-size: 13px; }
+  .table-title-button, .issue-title { font-size: 12px; }
+  .table-title-button small { font-size: 9px; }
+  .issue-title small, .issue-status-badge, .issue-assignee, .issue-pr-count, .priority-cell { font-size: 10px; }
+}
+/* 작업 모달: 제목은 상단 바에 두고, 스크롤은 둥근 모서리 안쪽 내용 영역에서만 생긴다. */
+.dialog-scroll { display: flex; flex-direction: column; overflow: hidden; scrollbar-gutter: auto; }
+.dialog-scroll > .dialog-header { flex-shrink: 0; padding: 20px 22px 18px 30px; }
+/* 제목이 상단 바로 올라갔으니 본문 첫 요소의 위 여백은 없앤다. */
+.dialog-scroll > .dialog-body > .dialog-form { padding-top: 24px; }
+.dialog-scroll > .dialog-body > .dialog-form > :first-child { margin-top: 0; }
+.dialog-header .dialog-title { font-size: 25px; font-weight: 700; line-height: 1.5; letter-spacing: -.7px; }
+.dialog-scroll > .dialog-body { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+.dialog-scroll > .dialog-body::-webkit-scrollbar { width: 12px; }
+.dialog-scroll > .dialog-body::-webkit-scrollbar-track { background: transparent; margin: 10px 0 18px; }
+.dialog-scroll > .dialog-body::-webkit-scrollbar-thumb { background: var(--line); border: 4px solid var(--card); border-radius: 999px; }
+.dialog-scroll > .dialog-body::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+@media (max-width: 767px) {
+  .dialog-scroll > .dialog-header { padding: 14px 14px 12px 18px; }
+  .dialog-header .dialog-title { font-size: 21px; }
+}
+/* 모든 선택칸은 같은 화살표를 쓴다. 기본 화살표는 브라우저마다 위치가 달라 숨긴다. */
+:root select:not([multiple], [size]) {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237c8494' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 16px;
+  padding-right: 44px;
+  cursor: pointer;
+}
+/* 목록이 열려 있으면 위쪽 화살표로 바꾼다. :open을 모르는 브라우저는 이 규칙만 건너뛴다. */
+:root select:not([multiple], [size]):open {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237c8494' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m18 15-6-6-6 6'/%3E%3C/svg%3E");
+}
+/* 배경 없이 글자처럼 놓인 선택칸(상단 저장소, 기간, 주차, 연도)은 화살표를 글자 바로 옆에 둔다. */
+:root :is(.select-wrap, .year-select) select, :root select.project-week-select { padding-right: 24px; background-position: right 0 center; }
+.repository-connections label:has(> select)::after { display: none; }
+/* 주차 선택은 가장 긴 주차 문구에 맞춘 고정 폭이라, 열거나 주차를 바꿔도 옆 버튼이 밀리지 않는다. */
+:root select.project-week-select { width: 13em; max-width: none; }
+
+/* 목록까지 꾸밀 수 있는 브라우저(Chrome·Edge 135+)는 열린 목록도 zello 스타일로 그리고, 화살표를 실제 아이콘으로 돌린다. */
+@supports (appearance: base-select) {
+  :root select:not([multiple], [size]), :root select:not([multiple], [size]):open {
+    appearance: base-select;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background-image: none;
+    padding-right: 16px;
+    font-weight: 400;
+  }
+  :root :is(.select-wrap, .year-select) select, :root select.project-week-select { display: inline-flex; gap: 8px; padding-right: 0; }
+  :root select.project-week-select { display: flex; }
+  :root select:not([multiple], [size])::picker(select) {
+    appearance: base-select;
+    margin-block: 6px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--card);
+    box-shadow: 0 12px 32px rgb(0 0 0 / .12);
+    min-width: anchor-size(width);
+  }
+  :root select:not([multiple], [size])::picker-icon {
+    content: '';
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    margin-inline-start: auto;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%237c8494' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat center / 16px;
+    transition: rotate .2s ease;
+  }
+  :root select:not([multiple], [size]):open::picker-icon { rotate: 180deg; }
+  :root select:not([multiple], [size]) option { padding: 9px 12px; border-radius: 8px; color: var(--foreground); font-size: inherit; }
+  :root select:not([multiple], [size]) option::checkmark { display: none; }
+  :root select:not([multiple], [size]) option:hover { background: var(--control-bg); }
+  :root select:not([multiple], [size]) option:checked { background: var(--accent-bg); color: var(--brand); font-weight: 600; }
 }
