@@ -80,7 +80,7 @@ export function CreateLivePullRequest({ projectId, onCreated, onCancel }: {
   }
 
   const headOptions = (branches?.branches ?? []).filter(name => name !== base)
-  return <form className="dialog-form" onSubmit={event => void submit(event)}><h2>코드 검토 요청하기</h2><p>작업한 브랜치를 골라 GitHub에 Pull request를 만들고, 팀이 이해할 수 있게 변경 내용을 적어주세요.</p>
+  return <form className="dialog-form" onSubmit={event => void submit(event)}><p>작업한 브랜치를 골라 GitHub에 Pull request를 만들고, 팀이 이해할 수 있게 변경 내용을 적어주세요.</p>
     {repos && !repos.length && <p className="help-text">연결된 저장소가 없어요. <Link to="/settings?tab=repositories">프로젝트 설정</Link>에서 저장소를 먼저 연결해 주세요.</p>}
     <label>PR 저장소<select className="form-select" value={repoId} disabled={busy || !repos?.length} onChange={event => setRepoId(event.target.value)}>{repos?.map(item => <option key={item.id} value={item.id}>{item.owner}/{item.name}</option>)}</select></label>
     <label>PR 제목<input autoFocus required maxLength={180} value={title} disabled={busy} onChange={event => setTitle(event.target.value)} placeholder="어떤 작업을 마쳤나요?" /></label>

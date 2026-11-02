@@ -43,7 +43,7 @@ describe('실제 팀 작업', () => {
     const user = userEvent.setup()
     await screen.findByText('아직 표시할 작업이 없어요')
     await user.click(screen.getByRole('button', { name: '새 작업 등록' }))
-    const dialog = screen.getByRole('dialog', { name: '작업 상세' })
+    const dialog = screen.getByRole('dialog', { name: '새 작업 등록' })
     await user.type(within(dialog).getByRole('textbox', { name: '작업 제목' }), '회의에서 정한 일')
     await user.type(within(dialog).getByRole('textbox', { name: '완료 조건' }), '사용자가 확인할 결과')
     await user.click(within(dialog).getByRole('checkbox', { name: /저장하고 GitHub에도 이슈 만들기/ }))

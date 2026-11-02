@@ -83,7 +83,7 @@ describe('실제 PR 연결', () => {
     expect(screen.getByText('GitHub 연동')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /검색 결과를 더 빠르게/ })).not.toBeInTheDocument()
     expect(screen.getByText('초안')).toBeInTheDocument()
-    expect(screen.getAllByText('수집 전').length).toBeGreaterThan(0)
+    expect(screen.queryByRole('columnheader', { name: /자동 검사/ })).not.toBeInTheDocument()
     await userEvent.setup().click(screen.getByRole('button', { name: /병합됨/ }))
     expect(screen.getByRole('button', { name: /실제 PR 3/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /실제 PR 1/ })).not.toBeInTheDocument()
@@ -343,7 +343,7 @@ describe('실제 PR 연결', () => {
     const fetcher = backend()
     mount('/pull-requests')
     await screen.findByRole('button', { name: /실제 PR 1/ })
-    await userEvent.setup().click(screen.getByRole('button', { name: '데이터 새로고침' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'GitHub PR 가져오기' }))
     expect(await screen.findByText(/GitHub에서 PR 3개를 가져왔어요/)).toBeInTheDocument()
     expect(fetcher).toHaveBeenCalledWith('/api/projects/7/pull-requests/sync', expect.objectContaining({
       method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'csrf-value' },
@@ -356,7 +356,7 @@ describe('실제 PR 연결', () => {
     backend({ failure: '조직의 OAuth 승인이 필요해요.' })
     mount('/pull-requests')
     await screen.findByRole('button', { name: /실제 PR 1/ })
-    await userEvent.setup().click(screen.getByRole('button', { name: '데이터 새로고침' }))
+    await userEvent.setup().click(screen.getByRole('button', { name: 'GitHub PR 가져오기' }))
     expect(await screen.findByText('조직의 OAuth 승인이 필요해요.')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /실제 PR 1/ })).toBeInTheDocument()
   })
