@@ -33,6 +33,8 @@ export type ReviewerCandidates = { users: Reviewer[]; hasMore: boolean }
 export type PullRequestPage = Page<PullRequestItem> & { total: number; counts: { open: number; merged: number; closed: number } }
 export type PullRequestQuery = {
   state?: 'open' | 'merged' | 'closed' | 'all'; author?: 'me'; reviewer?: 'me'; review?: 'pending' | 'changes_requested'; page?: number; size?: number
+  /** 없으면 연결된 모든 저장소. */
+  repositoryId?: string
 }
 export type BranchList = { defaultBranch: string; branches: string[]; hasMore: boolean }
 export type NewPullRequest = {
@@ -80,6 +82,7 @@ export const listPullRequests = (projectId: string, options: PullRequestQuery = 
   if (options.author) params.set('author', options.author)
   if (options.reviewer) params.set('reviewer', options.reviewer)
   if (options.review) params.set('review', options.review)
+  if (options.repositoryId) params.set('repositoryId', options.repositoryId)
   return json<PullRequestPage>(`/api/projects/${encodeURIComponent(projectId)}/pull-requests?${params}`, { signal })
 }
 export const getPullRequest = (projectId: string, pullRequestId: string, signal?: AbortSignal) =>

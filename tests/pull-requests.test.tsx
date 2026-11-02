@@ -287,6 +287,18 @@ describe('실제 PR 연결', () => {
     expect(fetcher).toHaveBeenCalledWith(expect.stringContaining('review=changes_requested'), expect.anything())
   })
 
+  it('상단 저장소 선택은 연결된 저장소로 채우고 고른 저장소를 서버 조건으로 보낸다', async () => {
+    const fetcher = backend()
+    mount('/pull-requests')
+    await screen.findByRole('button', { name: /실제 PR 1(?!\d)/ })
+    const scope = await screen.findByRole('combobox', { name: '저장소 필터' })
+    expect(within(scope).getAllByRole('option').map(option => option.textContent)).toEqual(['모든 저장소', 'zello-test'])
+    await userEvent.setup().selectOptions(scope, '40')
+    for (const condition of ['state=open', 'author=me', 'reviewer=me']) {
+      await waitFor(() => expect(fetcher).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`${condition}.*repositoryId=40`)), expect.anything()))
+    }
+  })
+
   it('코드 검토 표에 맡긴 리뷰어를 보여준다', async () => {
     backend({ everything: [pull('1', 1, { reviewers: [{ login: 'teammate', avatarUrl: null }, { login: 'designer', avatarUrl: null }] }), pull('2', 2)] })
     mount('/pull-requests')

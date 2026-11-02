@@ -49,7 +49,8 @@ function IssueDialog({ children, busy, onClose, drawer = false }: { children: Re
   return <div className={`dialog-backdrop ${drawer ? 'drawer-backdrop' : ''}`} onMouseDown={event => { if (!busy && event.target === event.currentTarget) onClose() }}><div className={drawer ? 'drawer issue-detail-drawer' : 'dialog dialog-wide'} role="dialog" aria-modal="true" aria-label="작업 상세" ref={panel} tabIndex={-1}><div className="dialog-header"><span className="eyebrow">회의에서 정한 일부터 실제 개발까지</span><button type="button" className="icon-button" aria-label="작업 창 닫기" disabled={busy} onClick={onClose}><X size={20} /></button></div>{children}</div></div>
 }
 
-export function LiveIssues({ project, projectLoading = false, mineOnly = false, onCountChange }: { project: Project | null; projectLoading?: boolean; mineOnly?: boolean; onCountChange?: (total: number) => void }) {
+/** repositoryId는 상단 저장소 선택 값. 없으면 연결된 모든 저장소. */
+export function LiveIssues({ project, projectLoading = false, mineOnly = false, repositoryId, onCountChange }: { project: Project | null; projectLoading?: boolean; mineOnly?: boolean; repositoryId?: string; onCountChange?: (total: number) => void }) {
   const [params, setParams] = useSearchParams()
   const currentWeek = useWorkWeek(project ?? undefined)
   const week = params.has('week') ? validWeek(params.get('week'), project ?? undefined) : currentWeek
@@ -71,7 +72,6 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
   const [archived, setArchived] = useState(false)
   const [mine, setMine] = useState(mineOnly)
   const [page, setPage] = useState(1)
-  const [repoFilter, setRepoFilter] = useState('all')
   const [assigneeFilter, setAssigneeFilter] = useState('all')
   const [knownAssignees, setKnownAssignees] = useState<string[]>([])
   const request = useRef<AbortController | null>(null)
@@ -84,7 +84,7 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
   const [headerActionsHost, setHeaderActionsHost] = useState<HTMLElement | null>(null)
   useLayoutEffect(() => { setHeaderActionsHost(mineOnly ? null : document.getElementById('workspace-page-actions')) }, [mineOnly])
   const focusUnassigned = params.get('focus') === 'unassigned'
-  const loadKey = `${repoFilter}:${assigneeFilter}:${focusUnassigned}:${project?.id}:${query}:${status}:${archived}:${mine}:${mineOnly}:${week}:${view}:${revision}`
+  const loadKey = `${repositoryId}:${assigneeFilter}:${focusUnassigned}:${project?.id}:${query}:${status}:${archived}:${mine}:${mineOnly}:${week}:${view}:${revision}`
   const currentKey = useRef(loadKey); currentKey.current = loadKey
   const busy = !!busyId || opening
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; detailRequest.current?.abort() } }, [])
@@ -113,7 +113,7 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
     const key = loadKey
     setLoading(true); setError(''); setReauth(false)
     void Promise.all([
-      listIssues(project.id, { query, status, page, size: view === 'board' ? 100 : 30, archived, mine, activeOnly: mineOnly, repositoryId: repoFilter === 'all' ? undefined : repoFilter, assignee: focusUnassigned || assigneeFilter === 'unassigned' ? 'unassigned' : assigneeFilter === 'all' ? undefined : assigneeFilter, ...(!mineOnly && !archived ? { week } : {}) }, controller.signal),
+      listIssues(project.id, { query, status, page, size: view === 'board' ? 100 : 30, archived, mine, activeOnly: mineOnly, repositoryId, assignee: focusUnassigned || assigneeFilter === 'unassigned' ? 'unassigned' : assigneeFilter === 'all' ? undefined : assigneeFilter, ...(!mineOnly && !archived ? { week } : {}) }, controller.signal),
       listConnectedRepositories(project.id, controller.signal),
     ]).then(([issues, repos]) => {
       if (controller.signal.aborted || currentKey.current !== key) return
@@ -129,7 +129,7 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
     }).finally(() => { if (!controller.signal.aborted && currentKey.current === key) setLoading(false) })
     return () => controller.abort()
   }, [project?.id, query, status, page, archived, mine, mineOnly, revision, week, view, loadKey])
-  useEffect(() => { if (result && !query && !status && !archived && mine === mineOnly && repoFilter === 'all' && assigneeFilter === 'all' && !focusUnassigned) onCountChange?.(result.total) }, [result, query, status, archived, mine, mineOnly, repoFilter, assigneeFilter, focusUnassigned, onCountChange])
+  useEffect(() => { if (result && !query && !status && !archived && mine === mineOnly && !repositoryId && assigneeFilter === 'all' && !focusUnassigned) onCountChange?.(result.total) }, [result, query, status, archived, mine, mineOnly, repositoryId, assigneeFilter, focusUnassigned, onCountChange])
   useEffect(() => {
     if (params.get('new') === '1' && project && !loading && canWrite) {
       setEditing('new'); setParams(current => { const next = new URLSearchParams(current); next.delete('new'); return next }, { replace: true })
@@ -190,7 +190,7 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
   }
   if (projectLoading && !project) return <LoadingState layout={mineOnly ? 'list' : 'board'} label="프로젝트와 작업을 불러오는 중" />
   if (!project) return <div className="empty-state"><Github size={28} /><h2>팀의 저장소로 시작해요</h2><p>저장소를 연결하면 회의에서 정한 작업을 저장하고 GitHub에 발행할 수 있어요.</p><Link className="button button-dark" to="/onboarding">프로젝트와 저장소 연결</Link></div>
-  const filtered = (result?.items ?? []).filter(item => (repoFilter === 'all' || item.repositoryId === repoFilter) && (assigneeFilter === 'all' || (assigneeFilter === 'unassigned' ? !item.assignee : item.assignee === assigneeFilter)) && (params.get('focus') !== 'unassigned' || !item.assignee))
+  const filtered = (result?.items ?? []).filter(item => (!repositoryId || item.repositoryId === repositoryId) && (assigneeFilter === 'all' || (assigneeFilter === 'unassigned' ? !item.assignee : item.assignee === assigneeFilter)) && (params.get('focus') !== 'unassigned' || !item.assignee))
   const boardItems: BoardItem[] = filtered.map(item => ({ id: item.id, key: item.key, title: item.title, status: item.status.toLowerCase() as IssueStatus, priority: item.priority.toLowerCase() as BoardItem['priority'], repositoryId: item.repositoryId, repositoryName: item.repositoryName, number: item.number, assignee: item.assignee, sourceLabel: sources[item.source], meetingDate: item.meetingDate, plannedWeekStart: item.plannedWeekStart ?? week, completedAt: item.completedAt,
     locked: item.publishStatus === 'PENDING' || item.publishStatus === 'UNKNOWN',
     attention: item.publishStatus === 'FAILED' ? { label: 'GitHub 발행을 다시 확인해 주세요', tone: 'danger' } : item.publishStatus === 'UNKNOWN' || item.publishStatus === 'PENDING' ? { label: 'GitHub 발행 결과 확인 중', tone: 'warning' } : !item.assignee && item.status !== 'DONE' ? { label: '함께할 담당자를 지정해 주세요', tone: 'warning' } : undefined,
@@ -206,10 +206,9 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
       <input className="board-search" type="search" aria-label="작업 검색" value={queryInput} disabled={busy} onChange={event => setQueryInput(event.target.value)} placeholder="제목 또는 작업 번호 검색" />
       <select aria-label="진행 상태" disabled={busy} value={status} onChange={event => { setStatus(event.target.value); setPage(1) }}><option value="">모든 상태</option>{Object.entries(states).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
       <select aria-label="담당자 필터" disabled={busy} value={assigneeFilter} onChange={event => { setAssigneeFilter(event.target.value); setPage(1); if (focusUnassigned) setParams(current => { const next = new URLSearchParams(current); next.delete('focus'); return next }) }}><option value="all">모든 담당자</option><option value="unassigned">담당자 미지정</option>{knownAssignees.map(login => <option key={login} value={login!}>{login}</option>)}</select>
-      <select aria-label="저장소 필터" disabled={busy} value={repoFilter} onChange={event => { setRepoFilter(event.target.value); setPage(1) }}><option value="all">모든 저장소</option>{repositories.map(repo => <option key={repo.id} value={repo.id}>{repo.name}</option>)}</select>
       <select aria-label="작업 목록" disabled={busy} value={archived ? 'archived' : 'active'} onChange={event => { setArchived(event.target.value === 'archived'); setPage(1) }}><option value="active">진행·완료한 작업</option><option value="archived">보관한 작업</option></select>
       {!mineOnly && <label className="inline-checkbox"><input type="checkbox" checked={mine} disabled={busy} onChange={event => { setMine(event.target.checked); setPage(1) }} />내 작업만</label>}
-      {(queryInput || status || repoFilter !== 'all' || assigneeFilter !== 'all' || mine !== mineOnly || params.get('focus') === 'unassigned') && <button type="button" className="subtle-link" disabled={busy} onClick={() => { setQueryInput(''); setStatus(''); setRepoFilter('all'); setAssigneeFilter('all'); setMine(mineOnly); setPage(1); setParams(current => { const next = new URLSearchParams(current); next.delete('focus'); return next }) }}>필터 초기화</button>}
+      {(queryInput || status || assigneeFilter !== 'all' || mine !== mineOnly || params.get('focus') === 'unassigned') && <button type="button" className="subtle-link" disabled={busy} onClick={() => { setQueryInput(''); setStatus(''); setAssigneeFilter('all'); setMine(mineOnly); setPage(1); setParams(current => { const next = new URLSearchParams(current); next.delete('focus'); return next }) }}>필터 초기화</button>}
       {loading && result && <span className="board-refresh-status" role="status"><RefreshCw size={12} className="board-saving" />작업을 갱신하고 있어요</span>}
     </div>
     {loading && !result ? <LoadingState layout={view} label="저장한 작업을 불러오는 중" /> : result && <>
