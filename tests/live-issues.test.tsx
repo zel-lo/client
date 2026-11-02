@@ -33,13 +33,14 @@ function backend({ viewer = false, conflict = false, saved = [] as LiveIssue[], 
     return new Response(null, { status: 404 })
   })
   vi.stubGlobal('fetch', fetcher)
-  const mount = () => render(<MemoryRouter><LiveIssues project={viewer ? { ...project, role: 'VIEWER' } : project} /></MemoryRouter>)
-  return { fetcher, mount }
+  const notify = vi.fn()
+  const mount = () => render(<MemoryRouter><LiveIssues project={viewer ? { ...project, role: 'VIEWER' } : project} onNotify={notify} /></MemoryRouter>)
+  return { fetcher, mount, notify }
 }
 
 describe('실제 팀 작업', () => {
-  it('서버에 먼저 저장하고 사용자가 선택한 뒤 GitHub에 발행한다', async () => {
-    const { fetcher, mount } = backend(); mount()
+  it('서버에 먼저 저장하고 창을 닫은 뒤, 사용자가 카드에서 GitHub에 발행한다', async () => {
+    const { fetcher, mount, notify } = backend(); mount()
     const user = userEvent.setup()
     await screen.findByText('아직 표시할 작업이 없어요')
     await user.click(screen.getByRole('button', { name: '새 작업 등록' }))
@@ -48,34 +49,38 @@ describe('실제 팀 작업', () => {
     await user.type(within(dialog).getByRole('textbox', { name: '완료 조건' }), '사용자가 확인할 결과')
     await user.click(within(dialog).getByRole('checkbox', { name: /저장하고 GitHub에도 이슈 만들기/ }))
     await user.click(within(dialog).getByRole('button', { name: 'zello에만 저장' }))
-    await screen.findByRole('button', { name: '저장한 작업 GitHub에 발행' })
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Z-unique을 zello에 등록했어요. GitHub에는 아직 만들지 않았어요.'))
+    expect(screen.queryByRole('dialog', { name: '새 작업 등록' })).not.toBeInTheDocument()
     expect(fetcher.mock.calls.filter(([path]) => path.endsWith('/publish'))).toHaveLength(0)
+    await user.click(await screen.findByRole('button', { name: /회의에서 정한 일/ }))
     await user.click(screen.getByRole('button', { name: '저장한 작업 GitHub에 발행' }))
     await screen.findByRole('link', { name: 'GitHub에서 보기' })
     expect(fetcher).toHaveBeenCalledWith('/api/projects/1/issues/20/publish', expect.objectContaining({ method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'test-csrf' }, body: JSON.stringify({ version: 0 }) }))
     expect(localStorage.getItem('accessToken')).toBeNull()
   })
-  it('기본 생성은 로컬 저장 성공 후 최신 버전으로 GitHub 발행까지 진행한다', async () => {
-    const { fetcher, mount } = backend(); mount(); const user = userEvent.setup()
+  it('기본 생성은 로컬 저장 성공 후 최신 버전으로 GitHub 발행까지 하고 창을 닫는다', async () => {
+    const { fetcher, mount, notify } = backend(); mount(); const user = userEvent.setup()
     await screen.findByText('아직 표시할 작업이 없어요')
     await user.click(screen.getByRole('button', { name: '새 작업 등록' }))
     expect(screen.getByRole('checkbox', { name: /저장하고 GitHub에도 이슈 만들기/ })).toBeChecked()
     await user.type(screen.getByRole('textbox', { name: '작업 제목' }), 'GitHub 실제 이슈')
     await user.click(screen.getByRole('button', { name: '저장하고 GitHub에 만들기' }))
-    expect(await screen.findByRole('link', { name: 'GitHub에서 보기' })).toHaveAttribute('href', 'https://github.com/team/server/issues/7')
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Z-unique을 등록하고 GitHub 이슈도 만들었어요.'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /GitHub 실제 이슈/ })).toBeInTheDocument()
     const writes = fetcher.mock.calls.filter(([path, init]) => init?.method === 'POST' && path !== '/api/auth/csrf')
     expect(writes.map(([path]) => path)).toEqual(['/api/projects/1/issues', '/api/projects/1/issues/20/publish'])
     expect(JSON.parse(writes[1][1]!.body as string)).toEqual({ version: 0 })
   })
-  it('GitHub 생성 실패는 로컬 작업과 오류를 보존하고 같은 작업을 다시 발행한다', async () => {
-    const { fetcher, mount } = backend({ failPublish: true }); mount(); const user = userEvent.setup()
+  it('GitHub 생성 실패는 로컬 작업을 보존해 토스트로 알리고, 카드에서 같은 작업을 다시 발행한다', async () => {
+    const { fetcher, mount, notify } = backend({ failPublish: true }); mount(); const user = userEvent.setup()
     await screen.findByText('아직 표시할 작업이 없어요')
     await user.click(screen.getByRole('button', { name: '새 작업 등록' }))
     await user.type(screen.getByRole('textbox', { name: '작업 제목' }), '보존할 작업')
     await user.click(screen.getByRole('button', { name: '저장하고 GitHub에 만들기' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('저장소의 이슈 권한을 확인해 주세요.')
-    expect(screen.getByRole('textbox', { name: '작업 제목' })).toHaveValue('보존할 작업')
-    expect(screen.queryByRole('link', { name: 'GitHub에서 보기' })).not.toBeInTheDocument()
+    await waitFor(() => expect(notify).toHaveBeenCalledWith(expect.stringContaining('저장소의 이슈 권한을 확인해 주세요.'), 'error'))
+    expect(screen.queryByRole('dialog', { name: '새 작업 등록' })).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: /보존할 작업/ }))
     await user.click(screen.getByRole('button', { name: '저장한 작업 GitHub에 발행' }))
     await screen.findByRole('link', { name: 'GitHub에서 보기' })
     expect(fetcher.mock.calls.filter(([path, init]) => path === '/api/projects/1/issues' && init?.method === 'POST')).toHaveLength(1)

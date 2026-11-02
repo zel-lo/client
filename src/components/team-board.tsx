@@ -5,8 +5,9 @@ import type { CollisionDetection, DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { DropdownMenu, Popover } from 'radix-ui'
-import { Archive, ArrowRight, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Circle, CircleDot, GitPullRequest, GripVertical, LayoutList, Columns3, LoaderCircle, Mic, MoreHorizontal, Plus, RotateCcw, UserRound, X } from 'lucide-react'
+import { Archive, ArrowRight, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Circle, CircleAlert, CircleDot, Github, GitPullRequest, GripVertical, LayoutList, Columns3, LoaderCircle, Mic, MoreHorizontal, Plus, RotateCcw, UserRound, X } from 'lucide-react'
 import type { IssueStatus } from '../data/work-items'
+import { BrandMark } from './brand-mark'
 import { shiftWeek, startOfWeek, weekLabel, projectWeeks, projectWeekCount, projectWeekNumber, today } from '../lib/work-weeks'
 import type { ProjectPeriod } from '../lib/work-weeks'
 import { useWorkWeek } from '../hooks/use-work-week'
@@ -25,6 +26,8 @@ export type BoardItem = {
   sourceLabel: string; meetingDate?: string | null; plannedWeekStart: string; completedAt?: string | null
   attention?: { label: string; tone: 'warning' | 'danger' | 'info' | 'success' }
   references?: { id: string; label: string }[]; locked?: boolean
+  /** 실제 작업의 GitHub 발행 상태. 샘플 작업은 없다. */
+  github?: { state: 'published' | 'local' | 'pending' | 'failed'; url?: string }
 }
 export type AssigneePage = { items: { login: string }[]; hasNext: boolean }
 export type BoardMove = { id: string; status: IssueStatus; beforeId: string | null }
@@ -105,12 +108,23 @@ function AssigneePicker({ item, disabled, onAssign, loadAssignees }: { item: Boa
   </Popover.Root>
 }
 
+/** 카드 맨 위에 GitHub 이슈와의 관계를 보여준다. 발행된 작업은 GitHub 이슈로 바로 이동한다. */
+function GithubState({ item, overlay }: { item: BoardItem; overlay: boolean }) {
+  const reference = `${item.repositoryName}${item.number ? ` #${item.number}` : ''}`
+  const state = item.github?.state
+  if (state === 'published' && item.github?.url) return <a className="board-github is-published" href={item.github.url} target="_blank" rel="noopener noreferrer" tabIndex={overlay ? -1 : 0} title="GitHub 이슈 열기"><Github size={13} /><span>{reference}</span><ArrowUpRight size={12} /></a>
+  if (state === 'local') return <span className="board-github is-local" title="zello에만 있어요. GitHub에는 아직 이슈가 없어요." aria-label={`${item.repositoryName}, zello에만 있음`}><BrandMark /><span aria-hidden="true">{item.repositoryName}</span></span>
+  if (state === 'pending') return <span className="board-github is-pending" title="GitHub 발행 결과를 확인하고 있어요"><LoaderCircle size={13} /><span>GitHub 발행 확인 중</span></span>
+  if (state === 'failed') return <span className="board-github is-failed" title="카드를 열어 다시 발행해 주세요"><CircleAlert size={13} /><span>GitHub 발행 실패</span></span>
+  return <span className="board-github"><span>{reference}</span></span>
+}
+
 function CardContent({ item, week, canWrite, busy, actions, overlay = false, children }: { item: BoardItem; week: string; canWrite: boolean; busy: boolean; actions: BoardActions; overlay?: boolean; children?: ReactNode }) {
   const carry = item.status !== 'backlog' && item.status !== 'done' && item.plannedWeekStart < week
   return <>
-    <div className="board-card-top"><span className="board-card-key mono">{item.key}</span>{item.priority === 'high' && <span className="board-priority">높음</span>}{children}</div>
+    <div className="board-card-top"><GithubState item={item} overlay={overlay} />{item.priority === 'high' && <span className="board-priority">높음</span>}{children}</div>
     <button type="button" className="board-card-title" aria-label={`${item.key} ${item.title}`} tabIndex={overlay ? -1 : 0} onClick={() => actions.onOpen(item.id)}>{item.title}</button>
-    <div className="board-card-context"><span title={item.repositoryName}>{item.repositoryName}{item.number ? `#${item.number}` : ''}</span>{carry && <span className="board-carry" title={`원래 계획: ${weekLabel(item.plannedWeekStart)}`}><RotateCcw size={11} />{shiftWeek(week, -1) === item.plannedWeekStart ? '전주 이월' : '이전 주 이월'}</span>}</div>
+    <div className="board-card-context"><span className="board-card-key mono">{item.key}</span>{carry && <span className="board-carry" title={`원래 계획: ${weekLabel(item.plannedWeekStart)}`}><RotateCcw size={11} />{shiftWeek(week, -1) === item.plannedWeekStart ? '전주 이월' : '이전 주 이월'}</span>}</div>
     {item.attention && <div className={`board-attention board-attention-${item.attention.tone}`}><CircleDot size={12} /><span>{item.attention.label}</span></div>}
     <div className="board-card-footer"><div className="board-card-links">{item.references?.length ? item.references.slice(0, 2).map(reference => <button type="button" tabIndex={overlay ? -1 : 0} key={reference.id} onClick={() => actions.onReference?.(reference.id)}><GitPullRequest size={12} />{reference.label}</button>) : <span className="board-card-source" title={item.meetingDate ? `${item.sourceLabel} · ${item.meetingDate}` : item.sourceLabel}>{item.sourceLabel}</span>}</div>
       {overlay ? <span className="board-assignee">{item.assignee ?? '담당자 지정'}</span> : <AssigneePicker item={item} disabled={!canWrite || busy || !!item.locked} onAssign={actions.onAssign} loadAssignees={actions.loadAssignees} />}
@@ -124,7 +138,7 @@ function WorkCard({ item, week, canWrite, busy, actions }: { item: BoardItem; we
   return <article ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition } as CSSProperties} className={`board-card ${isDragging ? 'is-dragging' : ''} ${item.locked ? 'is-locked' : ''}`} aria-label={item.key}>
     <CardContent item={item} week={week} canWrite={canWrite} busy={busy} actions={actions}>
       {busy && <LoaderCircle className="board-saving" size={14} aria-label="저장 중" />}
-      {canWrite && <><button type="button" ref={setActivatorNodeRef} className="board-drag-handle" {...attributes} {...listeners} disabled={disabled} aria-label={`${item.key} 끌어서 옮기기`}><GripVertical size={15} /></button><DropdownMenu.Root><DropdownMenu.Trigger asChild><button type="button" className="board-card-menu" disabled={disabled} aria-label={`${item.key} 작업 메뉴`}><MoreHorizontal size={17} /></button></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="board-popover board-menu" sideOffset={6} align="end"><DropdownMenu.Label>단계 옮기기</DropdownMenu.Label>{boardStates.map(state => <DropdownMenu.Item key={state.id} disabled={state.id === item.status} onSelect={() => void actions.onMove({ id: item.id, status: state.id, beforeId: null })}><state.icon size={14} />{state.label}{state.id === 'in_progress' || state.id === 'in_review' ? '으로' : '로'} 이동{state.id === item.status && <Check size={13} />}</DropdownMenu.Item>)}</DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root></>}
+      {canWrite && <><button type="button" ref={setActivatorNodeRef} className="board-drag-handle board-tip" data-tip="끌어서 순서·단계 옮기기" {...attributes} {...listeners} disabled={disabled} aria-label={`${item.key} 끌어서 옮기기`}><GripVertical size={15} /></button><DropdownMenu.Root><DropdownMenu.Trigger asChild><button type="button" className="board-card-menu board-tip" data-tip="작업 메뉴" disabled={disabled} aria-label={`${item.key} 작업 메뉴`}><MoreHorizontal size={17} /></button></DropdownMenu.Trigger><DropdownMenu.Portal><DropdownMenu.Content className="board-popover board-menu" sideOffset={6} align="end"><DropdownMenu.Label>단계 옮기기</DropdownMenu.Label>{boardStates.map(state => <DropdownMenu.Item key={state.id} disabled={state.id === item.status} onSelect={() => void actions.onMove({ id: item.id, status: state.id, beforeId: null })}><state.icon size={14} />{state.label}{state.id === 'in_progress' || state.id === 'in_review' ? '으로' : '로'} 이동{state.id === item.status && <Check size={13} />}</DropdownMenu.Item>)}</DropdownMenu.Content></DropdownMenu.Portal></DropdownMenu.Root></>}
     </CardContent>
   </article>
 }

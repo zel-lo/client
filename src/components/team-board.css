@@ -47,15 +47,43 @@
 .board-card.is-locked { border-style: dashed; }
 .board-card-overlay { box-shadow: 0 14px 32px rgb(18 21 31 / .15); border-color: var(--accent-line); transform: rotate(2deg); cursor: grabbing; }
 .board-card-top { display: flex; align-items: center; gap: 5px; min-height: 24px; }
-.board-card-key { font-size: 10px; color: var(--muted-foreground); margin-right: auto; }
+.board-card-key { font-size: 11px; color: var(--subtle-foreground); }
+/* 카드 맨 위 GitHub 상태: 발행됨은 이슈 링크, 나머지는 상태별 색으로 구분한다. */
+.board-github { display: inline-flex; align-items: center; gap: 5px; min-width: 0; margin-right: auto; color: var(--text-secondary); font-size: 12px; font-weight: 500; }
+.board-github > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-github > svg { flex-shrink: 0; }
+.board-github.is-published { color: var(--foreground); text-decoration: none; }
+.board-github.is-published:hover { color: var(--brand); }
+.board-github.is-published:hover > span { text-decoration: underline; text-underline-offset: 3px; }
+.board-github.is-local { color: var(--muted-foreground); }
+.board-github .brand-mark { width: 14px; height: 14px; }
+.board-github.is-pending { color: var(--git-amber); }
+.board-github.is-failed { color: var(--git-red); }
+/* 작업 상세 위쪽: 왼쪽은 작업 키와 발행 상태, 오른쪽은 GitHub 이동 버튼. */
+.issue-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 12px 0 4px; }
+.issue-meta-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; font-size: 13px; color: var(--muted-foreground); }
+.issue-meta-key { color: var(--subtle-foreground); font-size: 12px; }
+.issue-publish { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--control-bg); color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+.issue-publish > i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.issue-publish-published { background: color-mix(in srgb, var(--git-green) 12%, transparent); color: var(--git-green); }
+.issue-publish-pending { background: color-mix(in srgb, var(--git-amber) 14%, transparent); color: var(--git-amber); }
+.issue-publish-failed, .issue-publish-unknown { background: color-mix(in srgb, var(--git-red) 12%, transparent); color: var(--git-red); }
+.issue-meta .issue-meta-link { display: inline-flex; align-items: center; gap: 6px; height: 32px; min-height: 32px; padding: 0 12px; border-radius: 9px; font-size: 13px; line-height: 1; text-decoration: none; }
+/* 손잡이·메뉴 툴팁은 CSS로만 그려서 끌기·메뉴의 키보드와 포인터 동작을 건드리지 않는다. */
+.board-tip { position: relative; }
+.board-tip::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; z-index: 5; padding: 5px 9px; border-radius: 6px; background: var(--foreground); color: var(--background); font-size: 12px; font-weight: 500; line-height: 1.4; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-50%, 2px); transition: opacity .12s ease .3s, transform .12s ease .3s; }
+.board-tip:is(:hover, :focus-visible):not(:disabled)::after { opacity: 1; transform: translate(-50%, 0); }
+.board-card-menu.board-tip::after { left: auto; right: 0; transform: translateY(2px); }
+.board-card-menu.board-tip:is(:hover, :focus-visible):not(:disabled)::after { transform: none; }
+.board-card-menu[data-state="open"]::after, .is-dragging .board-tip::after { display: none; }
 .board-priority { font-size: 9px; line-height: 1.5; padding: 2px 5px; border-radius: 5px; background: var(--git-red-bg); color: var(--git-red); }
 .board-drag-handle, .board-card-menu { display: grid; place-items: center; width: 24px; height: 28px; padding: 0; border-radius: 6px; background: transparent; color: var(--muted-foreground); }
 .board-drag-handle { cursor: grab; touch-action: none; }
 .board-drag-handle:active { cursor: grabbing; }
 .board-drag-handle:hover, .board-card-menu:hover { background: var(--control-bg); color: var(--foreground); }
-.board-card-title { display: block; width: 100%; text-align: left; margin-top: 7px; padding: 0; color: var(--foreground); font-size: 13px; font-weight: 600; line-height: 1.65; letter-spacing: -.2px; overflow-wrap: anywhere; background: transparent; }
+.board-card-title { display: block; width: 100%; text-align: left; margin-top: 7px; padding: 0; color: var(--foreground); font-size: 15px; font-weight: 600; line-height: 1.65; letter-spacing: -.2px; overflow-wrap: anywhere; background: transparent; }
 .board-card-title:hover { color: var(--brand); }
-.board-card-context { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; margin: 7px 0 0; color: var(--muted-foreground); font-size: 10px; line-height: 1.5; }
+.board-card-context { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; min-width: 0; margin: 7px 0 0; color: var(--muted-foreground); font-size: 11px; line-height: 1.5; }
 .board-card-context > span:first-child { overflow: hidden; max-width: 100%; text-overflow: ellipsis; white-space: nowrap; }
 .board-carry { display: inline-flex; align-items: center; gap: 3px; color: var(--git-amber); }
 .board-attention { display: flex; align-items: flex-start; gap: 6px; padding: 8px; border-radius: 8px; margin-top: 12px; font-size: 10px; line-height: 1.6; }

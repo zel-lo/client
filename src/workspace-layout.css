@@ -108,6 +108,9 @@
   .reference-link { font-size: 10px; }
   .board-column-heading h3 { font-size: 13px; }
   .board-column-hint { font-size: 10px; }
+  .board-card-title { font-size: 13px; }
+  .board-card-key, .board-card-context { font-size: 10px; }
+  .board-github { font-size: 11px; }
   :root .week-eyebrow, :root .week-current, :root .board-summary, :root .board-display-actions > button, :root .project-week-select { font-size: 11px; }
   :root .week-range { font-size: 13px; }
   .table-title-button, .issue-title { font-size: 12px; }
