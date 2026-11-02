@@ -49,11 +49,11 @@ function IssueDialog({ children, busy, onClose, drawer = false, title }: { child
     document.addEventListener('keydown', key)
     return () => { document.body.style.overflow = overflow; document.removeEventListener('keydown', key); before?.focus() }
   }, [])
-  return <div className={`dialog-backdrop ${drawer ? 'drawer-backdrop' : ''}`} onMouseDown={event => { if (!busy && event.target === event.currentTarget) onClose() }}><div className={drawer ? 'drawer issue-detail-drawer' : 'dialog dialog-wide dialog-scroll'} role="dialog" aria-modal="true" aria-label={title ?? '작업 상세'} ref={panel} tabIndex={-1}><div className="dialog-header">{title ? <h2 className="dialog-title">{title}</h2> : <span className="eyebrow">회의에서 정한 일부터 실제 개발까지</span>}<button type="button" className="icon-button" aria-label="작업 창 닫기" disabled={busy} onClick={onClose}><X size={20} /></button></div>{drawer ? children : <div className="dialog-body">{children}</div>}</div></div>
+  return <div className={`dialog-backdrop ${drawer ? 'drawer-backdrop' : ''}`} onMouseDown={event => { if (!busy && event.target === event.currentTarget) onClose() }}><div className={drawer ? 'drawer issue-detail-drawer' : 'dialog dialog-wide dialog-scroll'} role="dialog" aria-modal="true" aria-label={title ?? '작업 상세'} ref={panel} tabIndex={-1}><div className="dialog-header">{title ? <h2 className="dialog-title">{title}</h2> : <span className="eyebrow">작업 상세</span>}<button type="button" className="icon-button" aria-label="작업 창 닫기" disabled={busy} onClick={onClose}><X size={20} /></button></div>{drawer ? children : <div className="dialog-body">{children}</div>}</div></div>
 }
 
 /** repositoryId는 상단 저장소 선택 값. 없으면 연결된 모든 저장소. */
-export function LiveIssues({ project, projectLoading = false, mineOnly = false, repositoryId, onCountChange }: { project: Project | null; projectLoading?: boolean; mineOnly?: boolean; repositoryId?: string; onCountChange?: (total: number) => void }) {
+export function LiveIssues({ project, projectLoading = false, mineOnly = false, repositoryId, onCountChange, onNotify }: { project: Project | null; projectLoading?: boolean; mineOnly?: boolean; repositoryId?: string; onCountChange?: (total: number) => void; onNotify?: (message: string, tone?: 'success' | 'error') => void }) {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const currentWeek = useWorkWeek(project ?? undefined)
@@ -205,6 +205,7 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
   if (!project) return <div className="empty-state"><Github size={28} /><h2>팀의 저장소로 시작해요</h2><p>저장소를 연결하면 회의에서 정한 작업을 저장하고 GitHub에 발행할 수 있어요.</p><Link className="button button-dark" to="/onboarding">프로젝트와 저장소 연결</Link></div>
   const filtered = (result?.items ?? []).filter(item => (!repositoryId || item.repositoryId === repositoryId) && (assigneeFilter === 'all' || (assigneeFilter === 'unassigned' ? !item.assignee : item.assignee === assigneeFilter)) && (params.get('focus') !== 'unassigned' || !item.assignee))
   const boardItems: BoardItem[] = filtered.map(item => ({ id: item.id, key: item.key, title: item.title, status: item.status.toLowerCase() as IssueStatus, priority: item.priority.toLowerCase() as BoardItem['priority'], repositoryId: item.repositoryId, repositoryName: item.repositoryName, number: item.number, assignee: item.assignee, sourceLabel: sources[item.source], meetingDate: item.meetingDate, plannedWeekStart: item.plannedWeekStart ?? week, completedAt: item.completedAt,
+    github: { state: item.publishStatus === 'PUBLISHED' ? 'published' : item.publishStatus === 'LOCAL' ? 'local' : item.publishStatus === 'PENDING' ? 'pending' : 'failed', url: item.url || undefined },
     references: (item.pullRequests ?? []).map(pull => ({ id: pull.id, label: `#${pull.number}` })),
     locked: item.publishStatus === 'PENDING' || item.publishStatus === 'UNKNOWN',
     attention: item.publishStatus === 'FAILED' ? { label: 'GitHub 발행을 다시 확인해 주세요', tone: 'danger' } : item.publishStatus === 'UNKNOWN' || item.publishStatus === 'PENDING' ? { label: 'GitHub 발행 결과 확인 중', tone: 'warning' } : !item.assignee && item.status !== 'DONE' ? { label: '함께할 담당자를 지정해 주세요', tone: 'warning' } : undefined,
@@ -237,13 +238,23 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
     <p className="help-text">{mineOnly ? '현재 맡은 미완료 작업을 모았어요.' : '미완료 작업은 원래 계획 주차를 유지하며 다음 주에도 표시돼요. 완료한 작업은 완료한 주에 남아요.'} 새 작업은 zello에 저장한 뒤 GitHub에도 만들 수 있어요.</p>
     {pendingMove && <IssueDialog busy={false} title={pendingMove.status === 'done' ? '작업을 완료할까요?' : '작업을 다시 시작할까요?'} onClose={() => setPendingMove(null)}><div className="dialog-form"><p>{pendingMove.status === 'done' ? '연결된 GitHub 이슈도 함께 닫아요. 서비스 배포 상태는 별도로 확인해 주세요.' : '연결된 GitHub 이슈도 다시 열어요.'}</p><div className="form-actions"><button className="button" onClick={() => setPendingMove(null)}>취소</button><button className="button button-dark" onClick={() => { const move = pendingMove; setPendingMove(null); void change(move.id, { status: move.status }, { beforeId: move.beforeId }) }}>{pendingMove.status === 'done' ? '완료하고 GitHub 이슈 닫기' : 'GitHub 이슈 다시 열고 이동'}</button></div></div></IssueDialog>}
     {opening && !editing && <IssueDialog busy={false} drawer onClose={() => { detailRequest.current?.abort(); setOpening(false) }}><div className="dialog-form"><LoadingState layout="detail" label="작업 상세를 불러오는 중" /></div></IssueDialog>}
-    {editing && <IssueEditor projectId={project.id} issue={editing === 'new' ? null : editing} initialWeek={week} period={project} repositories={repositories} canWrite={canWrite} onClose={() => setEditing(null)} onChanged={item => { setEditing(item); setPage(1); setRevision(value => value + 1) }} onArchived={() => { setEditing(null); setPage(1); setRevision(value => value + 1); setNotice(archived ? '작업을 복원했어요.' : '작업을 보관했어요. GitHub 원본은 유지됩니다.') }} />}
+    {editing && <IssueEditor projectId={project.id} issue={editing === 'new' ? null : editing} initialWeek={week} period={project} repositories={repositories} canWrite={canWrite} onClose={() => setEditing(null)} onChanged={item => { setEditing(item); setPage(1); setRevision(value => value + 1) }}
+      onCreated={(item, failure) => {
+        // 새 작업은 등록하면 창을 닫고 목록을 다시 불러와 카드를 바로 보여준다.
+        setEditing(null); setPage(1); setRevision(value => value + 1)
+        const tell = onNotify ?? ((message: string) => setNotice(message))
+        if (failure) tell(`${item.key}은 zello에 저장했지만 GitHub에 만들지 못했어요. ${failure} 카드를 열어 다시 발행해 주세요.`, 'error')
+        else tell(item.publishStatus === 'PUBLISHED' ? `${item.key}을 등록하고 GitHub 이슈도 만들었어요.` : `${item.key}을 zello에 등록했어요. GitHub에는 아직 만들지 않았어요.`)
+      }}
+      onCreateFailed={message => onNotify?.(message, 'error')} onArchived={() => { setEditing(null); setPage(1); setRevision(value => value + 1); setNotice(archived ? '작업을 복원했어요.' : '작업을 보관했어요. GitHub 원본은 유지됩니다.') }} />}
   </section>
 }
 
-function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, period, onClose, onChanged, onArchived }: {
+function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, period, onClose, onChanged, onCreated, onCreateFailed, onArchived }: {
   projectId: string; issue: LiveIssue | null; initialWeek: string; period: Project; repositories: ConnectedRepository[]; canWrite: boolean
   onClose: () => void; onChanged: (issue: LiveIssue) => void; onArchived: () => void
+  /** 새 작업 등록이 끝났을 때. failure는 저장은 됐지만 GitHub 발행이 실패한 사유다. */
+  onCreated: (issue: LiveIssue, failure?: string) => void; onCreateFailed: (message: string) => void
 }) {
   const [form, setForm] = useState<IssueDetails>(issue ? detailsFor(issue) : { ...blank(), plannedWeekStart: initialWeek })
   const [repoId, setRepoId] = useState(issue?.repositoryId ?? repositories[0]?.id ?? '')
@@ -286,6 +297,7 @@ function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, pe
       saved = issue ? await updateIssue(projectId, issue, form, githubState) : await createIssue(projectId, repoId, form, key.current)
       // Keep the same editor mounted until publication resolves; otherwise the saved ID remounts it mid-request.
       if (!issue && publishAfterSave) saved = await publishIssue(projectId, saved)
+      if (!issue) { onCreated(saved); return }
       setForm(detailsFor(saved)); setGithubState(saved.githubState); onChanged(saved)
       setNotice(saved.publishStatus === 'PUBLISHED' ? 'GitHub에 이슈를 만들었어요.' : 'zello에 저장했어요. GitHub에는 아직 만들어지지 않았어요.')
     } catch (cause) {
@@ -293,9 +305,12 @@ function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, pe
         // Local persistence succeeded. Reopen the saved row, including the server's failed/unknown outcome.
         let current = saved
         try { current = await getIssue(projectId, saved.id) } catch { /* Retain the known local row. */ }
-        onChanged(current)
+        onCreated(current, cause instanceof Error ? cause.message : '')
+        return
       }
       report(cause)
+      // 저장 자체가 실패하면 입력한 내용을 지키려고 창은 그대로 둔다.
+      if (!issue) onCreateFailed(cause instanceof Error ? cause.message : '작업을 저장하지 못했어요.')
     } finally { setBusy(false) }
   }
   async function publish() {
@@ -316,7 +331,10 @@ function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, pe
   }
   return <IssueDialog onClose={onClose} busy={busy} drawer={!!issue} title={issue ? undefined : '새 작업 등록'}><form className="dialog-form" onSubmit={event => void submit(event)}>
     {issue && <h2>{issue.title}</h2>}
-    {issue && <p><span className="badge">{publication[issue.publishStatus]}</span> <span className="mono muted">{issue.key}</span>{issue.url && <a className="reference-link" href={issue.url} target="_blank" rel="noopener noreferrer">GitHub에서 보기<ArrowUpRight size={13} /></a>}</p>}
+    {issue && <div className="issue-meta">
+      <div className="issue-meta-info"><span className="mono issue-meta-key">{issue.key}</span><span className={`issue-publish issue-publish-${issue.publishStatus.toLowerCase()}`}><i aria-hidden="true" />{publication[issue.publishStatus]}</span>{issue.number > 0 && <span className="issue-meta-ref">{issue.repositoryName} #{issue.number}</span>}</div>
+      {issue.url && <a className="button issue-meta-link" href={issue.url} target="_blank" rel="noopener noreferrer"><Github size={14} />GitHub에서 보기<ArrowUpRight size={13} /></a>}
+    </div>}
     {!canWrite && <p className="help-text">조회 전용 멤버는 작업을 변경할 수 없어요.</p>}
     <label>연결 저장소<select required value={repoId} disabled={disabled || !!issue} onChange={event => { setRepoId(event.target.value); setAssigneesPage(1); setAssignees([]); setForm(current => ({ ...current, assignee: null })) }}>{!repoId && <option value="">저장소 선택</option>}{repositories.map(repo => <option key={repo.id} value={repo.id}>{repo.owner}/{repo.name}</option>)}</select></label>
     {!repositories.length && <Link className="reference-link" to="/settings?tab=repositories">먼저 저장소 연결하기</Link>}
