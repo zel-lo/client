@@ -107,7 +107,7 @@ function Dialog({ title, heading, children, onClose, drawer = false, wide = fals
     const keydown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeRef.current()
       if (e.key !== 'Tab') return
-      const focusables = panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input, textarea, select, [tabindex="0"]')
+      const focusables = panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled):not([hidden]), select:not(:disabled), [tabindex="0"]')
       if (!focusables?.length) return
       const first = focusables[0], last = focusables[focusables.length - 1]
       if (e.shiftKey && (document.activeElement === first || document.activeElement === panel.current)) { e.preventDefault(); last.focus() }

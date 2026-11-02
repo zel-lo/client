@@ -1,4 +1,5 @@
 import { IssuePullRequestLinks } from './issue-pr-links'
+import { MarkdownEditor } from './markdown'
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
@@ -39,7 +40,7 @@ function IssueDialog({ children, busy, onClose, drawer = false, title }: { child
     const key = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !pending.current) close.current()
       if (event.key !== 'Tab') return
-      const nodes = panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), a[href]')
+      const nodes = panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), textarea:not(:disabled):not([hidden]), select:not(:disabled), a[href]')
       if (!nodes?.length) { event.preventDefault(); return }
       const first = nodes[0], last = nodes[nodes.length - 1]
       if (event.shiftKey && [first, panel.current].includes(document.activeElement as HTMLElement)) { event.preventDefault(); last.focus() }
@@ -320,10 +321,10 @@ function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, pe
     <label>연결 저장소<select required value={repoId} disabled={disabled || !!issue} onChange={event => { setRepoId(event.target.value); setAssigneesPage(1); setAssignees([]); setForm(current => ({ ...current, assignee: null })) }}>{!repoId && <option value="">저장소 선택</option>}{repositories.map(repo => <option key={repo.id} value={repo.id}>{repo.owner}/{repo.name}</option>)}</select></label>
     {!repositories.length && <Link className="reference-link" to="/settings?tab=repositories">먼저 저장소 연결하기</Link>}
     <label>작업 제목<input autoFocus required maxLength={255} value={form.title} disabled={disabled} onChange={event => setForm({ ...form, title: event.target.value })} placeholder="어떤 작업을 할까요?" /></label>
-    <label>설명<textarea rows={4} maxLength={50000} value={form.description} disabled={disabled} onChange={event => setForm({ ...form, description: event.target.value })} placeholder="배경과 해야 할 일을 적어주세요." /></label>
-    <label>완료 조건<textarea rows={3} maxLength={10000} value={form.acceptanceCriteria} disabled={disabled} onChange={event => setForm({ ...form, acceptanceCriteria: event.target.value })} placeholder="- [ ] 어떤 결과를 확인하면 완료인가요?" /></label>
+    <MarkdownEditor label="설명" maxLength={50000} value={form.description} disabled={disabled} onChange={description => setForm({ ...form, description })} placeholder="배경과 해야 할 일을 적어주세요." />
+    <MarkdownEditor label="완료 조건" maxLength={10000} value={form.acceptanceCriteria} disabled={disabled} onChange={acceptanceCriteria => setForm({ ...form, acceptanceCriteria })} placeholder="- [ ] 어떤 결과를 확인하면 완료인가요?" />
     <div className="issue-fields"><label>작업이 나온 곳<select value={form.source} disabled={disabled} onChange={event => setForm({ ...form, source: event.target.value as IssueDetails['source'], meetingDate: form.meetingDate ?? new Date().toLocaleDateString('en-CA') })}>{Object.entries(sources).filter(([value]) => value !== 'GITHUB' || form.source === 'GITHUB').map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{meeting && <label>회의 날짜<input type="date" required value={form.meetingDate ?? ''} disabled={disabled} onChange={event => setForm({ ...form, meetingDate: event.target.value })} /></label>}</div>
-    {meeting && <label>회의에서 정한 내용<textarea rows={2} maxLength={10000} disabled={disabled} value={form.meetingContext} onChange={event => setForm({ ...form, meetingContext: event.target.value })} placeholder="논의 배경과 결정 내용을 팀에 남겨주세요." /></label>}
+    {meeting && <MarkdownEditor label="회의에서 정한 내용" maxLength={10000} disabled={disabled} value={form.meetingContext} onChange={meetingContext => setForm({ ...form, meetingContext })} placeholder="논의 배경과 결정 내용을 팀에 남겨주세요." />}
     <div className="issue-fields"><label>작업 상태<select value={form.status} disabled={disabled} onChange={event => { const value = event.target.value as IssueDetails['status']; setForm({ ...form, status: value }); if (issue?.publishStatus === 'PUBLISHED') setGithubState(value === 'DONE' ? 'CLOSED' : 'OPEN') }}>{Object.entries(states).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>우선순위<select value={form.priority} disabled={disabled} onChange={event => setForm({ ...form, priority: event.target.value as IssueDetails['priority'] })}>{Object.entries(priorities).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>
     {!!issue?.pullRequests?.some(pull => pull.state !== 'CLOSED') && <p className="help-text">진행·검토 상태는 연결된 PR을 기준으로 반영돼요. 초안·수정 요청은 진행 중, 열린 PR은 검토 중, 모두 병합되면 완료가 됩니다.</p>}
     <label>계획 주차{projectWeeks(period).length ? <select value={form.plannedWeekStart ?? initialWeek} disabled={disabled} onChange={event => setForm({ ...form, plannedWeekStart: event.target.value })}>{projectWeeks(period).map((value, index) => <option key={value} value={value}>{index + 1}주차 · {weekLabel(value, period)}</option>)}</select> : <input type="date" value={form.plannedWeekStart ?? initialWeek} disabled={disabled} onChange={event => { if (event.target.value) setForm({ ...form, plannedWeekStart: startOfWeek(event.target.value) }) }} />}</label>

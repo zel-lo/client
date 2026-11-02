@@ -55,6 +55,55 @@ describe('실제 팀 작업', () => {
     expect(fetcher).toHaveBeenCalledWith('/api/projects/1/issues/20/publish', expect.objectContaining({ method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'test-csrf' }, body: JSON.stringify({ version: 0 }) }))
     expect(localStorage.getItem('accessToken')).toBeNull()
   })
+  it('작업의 설명과 완료 조건을 각각 미리 보고 마크다운 원문으로 저장한다', async () => {
+    const { fetcher, mount } = backend(); mount()
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: '새 작업 등록' }))
+    const dialog = screen.getByRole('dialog', { name: '새 작업 등록' })
+    await user.type(within(dialog).getByRole('textbox', { name: '작업 제목' }), '미리 볼 작업')
+    const description = '## 작업 배경\n**빠른 검색**과 `응답 시간`을 확인해요.'
+    const criteria = '- [x] 목록 표시\n- [ ] 검색 결과 확인'
+    const descriptionInput = within(dialog).getByRole('textbox', { name: '설명' })
+    const criteriaInput = within(dialog).getByRole('textbox', { name: '완료 조건' })
+    const descriptionEditor = within(descriptionInput.closest('.markdown-editor') as HTMLElement)
+    const criteriaEditor = within(criteriaInput.closest('.markdown-editor') as HTMLElement)
+    await user.click(descriptionInput); await user.paste(description)
+    await user.click(criteriaInput); await user.paste(criteria)
+    await user.click(descriptionEditor.getByRole('tab', { name: '미리보기' }))
+    expect(descriptionEditor.getByRole('heading', { name: '작업 배경' })).toBeInTheDocument()
+    expect(descriptionEditor.getByText('빠른 검색').tagName).toBe('STRONG')
+    expect(criteriaInput).toBeVisible()
+    await user.click(descriptionEditor.getByRole('tab', { name: '작성' }))
+    expect(descriptionInput).toHaveValue(description)
+    await user.click(descriptionEditor.getByRole('tab', { name: '미리보기' }))
+    await user.click(criteriaEditor.getByRole('tab', { name: '미리보기' }))
+    expect(criteriaEditor.getAllByRole('checkbox')[0]).toBeChecked()
+    expect(criteriaEditor.getAllByRole('checkbox')[1]).not.toBeChecked()
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false)
+    await user.click(within(dialog).getByRole('checkbox', { name: /저장하고 GitHub에도 이슈 만들기/ }))
+    await user.click(within(dialog).getByRole('button', { name: 'zello에만 저장' }))
+    await waitFor(() => expect(fetcher.mock.calls.some(([path, init]) => path === '/api/projects/1/issues' && init?.method === 'POST')).toBe(true))
+    const sent = fetcher.mock.calls.find(([path, init]) => path === '/api/projects/1/issues' && init?.method === 'POST')!
+    expect(JSON.parse(sent[1]!.body as string).details).toMatchObject({ description, acceptanceCriteria: criteria })
+    expect(fetcher.mock.calls.some(([path]) => path.endsWith('/publish'))).toBe(false)
+  })
+
+  it('조회 전용 작업에서도 설명·완료 조건·회의 내용의 마크다운을 미리 볼 수 있다', async () => {
+    const { fetcher, mount } = backend({ viewer: true, saved: [{ ...issue, description: '**기존 설명**', acceptanceCriteria: '- [x] 확인 완료', meetingContext: '## 회의 결정\n기존 동작을 유지해요.' }] }); mount()
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: /로그인 개선/ }))
+    for (const label of ['설명', '완료 조건', '회의에서 정한 내용']) {
+      const input = screen.getByRole('textbox', { name: label })
+      expect(input).toBeDisabled()
+      await user.click(within(input.closest('.markdown-editor') as HTMLElement).getByRole('tab', { name: '미리보기' }))
+    }
+    expect(screen.getByText('기존 설명').tagName).toBe('STRONG')
+    expect(screen.getByRole('checkbox', { name: '' })).toBeChecked()
+    expect(screen.getByRole('heading', { name: '회의 결정' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '작업 저장' })).not.toBeInTheDocument()
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === 'POST' || init?.method === 'PATCH')).toBe(false)
+  })
+
   it('기본 생성은 로컬 저장 성공 후 최신 버전으로 GitHub 발행까지 진행한다', async () => {
     const { fetcher, mount } = backend(); mount(); const user = userEvent.setup()
     await screen.findByText('아직 표시할 작업이 없어요')
