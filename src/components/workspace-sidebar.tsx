@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Bell, BookOpen, Check, ChevronDown, CircleDot, CircleHelp, GitPullRequest, LayoutDashboard, Plus, Rocket, Search, Settings, UserRound } from 'lucide-react'
+import { Bell, BookOpen, Check, ChevronDown, CircleDot, CircleHelp, GitPullRequest, LayoutDashboard, Plus, Search, Settings, UserRound } from 'lucide-react'
 import { BrandMark } from './brand-mark'
 import type { LucideIcon } from 'lucide-react'
 import type { Project } from '../lib/project-api'
@@ -30,7 +30,6 @@ export function WorkspaceSidebar({ unreadCount, myWorkCount, issueCount, pullReq
     { to: '/changes', label: '변경 소식', icon: BookOpen, selected: changesActive },
   ]
   const management: NavigationItem[] = [
-    { to: '/deployments', label: '빌드와 배포', icon: Rocket, selected: location.pathname === '/deployments' },
     { to: '/settings', label: '프로젝트 설정', icon: Settings, selected: settingsActive },
   ]
   useEffect(() => { setOpenMobile(false); if (projectMenu.current) projectMenu.current.open = false }, [location.pathname, location.search, setOpenMobile])

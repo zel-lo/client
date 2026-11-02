@@ -24,11 +24,12 @@ export function codeReviewQuery(search: string): PullRequestQuery {
 /**
  * 로그인했고 프로젝트가 있으면 서버(DB)의 실제 PR을 쓴다. 프로젝트가 없으면 active=false이며 로그인 회원에게는 연결을 안내한다.
  * 코드 검토·내 작업 화면에 들어올 때마다 다시 불러온다. GitHub에서 새로 가져오는 것은 sync()뿐이다.
+ * repositoryId가 있으면 그 저장소의 PR만 불러온다.
  */
-export function useLivePullRequests(enabled: boolean, pathname: string, userId?: string, search = '') {
+export function useLivePullRequests(enabled: boolean, pathname: string, userId?: string, search = '', repositoryId?: string) {
   const listKey = pathname === '/pull-requests' ? JSON.stringify(codeReviewQuery(search)) : ''
   const listQuery = useRef<PullRequestQuery>(codeReviewQuery(''))
-  listQuery.current = pathname === '/pull-requests' ? codeReviewQuery(search) : { state: 'all', size: PULL_REQUEST_PAGE_SIZE }
+  listQuery.current = { ...(pathname === '/pull-requests' ? codeReviewQuery(search) : { state: 'all', size: PULL_REQUEST_PAGE_SIZE }), repositoryId }
   const [projects, setProjects] = useState<Project[]>([])
   const preferred = useRef<string | null>(preferredProject(userId))
   const [project, setProject] = useState<Project | null>(null)
@@ -59,8 +60,8 @@ export function useLivePullRequests(enabled: boolean, pathname: string, userId?:
       if (!current) { setAll(null); setMine(null); setRequested(null); setError(''); return }
       const [everything, authored, reviewing] = await Promise.all([
         listPullRequests(current.id, listQuery.current, pending.signal),
-        listPullRequests(current.id, { state: 'open', author: 'me' }, pending.signal),
-        listPullRequests(current.id, { state: 'open', reviewer: 'me' }, pending.signal),
+        listPullRequests(current.id, { state: 'open', author: 'me', repositoryId: listQuery.current.repositoryId }, pending.signal),
+        listPullRequests(current.id, { state: 'open', reviewer: 'me', repositoryId: listQuery.current.repositoryId }, pending.signal),
       ])
       if (pending.signal.aborted) return
       setAll(everything); setMine(authored); setRequested(reviewing); setError(''); setReauth(false); setLoadedAt(new Date())
@@ -77,8 +78,8 @@ export function useLivePullRequests(enabled: boolean, pathname: string, userId?:
     }
   }, [userId])
 
-  // 두 화면에 들어올 때와 코드 검토의 탭·필터·페이지가 바뀔 때만 다시 불러온다.
-  const refreshKey = pathname === '/pull-requests' || pathname === '/my-work' ? pathname + listKey : ''
+  // 두 화면에 들어올 때와 코드 검토의 탭·필터·페이지, 저장소가 바뀔 때만 다시 불러온다.
+  const refreshKey = pathname === '/pull-requests' || pathname === '/my-work' ? pathname + listKey + (repositoryId ?? '') : ''
   useEffect(() => {
     if (!enabled) {
       controller.current?.abort()

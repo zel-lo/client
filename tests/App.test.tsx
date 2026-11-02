@@ -107,6 +107,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     await user.selectOptions(scope, 'all')
     expect(within(chart).getByRole('group', { name: /커밋 39개와/ })).toBeInTheDocument()
     expect(screen.getByLabelText('저장소 필터')).toHaveValue('all')
+    expect(screen.queryByRole('link', { name: '빌드와 배포' })).not.toBeInTheDocument()
   })
 
   it('밝은 테마와 어두운 테마를 전환하고 다시 열어도 유지한다', async () => {
