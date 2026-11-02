@@ -7,7 +7,7 @@ import { repositoryRef } from '@/data/work-items'
 import type { Issue, PullRequest } from '@/data/work-items'
 import { getPullRequest, updateTeamSummary } from '../lib/project-api'
 import type { PullRequestItem } from '../lib/project-api'
-import { checkLabels, reviewSummary } from './pull-requests-panel'
+import { reviewSummary } from './pull-requests-panel'
 import { MarkdownView } from './markdown'
 import { MergePanel, ReviewForm } from './pull-request-actions'
 
@@ -79,9 +79,9 @@ export function PullRequestDetail({ pr, repos, issues, onViewIssue, canEdit = fa
     {stats && <div className="diff-summary" aria-label="변경 파일 요약"><div><strong>{stats.files.toLocaleString()}</strong><span>변경 파일</span></div><div><strong className="diff-add">+{stats.additions.toLocaleString()}</strong><span>추가한 줄</span></div><div><strong className="diff-delete">−{stats.deletions.toLocaleString()}</strong><span>삭제한 줄</span></div></div>}
     {!stats && <p className="help-text"><FileText size={12} />{!pr.live ? '파일별 변경 내용은 실제 GitHub 연결 후 수집됩니다.' : detail ? '변경 규모를 GitHub에서 받지 못했어요. GitHub에서 확인해 주세요.' : '변경 규모를 불러오는 중…'}</p>}
     {stats && pr.live && pr.url && <p className="help-text"><FileText size={12} />파일별 변경 내용은 <a className="subtle-link" href={`${pr.url}/files`} target="_blank" rel="noopener noreferrer">GitHub에서</a> 확인할 수 있어요.</p>}
-    <dl className="detail-properties"><div><dt>리뷰어</dt><dd>{reviewers.length ? reviewers.join(', ') : '지정되지 않았어요'}</dd></div><div><dt>코드 검토</dt><dd>{reviewSummary({ status, review })}</dd></div><div><dt>CI 검사</dt><dd className={`check-state check-${pr.checks}`}>{checkLabels[pr.checks]}</dd></div><div><dt>코드 병합</dt><dd>{status === 'merged' ? <><CheckCircle2 size={13} />기본 브랜치에 반영됨</> : '아직 병합되지 않았어요'}</dd></div><div><dt>서비스 배포</dt><dd>{pr.live ? '수집 전' : activity?.deployed ? '배포 완료' : '아직 배포되지 않았어요'}</dd></div></dl>
+    <dl className="detail-properties"><div><dt>리뷰어</dt><dd>{reviewers.length ? reviewers.join(', ') : '지정되지 않았어요'}</dd></div><div><dt>코드 검토</dt><dd>{reviewSummary({ status, review })}</dd></div><div><dt>코드 병합</dt><dd>{status === 'merged' ? <><CheckCircle2 size={13} />기본 브랜치에 반영됨</> : '아직 병합되지 않았어요'}</dd></div></dl>
     {actions?.canReview && pr.projectId && <ReviewForm projectId={pr.projectId} pullRequestId={pr.id} onSubmitted={applyAction} />}
     {actions && pr.projectId && detail && <MergePanel projectId={pr.projectId} detail={detail} onMerged={applyAction} onRecheck={() => setReloadKey(key => key + 1)} />}
-    {pr.live && pr.projectId && detail ? <PullRequestIssueLinks projectId={pr.projectId} pullId={pr.id} repositoryId={detail.repositoryId} links={detail.linkedIssues ?? []} canWrite={canEdit} onChanged={() => { setReloadKey(key => key + 1); onChanged?.() }} /> : !pr.live && <div className="pr-linked-issues"><h3>이 변경으로 해결하는 이슈</h3>{linked.map(issue => <button className="command-item" key={issue.id} onClick={() => onViewIssue(issue)}><CircleDot size={14} /><span><small>{issue.id} · {repositoryRef(issue.repo, issue.githubNumber, repos, issue.id)} · {issue.assignee || '담당자 미지정'}</small>{issue.title}</span><ChevronRight size={14} /></button>)}{!linked.length && <p className="help-text">연결된 이슈가 없어요. 할 일 상세에서 이 PR을 연결해 주세요.</p>}</div>}<p className="work-demo-note">검토·CI·병합·배포는 서로 다른 상태입니다. {pr.live ? 'CI와 배포 상태는 아직 수집하지 않아요.' : '현재 표시되는 정보는 목데이터예요.'}</p>
+    {pr.live && pr.projectId && detail ? <PullRequestIssueLinks projectId={pr.projectId} pullId={pr.id} repositoryId={detail.repositoryId} links={detail.linkedIssues ?? []} canWrite={canEdit} onChanged={() => { setReloadKey(key => key + 1); onChanged?.() }} /> : !pr.live && <div className="pr-linked-issues"><h3>이 변경으로 해결하는 이슈</h3>{linked.map(issue => <button className="command-item" key={issue.id} onClick={() => onViewIssue(issue)}><CircleDot size={14} /><span><small>{issue.id} · {repositoryRef(issue.repo, issue.githubNumber, repos, issue.id)} · {issue.assignee || '담당자 미지정'}</small>{issue.title}</span><ChevronRight size={14} /></button>)}{!linked.length && <p className="help-text">연결된 이슈가 없어요. 할 일 상세에서 이 PR을 연결해 주세요.</p>}</div>}{!pr.live && <p className="work-demo-note">현재 표시되는 정보는 목데이터예요.</p>}
   </div>
 }

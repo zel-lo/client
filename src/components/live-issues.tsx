@@ -26,7 +26,8 @@ function detailsFor(issue: LiveIssue): IssueDetails {
     meetingDate: issue.meetingDate, meetingContext: issue.meetingContext ?? '', acceptanceCriteria: issue.acceptanceCriteria ?? '', assignee: issue.assignee, plannedWeekStart: issue.plannedWeekStart }
 }
 
-function IssueDialog({ children, busy, onClose, drawer = false }: { children: ReactNode; busy: boolean; onClose: () => void; drawer?: boolean }) {
+/** title을 주면 상단 바에 제목을 두고, 모달은 내용 영역만 스크롤한다. */
+function IssueDialog({ children, busy, onClose, drawer = false, title }: { children: ReactNode; busy: boolean; onClose: () => void; drawer?: boolean; title?: string }) {
   const panel = useRef<HTMLDivElement>(null)
   const close = useRef(onClose); close.current = onClose
   const pending = useRef(busy); pending.current = busy
@@ -47,7 +48,7 @@ function IssueDialog({ children, busy, onClose, drawer = false }: { children: Re
     document.addEventListener('keydown', key)
     return () => { document.body.style.overflow = overflow; document.removeEventListener('keydown', key); before?.focus() }
   }, [])
-  return <div className={`dialog-backdrop ${drawer ? 'drawer-backdrop' : ''}`} onMouseDown={event => { if (!busy && event.target === event.currentTarget) onClose() }}><div className={drawer ? 'drawer issue-detail-drawer' : 'dialog dialog-wide'} role="dialog" aria-modal="true" aria-label="작업 상세" ref={panel} tabIndex={-1}><div className="dialog-header"><span className="eyebrow">회의에서 정한 일부터 실제 개발까지</span><button type="button" className="icon-button" aria-label="작업 창 닫기" disabled={busy} onClick={onClose}><X size={20} /></button></div>{children}</div></div>
+  return <div className={`dialog-backdrop ${drawer ? 'drawer-backdrop' : ''}`} onMouseDown={event => { if (!busy && event.target === event.currentTarget) onClose() }}><div className={drawer ? 'drawer issue-detail-drawer' : 'dialog dialog-wide dialog-scroll'} role="dialog" aria-modal="true" aria-label={title ?? '작업 상세'} ref={panel} tabIndex={-1}><div className="dialog-header">{title ? <h2 className="dialog-title">{title}</h2> : <span className="eyebrow">회의에서 정한 일부터 실제 개발까지</span>}<button type="button" className="icon-button" aria-label="작업 창 닫기" disabled={busy} onClick={onClose}><X size={20} /></button></div>{drawer ? children : <div className="dialog-body">{children}</div>}</div></div>
 }
 
 /** repositoryId는 상단 저장소 선택 값. 없으면 연결된 모든 저장소. */
@@ -233,7 +234,7 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
       {view === 'board' ? <div className="board-pagination"><span>{result.items.length} / {result.total}개 작업 표시</span>{result.hasNext && <button className="button" disabled={loading || busy} onClick={() => setPage(value => value + 1)}>{loading ? '불러오는 중…' : '작업 더 불러오기'}</button>}</div> : <div className="connection-pagination"><button className="button" disabled={page === 1 || loading || busy} onClick={() => setPage(value => value - 1)}>이전 작업</button><span>{page} 페이지</span><button className="button" disabled={!result.hasNext || loading || busy} onClick={() => setPage(value => value + 1)}>다음 작업</button></div>}
     </>}
     <p className="help-text">{mineOnly ? '현재 맡은 미완료 작업을 모았어요.' : '미완료 작업은 원래 계획 주차를 유지하며 다음 주에도 표시돼요. 완료한 작업은 완료한 주에 남아요.'} 새 작업은 zello에 저장한 뒤 GitHub에도 만들 수 있어요.</p>
-    {pendingMove && <IssueDialog busy={false} onClose={() => setPendingMove(null)}><div className="dialog-form"><h2>{pendingMove.status === 'done' ? '작업을 완료할까요?' : '작업을 다시 시작할까요?'}</h2><p>{pendingMove.status === 'done' ? '연결된 GitHub 이슈도 함께 닫아요. 서비스 배포 상태는 별도로 확인해 주세요.' : '연결된 GitHub 이슈도 다시 열어요.'}</p><div className="form-actions"><button className="button" onClick={() => setPendingMove(null)}>취소</button><button className="button button-dark" onClick={() => { const move = pendingMove; setPendingMove(null); void change(move.id, { status: move.status }, { beforeId: move.beforeId }) }}>{pendingMove.status === 'done' ? '완료하고 GitHub 이슈 닫기' : 'GitHub 이슈 다시 열고 이동'}</button></div></div></IssueDialog>}
+    {pendingMove && <IssueDialog busy={false} title={pendingMove.status === 'done' ? '작업을 완료할까요?' : '작업을 다시 시작할까요?'} onClose={() => setPendingMove(null)}><div className="dialog-form"><p>{pendingMove.status === 'done' ? '연결된 GitHub 이슈도 함께 닫아요. 서비스 배포 상태는 별도로 확인해 주세요.' : '연결된 GitHub 이슈도 다시 열어요.'}</p><div className="form-actions"><button className="button" onClick={() => setPendingMove(null)}>취소</button><button className="button button-dark" onClick={() => { const move = pendingMove; setPendingMove(null); void change(move.id, { status: move.status }, { beforeId: move.beforeId }) }}>{pendingMove.status === 'done' ? '완료하고 GitHub 이슈 닫기' : 'GitHub 이슈 다시 열고 이동'}</button></div></div></IssueDialog>}
     {opening && !editing && <IssueDialog busy={false} drawer onClose={() => { detailRequest.current?.abort(); setOpening(false) }}><div className="dialog-form"><LoadingState layout="detail" label="작업 상세를 불러오는 중" /></div></IssueDialog>}
     {editing && <IssueEditor projectId={project.id} issue={editing === 'new' ? null : editing} initialWeek={week} period={project} repositories={repositories} canWrite={canWrite} onClose={() => setEditing(null)} onChanged={item => { setEditing(item); setPage(1); setRevision(value => value + 1) }} onArchived={() => { setEditing(null); setPage(1); setRevision(value => value + 1); setNotice(archived ? '작업을 복원했어요.' : '작업을 보관했어요. GitHub 원본은 유지됩니다.') }} />}
   </section>
@@ -312,8 +313,8 @@ function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, pe
     try { if (issue.archived) await restoreIssue(projectId, issue); else await archiveIssue(projectId, issue); onArchived() }
     catch (cause) { report(cause) } finally { setBusy(false) }
   }
-  return <IssueDialog onClose={onClose} busy={busy} drawer={!!issue}><form className="dialog-form" onSubmit={event => void submit(event)}>
-    <h2>{issue ? issue.title : '새 작업 등록'}</h2>
+  return <IssueDialog onClose={onClose} busy={busy} drawer={!!issue} title={issue ? undefined : '새 작업 등록'}><form className="dialog-form" onSubmit={event => void submit(event)}>
+    {issue && <h2>{issue.title}</h2>}
     {issue && <p><span className="badge">{publication[issue.publishStatus]}</span> <span className="mono muted">{issue.key}</span>{issue.url && <a className="reference-link" href={issue.url} target="_blank" rel="noopener noreferrer">GitHub에서 보기<ArrowUpRight size={13} /></a>}</p>}
     {!canWrite && <p className="help-text">조회 전용 멤버는 작업을 변경할 수 없어요.</p>}
     <label>연결 저장소<select required value={repoId} disabled={disabled || !!issue} onChange={event => { setRepoId(event.target.value); setAssigneesPage(1); setAssignees([]); setForm(current => ({ ...current, assignee: null })) }}>{!repoId && <option value="">저장소 선택</option>}{repositories.map(repo => <option key={repo.id} value={repo.id}>{repo.owner}/{repo.name}</option>)}</select></label>
