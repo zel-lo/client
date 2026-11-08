@@ -1,6 +1,6 @@
 import { LoadingState } from './loading-state'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CircleDashed, GitMerge, GitPullRequest, Link2, Plus, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CircleDashed, GitMerge, GitPullRequest, Link2, Plus, RefreshCw } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import type { Repo } from '@/data/mock'
 import { repositoryRef } from '@/data/work-items'
@@ -65,7 +65,7 @@ export function PullRequestsPanel({ pullRequests, repos, issues, repoFilter, onS
         <TableCell className="table-secondary">{pr.author}</TableCell></TableRow>
       })}
     </TableBody></Table></div>
-    {paging && (page > 1 || paging.hasNext) && <div className="connection-pagination" aria-label="PR 페이지"><button className="button" disabled={loading || page === 1} onClick={() => change('page', String(page - 1))}>이전</button><span>{page} 페이지</span><button className="button" disabled={loading || !paging.hasNext} onClick={() => change('page', String(page + 1))}>다음</button></div>}
+    {paging && (page > 1 || paging.hasNext) && <div className="connection-pagination" aria-label="PR 페이지"><button className="button" disabled={loading || page === 1} onClick={() => change('page', String(page - 1))}><ChevronLeft size={14} />이전</button><span>{page} 페이지</span><button className="button" disabled={loading || !paging.hasNext} onClick={() => change('page', String(page + 1))}>다음<ChevronRight size={14} /></button></div>}
     {!visible.length && !loading &&<div className="empty-state"><GitPullRequest size={25} />{needsSetup ? <><h3>팀의 저장소를 연결해 주세요</h3><p>저장소를 고르면 실제 코드 검토와 작업을 확인할 수 있어요.</p><Link className="button" to="/onboarding">프로젝트와 저장소 연결</Link></> : live && !pullRequests.length ? <><h3>아직 가져온 PR이 없어요</h3><p>위의 'GitHub PR 가져오기' 버튼으로 GitHub에서 PR을 가져와 보세요. 저장소가 연결되어 있어야 해요.</p></> : <><h3>이 조건의 PR이 없어요</h3><p>저장소나 상태를 바꿔서 확인해 보세요.</p></>}</div>}
   </section>
 }

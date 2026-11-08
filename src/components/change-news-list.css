@@ -1,25 +1,33 @@
 .change-news-sections { display: flex; flex-direction: column; gap: 36px; padding-top: 8px; }
 .change-news-section-heading { display: flex; gap: 9px; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
-.change-news-section-heading h3 { margin: 0; font-size: 15px; letter-spacing: -.3px; font-weight: 650; }
+.change-news-section-heading h3 { margin: 0; font-size: 16px; letter-spacing: -.3px; font-weight: 650; }
 .change-news-section-heading > span { font-size: 12px; color: var(--muted-foreground); }
 .change-news-section-heading h3::before { content: ''; display: inline-block; width: 6px; height: 6px; margin: 0 9px 2px 0; border-radius: 50%; background: #3182f6; }
 .change-news-section.is-improve h3::before { background: #8a72c7; }
 .change-news-section.is-fix h3::before { background: #2ba08a; }
 .change-news-section.is-team h3::before { background: #8b95a1; }
 .change-news-list { list-style: none; padding: 0; margin: 0; }
-.change-news-item { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 20px; padding: 19px 0; border-bottom: 1px solid var(--quiet-line, var(--border)); }
-.change-news-date { padding-top: 2px; font-size: 12px; line-height: 1.8; color: var(--muted-foreground); }
+.change-news-item { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto auto; align-items: center; column-gap: 16px; padding: 18px 4px; border-bottom: 1px solid var(--quiet-line, var(--border)); }
+.change-news-date { align-self: start; padding-top: 2px; font-size: 13px; line-height: 1.7; color: var(--muted-foreground); }
 .change-news-content { min-width: 0; overflow-wrap: anywhere; }
-.change-news-content > h4 { margin: 0; font-size: 14px; line-height: 1.7; font-weight: 600; letter-spacing: -.15px; }
-.change-news-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 14px; margin-top: 6px; font-size: 11px; color: var(--muted-foreground); }
-.change-news-meta a, .change-news-meta > button { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted-foreground); text-decoration: none; }
+.change-news-content > h4 { margin: 0; font-size: 15px; line-height: 1.6; font-weight: 600; letter-spacing: -.15px; }
+.change-news-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin-top: 5px; font-size: 12px; color: var(--muted-foreground); }
+.change-news-meta a, .change-news-meta > button { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted-foreground); text-decoration: none; }
 .change-news-meta a:hover, .change-news-meta > button:hover { color: #3182f6; }
 .change-news-meta > button { padding: 0; border: 0; border-radius: 0; background: transparent; min-height: 22px; height: auto; }
-.change-news-meta > .button { color: #3182f6; }
-.change-news-meta > .note-change-editor { flex-basis: 100%; margin: 8px 0; }
-.change-news-meta .release-pending { color: #a26a18; }
+/* 상태 배지와 작성 버튼은 오른쪽에 모은다 */
+/* 배지와 버튼 폭을 고정해 줄마다 오른쪽 열이 맞게 한다 */
+.change-news-side { display: flex; justify-content: flex-end; }
+.change-news-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 104px; height: 32px; padding: 0 10px; border-radius: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; color: var(--text-secondary); background: var(--control-bg); }
+.change-news-badge.is-pending { color: #a26a18; background: color-mix(in srgb, #f0a43a 16%, var(--card)); }
+.change-news-badge.is-published { color: #23845f; background: color-mix(in srgb, #2ba08a 13%, var(--card)); }
+.change-news-item > .button { min-width: 92px; min-height: 32px; height: 32px; padding: 0 14px; font-size: 13px; }
+.change-news-item > .note-change-editor { grid-column: 2 / -1; margin: 12px 0 0; padding: 16px; border-radius: 12px; background: var(--control-bg); }
 @media(max-width: 600px) {
-  .change-news-item { grid-template-columns: 1fr; gap: 5px; padding: 16px 0; }
-  .change-news-date { padding: 0; font-size: 11px; }
+  .change-news-item { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; padding: 16px 0; }
+  .change-news-date { grid-column: 1 / -1; }
+  .change-news-item > .button { grid-column: 1 / -1; justify-self: start; }
+  .change-news-item > .note-change-editor { grid-column: 1 / -1; }
+  .change-news-date { padding: 0; font-size: 12px; }
   .change-news-sections { gap: 28px; }
 }

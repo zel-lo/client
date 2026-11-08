@@ -45,7 +45,6 @@ export function IssuesPanel({ issues, repos, pullRequests, repoFilter, onSelect,
       </TableRow> })}
     </TableBody></Table></div>
     {!visible.length && <div className="empty-state"><CircleDot size={25} /><h3>표시할 이슈가 없어요</h3><p>필터를 바꾸거나 회의에서 정한 작업을 새로 등록해 보세요.</p><button className="button" onClick={onCreate}><Plus size={13} />이슈 만들기</button></div>}
-    <p className="work-demo-note">이슈·PR 번호는 저장소별 샘플입니다. 회의 기록과 편집 내용은 이 브라우저에 저장되며 실제 GitHub에는 전송하지 않습니다.</p>
   </section>
 }
 

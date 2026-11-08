@@ -1,7 +1,8 @@
 import { LoadingState } from './loading-state'
+import { initial } from '@/lib/utils'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, Copy, Link2, Plus, RefreshCw, ShieldCheck, Users, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Copy, Link2, Plus, RefreshCw, ShieldCheck, Users, X } from 'lucide-react'
 import { changeMemberRole, createInvitation, leaveProject, listInvitations, listMembers, membershipHistory, memberDate, removeMember, revokeInvitation, roleLabels, transferProject } from '../lib/members-api'
 import type { CreatedInvitation, History, InvitationsPage, Member, MemberRole, MembersPage } from '../lib/members-api'
 import { ProjectApiError } from '../lib/project-api'
@@ -142,7 +143,7 @@ export function MembersPanel({ projectId, onLeft }: { projectId: string; onLeft:
     {loading && !data && <LoadingState label="멤버 정보를 불러오는 중" />}
     {data && <>
       <div className="member-list">{data.items.map(member => <article className="live-member-row" key={member.userId}>
-        <span className="member-monogram" aria-hidden="true">{member.displayName.slice(0, 2)}</span>
+        <span className="member-monogram" aria-hidden="true">{initial(member.displayName)}</span>
         <div className="member-identity"><strong>{member.displayName}{member.self && <span className="badge">나</span>}</strong><span>@{member.login}</span></div>
         <span className={`badge member-role-${member.role.toLowerCase()}`}>{roleLabels[member.role]}</span>
         <div className="member-row-actions">
@@ -152,7 +153,7 @@ export function MembersPanel({ projectId, onLeft }: { projectId: string; onLeft:
         </div>
       </article>)}</div>
       {!data.items.length && <p className="help-text">검색한 멤버가 없어요.</p>}
-      <div className="connection-pagination"><button className="button" disabled={busy || page === 1} onClick={() => setPage(value => value - 1)}>이전 멤버</button><span>{page} 페이지</span><button className="button" disabled={busy || !data.hasNext} onClick={() => setPage(value => value + 1)}>다음 멤버</button></div>
+      <div className="connection-pagination"><button aria-label="이전 멤버" className="button" disabled={busy || page === 1} onClick={() => setPage(value => value - 1)}><ChevronLeft size={14} />이전</button><span>{page} 페이지</span><button aria-label="다음 멤버" className="button" disabled={busy || !data.hasNext} onClick={() => setPage(value => value + 1)}>다음<ChevronRight size={14} /></button></div>
       <div className="member-role-guide"><ShieldCheck size={18} /><p><strong>소유자</strong>는 프로젝트 전체를 관리하고, <strong>관리자</strong>는 멤버와 저장소를 관리해요. <strong>멤버</strong>는 작업을 작성하고, <strong>조회자</strong>는 내용을 확인할 수 있어요. 관리자 지정과 소유권 이전은 소유자만 할 수 있습니다.</p></div>
       {data.canInvite && <section className="member-invitation-form" aria-label="멤버 초대"><div className="section-heading"><h3><Link2 size={17} />초대 링크 만들기</h3><span className="badge">한 명씩 안전하게</span></div>
         <p className="help-text">링크를 받은 한 명이 GitHub 로그인 후 참여할 수 있어요. 필요한 사람에게만 공유해 주세요.</p>
@@ -167,9 +168,9 @@ export function MembersPanel({ projectId, onLeft }: { projectId: string; onLeft:
       {data.canInvite && invitations && <section className="member-invitations" aria-label="발급한 초대"><div className="section-heading"><h3>발급한 초대</h3><span className="count-text">{invitations.total}</span></div>
         {!invitations.items.length && <p className="help-text">아직 발급한 초대가 없어요.</p>}
         {invitations.items.map(invitation => <article className="invitation-list-row" key={invitation.id}><div><strong>{invitation.targetLogin ? `@${invitation.targetLogin}` : '링크로 초대'} · {roleLabels[invitation.role]}</strong><p>@{invitation.createdBy} · {memberDate(invitation.expiresAt)}까지</p></div><span className="badge">{invitationLabels[invitation.status]}</span>{invitation.status === 'PENDING' && (invitation.role !== 'ADMIN' || data.canInviteAdmin) && <button className="button" disabled={busy} onClick={() => void revoke(invitation.id)} aria-label={`초대 ${invitation.id} 취소`}>초대 취소</button>}</article>)}
-        <div className="connection-pagination"><button className="button" disabled={busy || invitePage === 1} onClick={() => setInvitePage(value => value - 1)}>이전 초대</button><span>{invitePage} 페이지</span><button className="button" disabled={busy || !invitations.hasNext} onClick={() => setInvitePage(value => value + 1)}>다음 초대</button></div>
+        <div className="connection-pagination"><button aria-label="이전 초대" className="button" disabled={busy || invitePage === 1} onClick={() => setInvitePage(value => value - 1)}><ChevronLeft size={14} />이전</button><span>{invitePage} 페이지</span><button aria-label="다음 초대" className="button" disabled={busy || !invitations.hasNext} onClick={() => setInvitePage(value => value + 1)}>다음<ChevronRight size={14} /></button></div>
       </section>}
-      {data.canInvite && history && <section className="membership-history"><h3>멤버 관리 이력</h3>{history.items.map(item => <article key={item.id}><strong>{item.title}</strong><small>@{item.actorLogin ?? '알 수 없음'} · {memberDate(item.occurredAt)}</small></article>)}{!history.items.length && <p className="help-text">아직 관리 이력이 없어요.</p>}<div className="connection-pagination"><button className="button" disabled={historyPage === 1} onClick={() => setHistoryPage(value => value - 1)}>이전 이력</button><span>{historyPage} 페이지</span><button className="button" disabled={!history.hasNext} onClick={() => setHistoryPage(value => value + 1)}>다음 이력</button></div></section>}
+      {data.canInvite && history && <section className="membership-history"><h3>멤버 관리 이력</h3>{history.items.map(item => <article key={item.id}><strong>{item.title}</strong><small>@{item.actorLogin ?? '알 수 없음'} · {memberDate(item.occurredAt)}</small></article>)}{!history.items.length && <p className="help-text">아직 관리 이력이 없어요.</p>}<div className="connection-pagination"><button aria-label="이전 이력" className="button" disabled={historyPage === 1} onClick={() => setHistoryPage(value => value - 1)}><ChevronLeft size={14} />이전</button><span>{historyPage} 페이지</span><button aria-label="다음 이력" className="button" disabled={!history.hasNext} onClick={() => setHistoryPage(value => value + 1)}>다음<ChevronRight size={14} /></button></div></section>}
       <div className="member-leave"><p className="help-text">프로젝트를 나가도 기존 작업 기록은 유지돼요. 소유자는 다른 멤버에게 소유권을 먼저 이전해야 합니다.</p><button className="subtle-link danger-text" disabled={busy || data.canInviteAdmin} onClick={() => openAction({ type: 'leave' })}>프로젝트 나가기</button></div>
     </>}
     {!data && !loading && <Link className="subtle-link" to="/issues">내 프로젝트로 돌아가기</Link>}

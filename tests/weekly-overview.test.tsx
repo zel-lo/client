@@ -117,7 +117,7 @@ describe('주간 PM 대시보드', () => {
     expect(fetcher).toHaveBeenCalledWith('/api/projects/1/dashboard?week=2026-10-26', expect.anything())
     expect(screen.getByRole('link', { name: /지난 주에 완료한 작업/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /팀에서 직접 작성한 반영 제목/ })).not.toBeInTheDocument()
-    expect(screen.getByText('진행·검토는 현재 상태, 완료 수는 선택한 주의 완료일 기준이에요.')).toBeInTheDocument()
+    expect(screen.getByText('선택한 주 완료와 현재 미완료 작업 기준 · 백로그 제외')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '이번 주', exact: true }))
     expect(await screen.findByRole('progressbar', { name: '이번 주 작업 완료율' })).toHaveAttribute('aria-valuenow', '42')
     expect(screen.getByTestId('week-route')).toHaveTextContent('?view=weekly')

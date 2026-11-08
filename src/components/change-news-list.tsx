@@ -6,8 +6,9 @@ export type ChangeNewsItem = {
   category: 'FEATURE' | 'IMPROVE' | 'FIX' | 'TEAM'
   date?: string | null
   title: string
+  badge?: { label: string; tone: 'pending' | 'draft' | 'published' }
   metadata?: ReactNode
-  details?: ReactNode
+  action?: ReactNode
 }
 const sections = [
   { category: 'FEATURE', label: '새 기능' },
@@ -34,7 +35,9 @@ export function ChangeNewsList({ items }: { items: ChangeNewsItem[] }) {
       <div className="change-news-section-heading"><h3>{section.label}</h3><span>{rows.length}</span></div>
       <ul className="change-news-list">{rows.map(item => <li className="change-news-item" key={item.id}>
         <div className="change-news-date">{item.formattedDate ? <time dateTime={item.formattedDate.value} title={item.formattedDate.full}>{item.formattedDate.label}</time> : '날짜 미정'}</div>
-        <div className="change-news-content"><h4>{item.title}</h4>{item.metadata && <div className="change-news-meta">{item.metadata}</div>}{item.details}</div>
+        <div className="change-news-content"><h4>{item.title}</h4>{item.metadata && <div className="change-news-meta">{item.metadata}</div>}</div>
+        <div className="change-news-side">{item.badge && <span className={`change-news-badge is-${item.badge.tone}`}>{item.badge.label}</span>}</div>
+        {item.action}
       </li>)}</ul>
     </section>
   })}</div>

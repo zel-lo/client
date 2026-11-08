@@ -42,7 +42,7 @@
 .board-column-hint { font-size: 12px; color: var(--muted-foreground); margin: 5px 4px 14px; line-height: 1.6; }
 /* 카드가 많아져도 다섯 단계를 한 화면에서 보도록 열 안에서만 스크롤한다. 제목과 개수는 위에 남는다. */
 .board-column { display: flex; flex-direction: column; max-height: max(520px, calc(100dvh - 180px)); }
-.board-column-cards { display: flex; flex-direction: column; gap: 10px; min-height: 240px; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 2px; margin: -2px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.board-column-cards { display: flex; flex-direction: column; gap: 10px; min-height: 240px; flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 2px; margin: -2px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
 .board-column-cards > .board-card { flex-shrink: 0; }
 /* 열 스크롤 영역에 잘리지 않도록 맨 위 카드의 툴팁은 아래로 띄운다. */
 .board-column-cards > .board-card:first-of-type .board-tip::after { bottom: auto; top: calc(100% + 6px); }
@@ -80,8 +80,9 @@
 .board-tip { position: relative; }
 .board-tip::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; z-index: 5; padding: 5px 9px; border-radius: 6px; background: var(--foreground); color: var(--background); font-size: 12px; font-weight: 500; line-height: 1.4; white-space: nowrap; pointer-events: none; opacity: 0; transform: translate(-50%, 2px); transition: opacity .12s ease .3s, transform .12s ease .3s; }
 .board-tip:is(:hover, :focus-visible):not(:disabled)::after { opacity: 1; transform: translate(-50%, 0); }
-.board-card-menu.board-tip::after { left: auto; right: 0; transform: translateY(2px); }
-.board-card-menu.board-tip:is(:hover, :focus-visible):not(:disabled)::after { transform: none; }
+/* 카드 오른쪽 끝의 버튼이라 말풍선을 왼쪽으로 펼쳐 카드 밖으로 넘치지 않게 한다 */
+:is(.board-card-menu, .board-drag-handle).board-tip::after { left: auto; right: 0; transform: translateY(2px); }
+:is(.board-card-menu, .board-drag-handle).board-tip:is(:hover, :focus-visible):not(:disabled)::after { transform: none; }
 .board-card-menu[data-state="open"]::after, .is-dragging .board-tip::after { display: none; }
 .board-priority { font-size: 9px; line-height: 1.5; padding: 2px 5px; border-radius: 5px; background: var(--git-red-bg); color: var(--git-red); }
 .board-drag-handle, .board-card-menu { display: grid; place-items: center; width: 24px; height: 28px; padding: 0; border-radius: 6px; background: transparent; color: var(--muted-foreground); }

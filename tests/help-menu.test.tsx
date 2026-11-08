@@ -22,4 +22,12 @@ describe('도움말 메뉴', () => {
     expect(screen.getByRole('menuitem', { name: /이 화면 둘러보기/ })).toBeDisabled()
     expect(screen.getByText('이 화면은 준비 중이에요')).toBeInTheDocument()
   })
+
+  it('도움말 보기는 매뉴얼을 새 탭으로 연다', async () => {
+    render(<HelpMenu pathname="/issues" />)
+    await userEvent.click(screen.getByRole('button', { name: '도움말' }))
+    const link = screen.getByRole('menuitem', { name: /도움말 보기/ })
+    expect(link).toHaveAttribute('href', tours.HELP_URL)
+    expect(link).toHaveAttribute('target', '_blank')
+  })
 })
