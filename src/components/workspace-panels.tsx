@@ -1,4 +1,5 @@
 import { useWorkspaceData } from '../hooks/use-workspace-data'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 export { useWorkspaceData } from '../hooks/use-workspace-data'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -9,7 +10,7 @@ import type { LiveIssue } from '../lib/project-api'
 import { LoadingState } from './loading-state'
 
 function Failure({ error, retry }: { error: string; retry: () => void }) { return error ? <div role="alert" className="connection-error">{error}<button className="button" onClick={retry}>다시 시도</button></div> : null }
-function Pagination({ page, hasNext, setPage }: { page: number; hasNext?: boolean; setPage: (n: number) => void }) { return <div className="connection-pagination"><button className="button" disabled={page === 1} onClick={() => setPage(page - 1)}>이전</button><span>{page} 페이지</span><button className="button" disabled={!hasNext} onClick={() => setPage(page + 1)}>다음</button></div> }
+function Pagination({ page, hasNext, setPage }: { page: number; hasNext?: boolean; setPage: (n: number) => void }) { return <div className="connection-pagination"><button className="button" disabled={page === 1} onClick={() => setPage(page - 1)}><ChevronLeft size={14} />이전</button><span>{page} 페이지</span><button className="button" disabled={!hasNext} onClick={() => setPage(page + 1)}>다음<ChevronRight size={14} /></button></div> }
 export function activityPath(a: Activity) { return a.issueId ? `/issues?issue=${a.issueId}` : a.pullRequestId ? `/pull-requests?pr=${a.pullRequestId}` : a.patchNoteId ? `/changes?note=${a.patchNoteId}` : '/settings?tab=members' }
 export function ActivityFeed({ project }: { project: string }) {
   const [page, setPage] = useState(1)

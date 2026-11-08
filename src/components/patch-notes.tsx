@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ArrowUpRight, FileText, Plus, RefreshCw } from 'lucide-react'
+import { ArrowLeft, ArrowUpRight, ChevronLeft, ChevronRight, FileText, Plus, RefreshCw } from 'lucide-react'
 import { useWorkspaceData } from '../hooks/use-workspace-data'
 import { saveNote, changed, collectWorkChanges, saveChangeTitle } from '../lib/workspace-api'
 import type { Note, Page, WorkChange } from '../lib/workspace-api'
@@ -36,7 +36,7 @@ export function Notes({ project }: { project: Project }) {
       {!(noteId ? notes : entries).length && !failure && <div className="release-empty"><FileText size={28} /><h3>첫 번째 변화를 기다리고 있어요</h3><p>작업을 완료하거나 PR을 병합하면 이곳에 기록이 모여요.</p></div>}
     </>}
 
-    {!noteId && result.data && (page > 1 || result.data.hasNext) && <nav className="connection-pagination" aria-label="패치노트 페이지"><button className="button" disabled={page === 1 || loading} onClick={() => setPage(value => value - 1)}>이전</button><span>{page} 페이지</span><button className="button" disabled={!result.data.hasNext || loading} onClick={() => setPage(value => value + 1)}>다음</button></nav>}
+    {!noteId && result.data && (page > 1 || result.data.hasNext) && <nav className="connection-pagination" aria-label="패치노트 페이지"><button className="button" disabled={page === 1 || loading} onClick={() => setPage(value => value - 1)}><ChevronLeft size={14} />이전</button><span>{page} 페이지</span><button className="button" disabled={!result.data.hasNext || loading} onClick={() => setPage(value => value + 1)}>다음<ChevronRight size={14} /></button></nav>}
   </section>
 }
 function noteDate(note: Note) {

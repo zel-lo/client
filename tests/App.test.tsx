@@ -54,7 +54,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
   it('이슈 생성과 PR 연결을 저장하고 양쪽 상세에서 확인한다', async () => {
     const user = userEvent.setup()
     const view = mount('/issues')
-    await user.click(screen.getByRole('button', { name: '이슈 만들기', exact: true }))
+    await user.click(screen.getAllByRole('button', { name: '새 작업 등록', exact: true })[0])
     let editor = screen.getByRole('dialog', { name: '새 이슈' })
     const create = within(editor).getByRole('button', { name: '이슈 만들기' })
     expect(create).toBeDisabled()
@@ -251,7 +251,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
   it('회의에서 이슈를 만들고 PR을 작성하면 번호·담당자·변경 요약이 이어진다', async () => {
     const user = userEvent.setup()
     let view = mount('/issues')
-    await user.click(screen.getByRole('button', { name: '이슈 만들기', exact: true }))
+    await user.click(screen.getAllByRole('button', { name: '새 작업 등록', exact: true })[0])
     let editor = screen.getByRole('dialog', { name: '새 이슈' })
     await user.type(within(editor).getByLabelText('이슈 제목'), '검색 시간 확인 기능')
     await user.selectOptions(within(editor).getByLabelText('작업이 나온 곳'), 'weekly')

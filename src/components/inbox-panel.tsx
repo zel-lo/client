@@ -17,7 +17,6 @@ export function InboxPanel({ items, repos, onOpen, onRead, onReadAll }: {
   const visible = [...(tab === 'unread' ? unread : items)].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   return <section aria-label="개인 알림함" className="inbox-panel"><div className="content-filter"><div className="segmented-tabs"><button aria-pressed={tab === 'unread'} className={tab === 'unread' ? 'selected' : ''} onClick={() => setTab('unread')}>미확인 <span className="tab-count">{unread.length}</span></button><button aria-pressed={tab === 'all'} className={tab === 'all' ? 'selected' : ''} onClick={() => setTab('all')}>전체 <span className="tab-count">{items.length}</span></button></div><button className="button" onClick={onReadAll} disabled={!unread.length}><CheckCheck size={14} />모두 읽음</button></div>
     <div className="data-frame inbox-list">{visible.map(item => <div className="inbox-item" key={item.id}><InboxRow item={item} repos={repos} onOpen={onOpen} /><button className="inbox-read-action subtle-link" onClick={() => onRead(item.id, !item.readAt)}>{item.readAt ? '다시 미확인으로' : '읽음으로 표시'}</button></div>)}{!visible.length && <div className="empty-state"><Bell size={28} /><h3>미확인 알림이 없어요</h3><p>이미 확인한 소식은 전체 탭에서 다시 볼 수 있어요.</p></div>}</div>
-    <p className="work-demo-note">이수빈 님의 샘플 알림입니다. 알림함을 여는 것만으로 읽음 처리하지 않으며, 읽음 상태는 이 브라우저에 저장됩니다. 알림을 읽어도 실제 작업은 남아 있어요.</p>
   </section>
 }
 export function InboxPreview({ items, repos, onOpen }: { items: InboxItem[]; repos: Repo[]; onOpen: (item: InboxItem) => void }) {

@@ -268,20 +268,20 @@ describe('실제 PR 연결', () => {
     expect(within(drawer).queryByText('검토 대기')).not.toBeInTheDocument()
   })
 
-  it('코드 검토 목록은 30개씩 서버에서 받아 이전·다음 페이지로 넘긴다', async () => {
+  it('코드 검토 목록은 20개씩 서버에서 받아 이전·다음 페이지로 넘긴다', async () => {
     const many = Array.from({ length: 35 }, (_, index) => pull(String(index + 1), index + 1))
     const fetcher = backend({ everything: many })
     mount('/pull-requests')
-    expect(await screen.findByRole('button', { name: /실제 PR 30(?!\d)/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /실제 PR 31(?!\d)/ })).not.toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /실제 PR 20(?!\d)/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /실제 PR 21(?!\d)/ })).not.toBeInTheDocument()
     expect(within(screen.getByRole('button', { name: /^열림/ })).getByText('35')).toBeInTheDocument()
     const control = userEvent.setup()
     const pagination = screen.getByLabelText('PR 페이지')
     expect(within(pagination).getByRole('button', { name: '이전' })).toBeDisabled()
     await control.click(within(pagination).getByRole('button', { name: '다음' }))
-    expect(await screen.findByRole('button', { name: /실제 PR 31(?!\d)/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /실제 PR 21(?!\d)/ })).toBeInTheDocument()
     expect(screen.getByText('2 페이지')).toBeInTheDocument()
-    expect(fetcher).toHaveBeenCalledWith(expect.stringMatching(/pull-requests\?state=open&size=30&page=2/), expect.anything())
+    expect(fetcher).toHaveBeenCalledWith(expect.stringMatching(/pull-requests\?state=open&size=20&page=2/), expect.anything())
     expect(screen.getByRole('button', { name: '다음' })).toBeDisabled()
 
     // 탭을 바꾸면 첫 페이지부터 다시 받는다.

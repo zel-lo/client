@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Archive, ArrowUpRight, CircleDot, Github, Plus, RefreshCw, X } from 'lucide-react'
+import { Archive, ArrowUpRight, ChevronLeft, ChevronRight, CircleDot, Github, Plus, RefreshCw, X } from 'lucide-react'
 import { archiveIssue, createIssue, getIssue, listAssignees, listConnectedRepositories, listIssues, publishIssue, restoreIssue, syncIssues, updateIssue, ProjectApiError } from '../lib/project-api'
 import type { ConnectedRepository, IssueDetails, IssuePage, LiveIssue, Project } from '../lib/project-api'
 import { TeamBoard, WeekNavigation, WorkViewToggle } from './team-board'
@@ -240,7 +240,7 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
     references: (item.pullRequests ?? []).map(pull => ({ id: pull.id, label: `#${pull.number}${pull.state === 'OPEN' && pull.draft ? ' 초안' : ''}` })),
     branch: item.workBranch ?? null, dropHints: canWrite ? dropHintsFor(item) : undefined,
     locked: item.publishStatus === 'PENDING' || item.publishStatus === 'UNKNOWN',
-    attention: item.publishStatus === 'FAILED' ? { label: 'GitHub 발행을 다시 확인해 주세요', tone: 'danger' } : item.publishStatus === 'UNKNOWN' || item.publishStatus === 'PENDING' ? { label: 'GitHub 발행 결과 확인 중', tone: 'warning' } : !item.assignee && item.status !== 'DONE' ? { label: '함께할 담당자를 지정해 주세요', tone: 'warning' } : undefined,
+    attention: item.publishStatus === 'FAILED' ? { label: 'GitHub 발행을 다시 확인해 주세요', tone: 'danger' } : item.publishStatus === 'UNKNOWN' || item.publishStatus === 'PENDING' ? { label: 'GitHub 발행 결과 확인 중', tone: 'warning' } : undefined,
   }))
   const actions: BoardActions = { onOpen: id => { const item = result?.items.find(item => item.id === id); if (item) void open(item) }, onMove: move => {
     const item = result?.items.find(item => item.id === move.id)
@@ -277,9 +277,8 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
         <TableCell>{issue.assignee ?? '지정 필요'}</TableCell><TableCell>{priorities[issue.priority]}</TableCell><TableCell>{issue.pullRequests?.length ? issue.pullRequests.map(pull => <Link key={pull.id} className="reference-link" to={`/pull-requests?pr=${encodeURIComponent(pull.id)}`}>#{pull.number} </Link>) : canWrite && !issue.archived ? <Link className="reference-link" to={`/pull-requests?createForIssue=${encodeURIComponent(issue.id)}`}>+ PR 작성</Link> : <span className="muted">미연결</span>}</TableCell><TableCell><span className="badge">{publication[issue.publishStatus]}</span></TableCell>
       </TableRow>)}</TableBody></Table></div>}
       {!filtered.length && <div className="empty-state"><CircleDot size={25} /><h3>{archived ? '보관한 작업이 없어요' : '아직 표시할 작업이 없어요'}</h3><p>{repositories.length ? '조건을 바꾸거나 이번 주에 할 작업을 등록해 보세요.' : '먼저 프로젝트에 저장소를 연결해 주세요.'}</p>{!repositories.length && <Link className="button" to="/settings?tab=repositories">저장소 연결</Link>}</div>}
-      {view === 'board' ? <div className="board-pagination"><span>{result.items.length} / {result.total}개 작업 표시</span>{result.hasNext && <button className="button" disabled={loading || busy} onClick={() => setPage(value => value + 1)}>{loading ? '불러오는 중…' : '작업 더 불러오기'}</button>}</div> : <div className="connection-pagination"><button className="button" disabled={page === 1 || loading || busy} onClick={() => setPage(value => value - 1)}>이전 작업</button><span>{page} 페이지</span><button className="button" disabled={!result.hasNext || loading || busy} onClick={() => setPage(value => value + 1)}>다음 작업</button></div>}
+      {view === 'board' ? <div className="board-pagination"><span>{result.items.length} / {result.total}개 작업 표시</span>{result.hasNext && <button className="button" disabled={loading || busy} onClick={() => setPage(value => value + 1)}>{loading ? '불러오는 중…' : '작업 더 불러오기'}</button>}</div> : <div className="connection-pagination"><button aria-label="이전 작업" className="button" disabled={page === 1 || loading || busy} onClick={() => setPage(value => value - 1)}><ChevronLeft size={14} />이전</button><span>{page} 페이지</span><button aria-label="다음 작업" className="button" disabled={!result.hasNext || loading || busy} onClick={() => setPage(value => value + 1)}>다음<ChevronRight size={14} /></button></div>}
     </>}
-    <p className="help-text">{mineOnly ? '현재 맡은 미완료 작업을 모았어요.' : '미완료 작업은 원래 계획 주차를 유지하며 다음 주에도 표시돼요. 완료한 작업은 완료한 주에 남아요.'} 새 작업은 백로그에 모아요. 진행 중으로 옮길 때 담당자를 배정하고 GitHub 이슈를 만들어요.</p>
     {flow && project && <IssueDialog busy={flowBusy} title={flow.kind === 'activate' ? flow.done ? '작업 브랜치를 준비할까요?' : '이번에 진행할 작업을 정해요' : flow.kind === 'link' ? '어떤 PR로 검토를 받을까요?' : 'PR 상태로 단계가 정해져요'} onClose={() => { if (!flowBusy) setFlow(null) }}>
       {flow.kind === 'activate' ? <ActivateIssuePanel project={project} issue={flow.issue} week={week} initialAssignee={flow.initialAssignee} placement={{ beforeId: flow.move.beforeId }} onBusyChange={setFlowBusy} onClose={() => setFlow(null)} onActivated={saved => { setFlow(current => current && { ...current, done: true }); finishFlow(saved, `${saved.key} 담당자와 GitHub 이슈를 준비하고 진행 중으로 옮겼어요.`) }} onRefresh={saved => { setResult(current => current ? { ...current, items: current.items.map(item => item.id === saved.id ? saved : item) } : current); setPage(1); setRevision(value => value + 1) }} />
       : flow.kind === 'link' ? <LinkPullRequestPanel projectId={project.id} issue={flow.issue} onBusyChange={setFlowBusy} onClose={() => setFlow(null)}

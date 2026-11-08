@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { initial } from '@/lib/utils'
 import type { ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowRight, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clock3, GitPullRequest, RefreshCw, RotateCcw, UserRound } from 'lucide-react'
@@ -13,7 +14,7 @@ import './weekly-overview.css'
 
 type OpenTask = (task: Pick<DashboardTask, 'id' | 'type'>) => void
 const states = [{ key: 'IN_PROGRESS', label: '진행 중', tone: 'progress' }, { key: 'IN_REVIEW', label: '검토 중', tone: 'review' }, { key: 'DONE', label: '완료', tone: 'done' }]
-const taskStates: Record<string, string> = { TODO: '진행 중', IN_PROGRESS: '진행 중', IN_REVIEW: '검토 중', REVIEW_REQUESTED: '코드 검토' }
+const taskStates: Record<string, string> = { TODO: '진행 중', IN_PROGRESS: '진행 중', IN_REVIEW: '검토 중', REVIEW_REQUESTED: '리뷰 요청' }
 const shortDate = (date: string) => `${Number(date.slice(5, 7))}.${Number(date.slice(8, 10))}`
 
 export function WeeklyOverview({ project }: { project: string }) {
@@ -77,7 +78,7 @@ export function WeeklyDashboardView({ data, onOpen, onRefresh, onWeekChange, ref
         <div className="weekly-card-heading"><h2 id="weekly-progress-heading">{data.periodLabel} 진행률</h2><Link to={`/issues?${weekQuery}`} className="weekly-text-link">팀 작업 보기<ArrowUpRight size={14} /></Link></div>
         <div className="weekly-progress-number"><strong>{data.percentage}<span>%</span></strong><p>{data.total ? <><b>{data.total}개</b> 중 <b>{data.completed}개</b>를 마쳤어요</> : isCurrent ? '이번 주에 할 작업을 정해 보세요' : '해당 주차에 표시할 작업이 없어요'}</p></div>
         <div className="weekly-progress-track" role="progressbar" aria-label={`${data.periodLabel} 작업 완료율`} aria-valuenow={data.percentage} aria-valuemin={0} aria-valuemax={100} aria-valuetext={`${data.total}개 중 ${data.completed}개 완료`}>
-          {[states[2], states[0], states[1]].map(state => <span key={state.key} className={`weekly-track-${state.tone}`} style={{ width: `${data.total ? ((data.states[state.key] ?? 0) + (state.key === 'IN_PROGRESS' ? data.states.TODO ?? 0 : 0)) / data.total * 100 : 0}%` }} />)}
+          <span className="weekly-track-done" style={{ width: `${data.percentage}%` }} />
         </div>
         <div className="weekly-status-counts">{states.map(state => <Link key={state.key} to={`/issues?${weekQuery}&status=${state.key}`}><span><i className={`weekly-dot-${state.tone}`} />{state.label}</span><strong>{(data.states[state.key] ?? 0) + (state.key === 'IN_PROGRESS' ? data.states.TODO ?? 0 : 0)}<small>개</small></strong></Link>)}</div>
         <p className="weekly-progress-note">{isCurrent ? '이번 주 계획과 이전 주에서 이어온 작업 기준 · 백로그 제외' : '선택한 주 완료와 현재 미완료 작업 기준 · 백로그 제외'}</p>
@@ -90,7 +91,7 @@ export function WeeklyDashboardView({ data, onOpen, onRefresh, onWeekChange, ref
 
     <div className="weekly-middle-grid">
       <section className="weekly-card weekly-attention" aria-labelledby="weekly-attention-heading" data-tour="weekly-attention">
-        <div className="weekly-card-heading"><h2 id="weekly-attention-heading">먼저 확인해 주세요{data.attention.length > 0 && <span className="weekly-count">{data.attention.length}</span>}</h2><span className="weekly-soft-label">{isCurrent ? '팀의 다음 단계' : '현재 상태 기준'}</span></div>
+        <div className="weekly-card-heading"><h2 id="weekly-attention-heading">먼저 확인해 주세요{data.attention.length > 0 && <span className="weekly-count">{data.attention.length}</span>}</h2>{!isCurrent && <span className="weekly-soft-label">현재 상태 기준</span>}</div>
         <div className="weekly-attention-filters" aria-label="확인할 작업 종류">{filters.map(item => <button key={item.key} type="button" aria-pressed={filter === item.key} onClick={() => { setFilter(item.key); setAllAttention(false) }}>{item.label}<span>{item.count}</span></button>)}</div>
         <div className="weekly-attention-list">{shownAttention.map(item => <AttentionRow key={`${item.kind}-${item.id}`} item={item} onOpen={onOpen} />)}</div>
         {!attention.length && <div className="weekly-clear-state"><span><Check size={24} /></span><strong>{filter === 'ALL' ? '지금은 순조롭게 진행 중이에요' : '확인이 필요한 항목이 없어요'}</strong><p>{filter === 'ALL' ? '담당자 없는 작업과 오래 기다린 PR이 없어요.' : '다른 항목에서도 팀의 상황을 확인해 보세요.'}</p></div>}
@@ -99,7 +100,7 @@ export function WeeklyDashboardView({ data, onOpen, onRefresh, onWeekChange, ref
 
       <section className="weekly-card weekly-people" aria-labelledby="weekly-people-heading" data-tour="weekly-people">
         <div className="weekly-card-heading"><h2 id="weekly-people-heading">업무 담당</h2><span className="weekly-soft-label">{data.people.length}명</span></div>
-        <div className="weekly-people-table"><div className="weekly-assignment-heading" aria-hidden="true"><span>담당자</span><span>담당 업무</span><span /></div>
+        <div className="weekly-people-table"><div className="weekly-assignment-heading" aria-hidden="true"><span>담당자</span><span>맡은 일</span><span /></div>
           {shownPeople.map((person, index) => <PersonRow key={person.login} person={person} index={index} onSelect={() => setAssignment(person)} />)}
         </div>
         {!data.people.length && <div className="weekly-clear-state"><UserRound size={26} /><strong>함께할 팀원을 초대해 보세요</strong><Link className="weekly-text-link" to="/settings?tab=members">멤버 관리<ArrowRight size={14} /></Link></div>}
@@ -113,12 +114,11 @@ export function WeeklyDashboardView({ data, onOpen, onRefresh, onWeekChange, ref
       {!data.recent.length && <div className="weekly-completed-empty"><CheckCircle2 size={22} /><p>완료한 작업이 여기에 차곡차곡 모여요.</p><Link className="weekly-text-link" to={`/issues?${weekQuery}`}>팀 작업으로 이동<ArrowRight size={14} /></Link></div>}
     </section>
     {assignment && <Dialog title="업무 담당" drawer onClose={() => setAssignment(null)}><div className="weekly-assignment-detail">
-      <div className="weekly-assignment-profile"><span className="weekly-avatar">{assignment.name.slice(-2)}</span><div><h2>{assignment.name}</h2><p>{assignment.jobTitle ?? `@${assignment.login}`}</p></div></div>
+      <div className="weekly-assignment-profile"><span className="weekly-avatar">{initial(assignment.name)}</span><div><h2>{assignment.name}</h2><p>{assignment.jobTitle ?? `@${assignment.login}`}</p></div></div>
       <h3>담당 업무</h3>
       {assignment.tasks.length ? <div className="weekly-assignment-tasks">{assignment.tasks.map(task => <TaskLink key={`${task.type}-${task.id}`} task={task} className="weekly-assignment-task" onOpen={onOpen ? selected => { setAssignment(null); onOpen(selected) } : undefined}><span className={`weekly-task-status is-${task.status.toLowerCase()}`}>{taskStates[task.status] ?? task.status}</span><strong>{task.title}</strong><small>{task.repository}</small><ChevronRight size={15} /></TaskLink>)}</div> : <p className="weekly-assignment-empty">현재 담당하고 있는 업무가 없어요.</p>}
       <Link className="button" to={`/issues?assignee=${encodeURIComponent(assignment.login)}&week=${encodeURIComponent(data.weekStart)}`}>담당 작업 모두 보기<ArrowUpRight size={14} /></Link>
     </div></Dialog>}
-    <p className="weekly-footer">{!isCurrent ? '진행·검토는 현재 상태, 완료 수는 선택한 주의 완료일 기준이에요.' : demo ? '샘플 프로젝트의 주간 현황이에요.' : 'GitHub에서 변경한 내용은 이슈·PR을 가져온 뒤 표시돼요.'}<span>완료와 서비스 배포는 별도로 확인해요.</span></p>
   </div>
 }
 
@@ -131,9 +131,12 @@ function AttentionRow({ item, onOpen }: { item: DashboardAttention; onOpen?: Ope
 }
 
 function PersonRow({ person, index, onSelect }: { person: DashboardPerson; index: number; onSelect: () => void }) {
+  // 진행·검토 중은 맡은 작업의 단계, 리뷰 요청은 다른 사람 PR의 리뷰를 부탁받은 수
+  const inReview = person.tasks.filter(task => task.type === 'ISSUE' && task.status === 'IN_REVIEW').length
+  const load = ([['진행', person.inProgress, 'progress'], ['검토 중', inReview, 'review'], ['리뷰 요청', person.reviewing, 'request']] as const).filter(([, count]) => count > 0)
   return <button type="button" className="weekly-assignment-row" aria-label={`${person.name} 업무 담당 보기`} onClick={onSelect}>
-    <span className="weekly-person-info"><span className={`weekly-avatar weekly-avatar-${index % 5}`}>{person.name.slice(-2)}</span><strong>{person.name}</strong></span>
-    <span className="weekly-assigned-work"><span>{person.tasks[0]?.title ?? '담당 업무 없음'}</span>{person.tasks.length > 1 && <small>외 {person.tasks.length - 1}개</small>}</span>
+    <span className="weekly-person-info"><span className={`weekly-avatar weekly-avatar-${index % 5}`}>{initial(person.name)}</span><strong>{person.name}</strong></span>
+    <span className="weekly-assigned-work">{load.length ? load.map(([label, count, tone]) => <span key={label} className={`weekly-load is-${tone}`}>{label} {count}</span>) : <small>맡은 일 없음</small>}</span>
     <ChevronRight size={15} />
   </button>
 }

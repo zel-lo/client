@@ -2,7 +2,7 @@ import { LoadingState } from './loading-state'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Github, RefreshCw, Plus, ExternalLink, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ExternalLink, Github, Plus, RefreshCw, X } from 'lucide-react'
 import {
   connectRepository, createProject, disconnectRepository, githubAuthorization, listAvailableRepositories,
   listConnectedRepositories, listGitHubAccounts, ProjectApiError, syncPullRequests, syncIssues,
@@ -240,5 +240,5 @@ export function RepositoryConnections({ project: currentProject, onboarding = fa
 
 function Pagination({ page, hasNext, disabled, onChange, label }: { page: number; hasNext: boolean; disabled: boolean; onChange: (page: number) => void; label: string }) {
   if (page === 1 && !hasNext) return null
-  return <div className="connection-pagination" aria-label={`${label} 페이지`}><button type="button" className="button" disabled={disabled || page === 1} onClick={() => onChange(page - 1)}>이전 {label}</button><span>{page} 페이지</span><button type="button" className="button" disabled={disabled || !hasNext} onClick={() => onChange(page + 1)}>다음 {label}</button></div>
+  return <div className="connection-pagination" aria-label={`${label} 페이지`}><button aria-label={`이전 ${label}`} type="button" className="button" disabled={disabled || page === 1} onClick={() => onChange(page - 1)}><ChevronLeft size={14} />이전</button><span>{page} 페이지</span><button aria-label={`다음 ${label}`} type="button" className="button" disabled={disabled || !hasNext} onClick={() => onChange(page + 1)}>다음<ChevronRight size={14} /></button></div>
 }

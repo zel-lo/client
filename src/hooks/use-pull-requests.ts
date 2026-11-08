@@ -6,7 +6,7 @@ import { listProjects, listPullRequests, ProjectApiError, syncPullRequests } fro
 import type { Project, PullRequestPage, PullRequestQuery } from '../lib/project-api'
 
 const reauthCodes = ['AUTHENTICATION_REQUIRED', 'GITHUB_REAUTH_REQUIRED', 'ACCOUNT_INACTIVE']
-export const PULL_REQUEST_PAGE_SIZE = 30
+export const PULL_REQUEST_PAGE_SIZE = 20
 
 /** 코드 검토 화면 주소(?status=&focus=&page=)를 서버 목록 조건으로 바꾼다. 이슈 미연결 필터도 서버에서 처리한다. */
 export function codeReviewQuery(search: string): PullRequestQuery {

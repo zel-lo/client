@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react'
+import { initial } from '@/lib/utils'
 import type { CSSProperties, ReactNode } from 'react'
 import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCorners, pointerWithin, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { CollisionDetection, DragEndEvent } from '@dnd-kit/core'
@@ -94,7 +95,7 @@ function AssigneePicker({ item, disabled, onAssign, loadAssignees }: { item: Boa
   }
   return <Popover.Root open={open} onOpenChange={value => { if (saving) return; setOpen(value); if (value) { setPage(1); setPeople([]); setQuery(''); setError('') } }}>
     <Popover.Trigger asChild><button type="button" className={`board-assignee ${item.assignee ? 'has-assignee' : ''}`} disabled={disabled} aria-label={`${item.key} 담당자 지정${item.assignee ? `, 현재 ${item.assignee}` : ''}`}>
-      {item.assignee ? <><span className="board-avatar" aria-hidden="true">{item.assignee.slice(0, 2)}</span><span>{item.assignee}</span></> : <><UserRound size={13} /><span>담당자 지정</span></>}
+      {item.assignee ? <><span className="board-avatar" aria-hidden="true">{initial(item.assignee)}</span><span>{item.assignee}</span></> : <><UserRound size={13} /><span>담당자 지정</span></>}
     </button></Popover.Trigger>
     <Popover.Portal><Popover.Content className="board-popover assignee-popover" sideOffset={8} align="end" aria-label="담당자 지정" onEscapeKeyDown={event => { if (saving) event.preventDefault() }} onInteractOutside={event => { if (saving) event.preventDefault() }}>
       <div className="board-popover-heading"><strong>담당자 지정</strong><Popover.Close asChild><button className="icon-button tiny" disabled={saving} aria-label="담당자 선택 닫기"><X size={15} /></button></Popover.Close></div>
@@ -102,7 +103,7 @@ function AssigneePicker({ item, disabled, onAssign, loadAssignees }: { item: Boa
       {error && <div className="board-picker-error" role="alert">{error}<button type="button" onClick={() => setRetry(value => value + 1)}>다시 불러오기</button></div>}
       <div className="assignee-options" aria-busy={loading || saving}>
         <button type="button" disabled={saving || loading} onClick={() => void select(null)}><UserRound size={15} /><span>미지정</span>{!item.assignee && <Check size={14} />}</button>
-        {people.filter(person => person.login.toLocaleLowerCase().includes(query.toLocaleLowerCase())).map(person => <button type="button" key={person.login} aria-label={person.login} disabled={saving} onClick={() => void select(person.login)}><span className="board-avatar" aria-hidden="true">{person.login.slice(0, 2)}</span><span>{person.login}</span>{item.assignee === person.login && <Check size={14} />}</button>)}
+        {people.filter(person => person.login.toLocaleLowerCase().includes(query.toLocaleLowerCase())).map(person => <button type="button" key={person.login} aria-label={person.login} disabled={saving} onClick={() => void select(person.login)}><span className="board-avatar" aria-hidden="true">{initial(person.login)}</span><span>{person.login}</span>{item.assignee === person.login && <Check size={14} />}</button>)}
         {loading && <LoadingState rows={3} label="지정 가능한 팀원을 불러오는 중" />}
         {!loading && !error && !people.filter(person => person.login.toLocaleLowerCase().includes(query.toLocaleLowerCase())).length && <p className="board-picker-empty">{query ? '검색한 팀원이 없어요.' : '지정 가능한 팀원이 없어요.'}</p>}
       </div>

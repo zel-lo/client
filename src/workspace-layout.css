@@ -4,7 +4,7 @@
   --workspace-reading-width: 800px;
   --setup-content-width: 800px;
 }
-.main-content { padding-top: 32px; }
+.main-content { padding-top: 32px; padding-bottom: 96px; }
 .page-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 24px; }
 .page-heading > div:first-child { min-width: 0; }
 .page-heading p { max-width: 76ch; margin-top: 10px; }
@@ -34,7 +34,6 @@
 .board-toolbar .work-view-toggle, .pr-filter-row .segmented-tabs { height: 44px; }
 .board-toolbar .work-view-toggle button, .pr-filter-row .segmented-tabs button { height: 36px; min-height: 36px; padding-top: 0; padding-bottom: 0; }
 .board-overview { min-height: 34px; margin-bottom: 16px; }
-.page-footer { margin-top: 32px; }
 
 /* Settings share a panel edge; text forms use one reading column instead of nested cards. */
 .main-content[data-page="settings"] > .workspace-page-content { max-width: 1040px; }
@@ -72,7 +71,7 @@
   .heading-actions .button { padding-left: 12px; padding-right: 12px; }
 }
 @media (max-width: 767px) {
-  .main-content { padding-top: 24px; }
+  .main-content { padding-top: 24px; padding-bottom: 64px; }
   .page-heading { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .page-heading p { max-width: 100%; font-size: 12px; line-height: 1.8; }
   .heading-actions { padding-top: 0; margin: 0; justify-content: flex-start; }

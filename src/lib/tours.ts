@@ -2,7 +2,7 @@ import { driver, type DriveStep } from 'driver.js'
 import 'driver.js/dist/driver.css'
 
 // 도움말(매뉴얼) 주소. 비어 있으면 준비 중으로 표시한다
-export const HELP_URL = ''
+export const HELP_URL = 'https://sinhey.notion.site/zello-4121f9605e928159bba1ce21004a6b14'
 
 type TourStep = { target: string; title: string; description: string }
 

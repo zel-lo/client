@@ -370,7 +370,6 @@ h1 { font-size: 29px; line-height: 1.4; font-weight: 700; letter-spacing: -.9px;
 .content-filter { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-bottom: 20px; }
 .work-panel { margin-bottom: 20px; }
 .work-panel .data-frame { margin-top: 0; }
-.work-demo-note { color: var(--muted-foreground); font-size: 11px; line-height: 1.8; margin-top: 16px; }
 .issue-id { color: var(--muted-foreground); font-size: 10px; white-space: nowrap; }
 .issue-title { display: flex; align-items: center; gap: 12px; font-size: 14px; text-align: left; font-weight: 500; min-width: 220px; }
 .issue-title small { display: block; color: var(--muted-foreground); font-size: 12px; font-weight: 400; margin-top: 5px; }
@@ -646,10 +645,6 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .member-row strong { display: block; font-size: 12px; font-weight: 500; }
 .member-row small { display: block; color: var(--muted-foreground); font-size: 11px; margin-top: 4px; }
 .member-row .badge { margin-left: auto; }
-.page-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; color: var(--muted-foreground); font-size: 10px; padding: 20px 0 24px; border-top: 1px solid var(--line); margin-top: 30px; }
-.page-footer > span, .footer-brand { display: inline-flex; align-items: center; gap: 6px; }
-.demo-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--muted-foreground); }
-.footer-separator { margin: 0 3px; color: var(--line-strong); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes drawer-in { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 @keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
@@ -759,7 +754,6 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
   .note-detail h2 { font-size: 24px; }
   .settings-form, .settings-members { padding: 20px; }
   .settings-columns { grid-template-columns: 1fr; gap: 0; }
-  .page-footer { flex-direction: column; align-items: flex-start; font-size: 9px; }
   [data-mobile="true"] [data-slot="sidebar-menu-button"] { min-height: 39px; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -923,7 +917,10 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .connection-picker { min-width: 0; border: 1px solid var(--quiet-line); border-radius: var(--panel-radius); padding: 20px; display: grid; gap: 18px; background: var(--card); }
 .connection-picker form { display: grid; gap: 16px; min-width: 0; }
 .connection-picker form > .button { justify-self: start; min-height: 40px; }
-.connection-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 12px; color: var(--muted-foreground); }
+.connection-pagination { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin-top: 20px; font-size: 12px; color: var(--muted-foreground); }
+.connection-pagination > .button { min-height: 34px; padding: 6px 14px; }
+/* gap으로 간격을 두는 그리드 안에서는 위 여백을 겹치지 않는다 */
+.members-panel > .connection-pagination { margin-top: 0; }
 .connection-error { padding: 14px; border: 1px solid var(--git-red); border-radius: 8px; color: var(--git-red); background: var(--git-red-bg); line-height: 1.6; }
 .connection-error a { margin-left: 12px; text-decoration: underline; }
 .connection-notice { font-size: 13px; color: var(--git-green); line-height: 1.6; }
@@ -997,7 +994,7 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .invitation-list-row > div { flex: 1; min-width: 160px; }
 .invitation-list-row strong { font-size: 12px; overflow-wrap: anywhere; }
 .invitation-list-row p { font-size: 11px; margin: 7px 0 0; color: var(--muted-foreground); }
-.member-invitations > .connection-pagination, .membership-history > .connection-pagination { margin-top: 18px; }
+
 .membership-history > article { display: grid; gap: 7px; padding: 17px 0; border-bottom: 1px solid var(--line); }
 .membership-history strong { font-size: 12px; font-weight: 500; }
 .membership-history small { font-size: 11px; color: var(--muted-foreground); }
