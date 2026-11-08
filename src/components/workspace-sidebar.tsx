@@ -1,16 +1,17 @@
 import { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Bell, BookOpen, Check, ChevronDown, CircleDot, CircleHelp, GitPullRequest, LayoutDashboard, Plus, Search, Settings, UserRound } from 'lucide-react'
+import { Bell, BookOpen, Check, ChevronDown, CircleDot, GitPullRequest, LayoutDashboard, Plus, Search, Settings, UserRound } from 'lucide-react'
 import { BrandMark } from './brand-mark'
+import { HELP_URL } from '../lib/tours'
 import type { LucideIcon } from 'lucide-react'
 import type { Project } from '../lib/project-api'
 import type { CurrentUser } from '../lib/session-api'
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar'
 
 type NavigationItem = { to: string; label: string; icon: LucideIcon; count?: number; selected: boolean }
-export function WorkspaceSidebar({ unreadCount, myWorkCount, issueCount, pullRequestCount, onGuide, onSearch, onCreate, currentUser, onLogout, currentProjectName, currentProjectId, projects = [], projectLoading = false, onSelectProject, logoutPending = false }: {
+export function WorkspaceSidebar({ unreadCount, myWorkCount, issueCount, pullRequestCount, onSearch, onCreate, currentUser, onLogout, currentProjectName, currentProjectId, projects = [], projectLoading = false, onSelectProject, logoutPending = false }: {
   unreadCount: number; myWorkCount: number; issueCount: number; pullRequestCount: number;
-  onGuide: () => void; onSearch: () => void; onCreate: () => void;
+  onSearch: () => void; onCreate: () => void;
   currentProjectId?: string; projects?: Project[]; projectLoading?: boolean; onSelectProject?: (id: string) => void;
   currentProjectName?: string; currentUser?: CurrentUser | null; onLogout?: () => void; logoutPending?: boolean;
 }) {
@@ -54,5 +55,5 @@ export function WorkspaceSidebar({ unreadCount, myWorkCount, issueCount, pullReq
       </div>
     </details>
     <div className="sidebar-quick-actions"><button className="button button-dark" onClick={() => closeMobile(onCreate)}><Plus size={16} />새 작업 등록</button><button className="button sidebar-search" onClick={() => closeMobile(onSearch)} aria-label="검색 및 빠른 이동" title="검색 및 빠른 이동 · ⌘K"><Search size={16} /></button></div>
-  </SidebarHeader><SidebarContent>{group('내가 확인할 것', personal)}{group('팀이 진행하는 일', project)}{group('프로젝트 관리', management)}<SidebarGroup className="workspace-nav-group sidebar-secondary"><SidebarMenu><SidebarMenuItem><SidebarMenuButton onClick={() => closeMobile(onGuide)}><CircleHelp size={17} /><span>도움말</span></SidebarMenuButton></SidebarMenuItem></SidebarMenu></SidebarGroup></SidebarContent><SidebarFooter className="workspace-sidebar-footer"><Link to={currentUser ? "/my-work" : "/login"} className="profile"><span className="profile-monogram">{currentUser ? currentUser.displayName.slice(0, 2) : '샘플'}</span><span><strong>{currentUser?.displayName ?? '샘플 방문자'}</strong><small>{currentUser ? `@${currentUser.login} · GitHub 로그인됨` : '로그인하여 내 프로젝트 연결'}</small></span><UserRound size={15} /></Link>{currentUser && <button type="button" className="session-logout" onClick={onLogout} disabled={logoutPending}>{logoutPending ? '로그아웃 중…' : '로그아웃'}</button>}{!currentUser && <Link className="session-logout" to="/login">GitHub 로그인</Link>}</SidebarFooter></Sidebar>
+  </SidebarHeader><SidebarContent>{group('내가 확인할 것', personal)}{group('팀이 진행하는 일', project)}{group('프로젝트 관리', management)}<SidebarGroup className="workspace-nav-group sidebar-secondary"><SidebarMenu><SidebarMenuItem>{HELP_URL ? <SidebarMenuButton asChild><a href={HELP_URL} target="_blank" rel="noopener noreferrer"><BookOpen size={17} /><span>도움말 보기</span></a></SidebarMenuButton> : <SidebarMenuButton disabled title="준비 중이에요"><BookOpen size={17} /><span>도움말 보기</span><span className="nav-count">준비 중</span></SidebarMenuButton>}</SidebarMenuItem></SidebarMenu></SidebarGroup></SidebarContent><SidebarFooter className="workspace-sidebar-footer"><Link to={currentUser ? "/my-work" : "/login"} className="profile"><span className="profile-monogram">{currentUser ? currentUser.displayName.slice(0, 2) : '샘플'}</span><span><strong>{currentUser?.displayName ?? '샘플 방문자'}</strong><small>{currentUser ? `@${currentUser.login} · GitHub 로그인됨` : '로그인하여 내 프로젝트 연결'}</small></span><UserRound size={15} /></Link>{currentUser && <button type="button" className="session-logout" onClick={onLogout} disabled={logoutPending}>{logoutPending ? '로그아웃 중…' : '로그아웃'}</button>}{!currentUser && <Link className="session-logout" to="/login">GitHub 로그인</Link>}</SidebarFooter></Sidebar>
 }
