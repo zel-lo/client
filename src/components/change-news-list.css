@@ -1,0 +1,25 @@
+.change-news-sections { display: flex; flex-direction: column; gap: 36px; padding-top: 8px; }
+.change-news-section-heading { display: flex; gap: 9px; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.change-news-section-heading h3 { margin: 0; font-size: 15px; letter-spacing: -.3px; font-weight: 650; }
+.change-news-section-heading > span { font-size: 12px; color: var(--muted-foreground); }
+.change-news-section-heading h3::before { content: ''; display: inline-block; width: 6px; height: 6px; margin: 0 9px 2px 0; border-radius: 50%; background: #3182f6; }
+.change-news-section.is-improve h3::before { background: #8a72c7; }
+.change-news-section.is-fix h3::before { background: #2ba08a; }
+.change-news-section.is-team h3::before { background: #8b95a1; }
+.change-news-list { list-style: none; padding: 0; margin: 0; }
+.change-news-item { display: grid; grid-template-columns: 104px minmax(0, 1fr); gap: 20px; padding: 19px 0; border-bottom: 1px solid var(--quiet-line, var(--border)); }
+.change-news-date { padding-top: 2px; font-size: 12px; line-height: 1.8; color: var(--muted-foreground); }
+.change-news-content { min-width: 0; overflow-wrap: anywhere; }
+.change-news-content > h4 { margin: 0; font-size: 14px; line-height: 1.7; font-weight: 600; letter-spacing: -.15px; }
+.change-news-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 14px; margin-top: 6px; font-size: 11px; color: var(--muted-foreground); }
+.change-news-meta a, .change-news-meta > button { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted-foreground); text-decoration: none; }
+.change-news-meta a:hover, .change-news-meta > button:hover { color: #3182f6; }
+.change-news-meta > button { padding: 0; border: 0; border-radius: 0; background: transparent; min-height: 22px; height: auto; }
+.change-news-meta > .button { color: #3182f6; }
+.change-news-meta > .note-change-editor { flex-basis: 100%; margin: 8px 0; }
+.change-news-meta .release-pending { color: #a26a18; }
+@media(max-width: 600px) {
+  .change-news-item { grid-template-columns: 1fr; gap: 5px; padding: 16px 0; }
+  .change-news-date { padding: 0; font-size: 11px; }
+  .change-news-sections { gap: 28px; }
+}

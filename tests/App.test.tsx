@@ -210,7 +210,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(within(detail).getByText('아직 배포 전이에요')).toBeInTheDocument()
     view.unmount()
     mount('/patches')
-    expect(screen.getByRole('button', { name: /새 업데이트\s*공개됨.*함께 정리한 업데이트/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /함께 정리한 업데이트.*공개됨/ })).toBeInTheDocument()
   })
 
   it('전체 검색에서 요약과 작성자를 찾아 상세로 이동한다', async () => {
