@@ -182,7 +182,6 @@ kbd { display: inline-flex; align-items: center; border: 1px solid var(--line); 
 .repository-build-failed { color: var(--git-red); }
 .repository-build-unknown { color: var(--subtle-foreground); }
 .pending-build-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
-.sidebar-secondary { margin-top: auto; padding-bottom: 0; }
 .workspace-sidebar-footer { padding: 10px 12px 12px; gap: 9px; }
 .sidebar-check-status { display: flex; align-items: center; gap: 7px; padding: 9px; font-size: 10px; color: var(--muted-foreground); }
 .profile { display: flex; align-items: center; gap: 10px; padding: 10px 7px; border-top: 1px solid var(--line); }
@@ -469,8 +468,8 @@ h1 { font-size: 29px; line-height: 1.4; font-weight: 700; letter-spacing: -.9px;
 .dialog-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 26px; background: var(--card); border-bottom: 1px solid var(--quiet-line); position: sticky; top: 0; z-index: 2; }
 .eyebrow { font-size: 10px; letter-spacing: .5px; color: var(--muted-foreground); font-weight: 500; }
 .dialog-header .eyebrow { color: var(--foreground); font-size: 12px; letter-spacing: 0; }
-.dialog-form, .guide-content { padding: 28px 30px 30px; }
-.dialog-form h2, .guide-content h2 { font-size: 25px; font-weight: 700; line-height: 1.5; letter-spacing: -.7px; }
+.dialog-form { padding: 28px 30px 30px; }
+.dialog-form h2 { font-size: 25px; font-weight: 700; line-height: 1.5; letter-spacing: -.7px; }
 .dialog-form > p { font-size: 12px; color: var(--muted-foreground); line-height: 1.9; margin: 10px 0 23px; }
 .form-hero-icon { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; margin-bottom: 18px; }
 .dialog-form > label, .settings-form > label, .settings-columns label, .note-edit label { display: block; font-size: 13px; line-height: 1.5; color: var(--text-secondary); font-weight: 500; margin-top: 24px; }
@@ -636,12 +635,6 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .search-suggestion { display: inline-flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 5px; font-size: 10px; }
 .command-footer { display: flex; justify-content: space-between; gap: 10px; padding: 11px 18px; border-top: 1px solid var(--line); background: var(--surface); color: var(--muted-foreground); font-size: 10px; }
 .command-footer kbd { margin-right: 3px; }
-.guide-content > p { font-size: 12px; line-height: 1.9; color: var(--muted-foreground); margin-top: 12px; }
-.guide-content ol { list-style: decimal-leading-zero; padding: 0 0 0 25px; margin: 23px 0; }
-.guide-content li { padding: 11px 0 11px 5px; }
-.guide-content li strong { display: block; font-size: 12px; font-weight: 500; }
-.guide-content li span { display: block; font-size: 11px; color: var(--muted-foreground); margin-top: 6px; line-height: 1.8; }
-.guide-content .button { margin-top: 22px; }
 .day-detail { padding: 26px; }
 .day-detail h2 { font-size: 25px; margin: 14px 0 9px; font-weight: 550; }
 .day-detail > p { font-size: 12px; color: var(--muted-foreground); }
@@ -760,7 +753,7 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
   .deployment-summary p { font-size: 11px; }
   .dialog-backdrop:not(.drawer-backdrop) { padding: 14px; }
   .dialog { max-height: calc(100dvh - 28px); }
-  .dialog-form, .guide-content, .detail-content, .note-detail { padding: 23px; }
+  .dialog-form, .detail-content, .note-detail { padding: 23px; }
   .dialog-form h2 { font-size: 21px; }
   .dialog-header { padding: 12px 18px; }
   .issue-fields { gap: 12px; }
@@ -1126,3 +1119,27 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .dark .data-frame [data-slot="table-body"] [data-slot="table-row"]:hover { background: #273348; }
 .dark .skeleton-work-card { background: var(--raised-surface); border-color: var(--raised-edge); }
 .dark .board-skeleton-column { background: var(--panel-surface); border: 1px solid #2D384C; }
+
+/* 도움말 메뉴 · 화면 둘러보기 */
+.sidebar-secondary { margin-top: auto; padding-bottom: 0; }
+.help-anchor { position: relative; }
+.help-menu { position: absolute; top: 44px; right: 0; width: 260px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: 0 8px 30px rgb(0 0 0 / .1); z-index: 40; }
+.help-menu > button, .help-menu > a { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px; border-radius: 8px; text-align: left; color: var(--text-secondary); }
+.help-menu > a:hover, .help-menu > button:hover:not(:disabled) { background: var(--control-bg); }
+.help-menu > button:disabled { opacity: .5; cursor: default; }
+.help-menu > * > svg { margin-top: 2px; flex-shrink: 0; }
+.help-menu span { display: grid; gap: 2px; }
+.help-menu strong { font-size: 14px; font-weight: 600; color: var(--foreground); }
+.help-menu small { font-size: 12px; color: var(--muted-foreground); }
+.driver-popover.zello-tour { max-width: 320px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); color: var(--foreground); box-shadow: 0 12px 36px rgb(0 0 0 / .16); font-family: var(--font-sans); }
+.driver-popover.zello-tour .driver-popover-title { font-size: 15px; font-weight: 650; }
+.driver-popover.zello-tour .driver-popover-description { margin-top: 6px; font-size: 14px; line-height: 1.6; color: var(--text-secondary); }
+.driver-popover.zello-tour .driver-popover-progress-text { font-size: 12px; color: var(--muted-foreground); }
+.driver-popover.zello-tour .driver-popover-footer { margin-top: 16px; }
+.driver-popover.zello-tour .driver-popover-footer button { padding: 7px 12px; border: 0; border-radius: 8px; background: var(--control-bg); color: var(--text-secondary); font-size: 13px; font-weight: 600; text-shadow: none; }
+.driver-popover.zello-tour .driver-popover-footer .driver-popover-next-btn { background: var(--brand); color: #fff; }
+.driver-popover.zello-tour .driver-popover-close-btn { color: var(--muted-foreground); }
+.driver-popover.zello-tour .driver-popover-arrow-side-left { border-left-color: var(--card); }
+.driver-popover.zello-tour .driver-popover-arrow-side-right { border-right-color: var(--card); }
+.driver-popover.zello-tour .driver-popover-arrow-side-top { border-top-color: var(--card); }
+.driver-popover.zello-tour .driver-popover-arrow-side-bottom { border-bottom-color: var(--card); }
