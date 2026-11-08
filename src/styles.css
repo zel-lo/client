@@ -765,6 +765,12 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .metric-link { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 500; text-align: left; }
 .metric-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .work-filter-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: -4px 0 17px; }
+.filter-reset { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 1px dashed var(--quiet-line); border-radius: var(--control-radius); background: transparent; color: var(--text-secondary); font-size: 13px; font-weight: 500; white-space: nowrap; cursor: pointer; transition: color .15s, background-color .15s, border-color .15s; }
+.filter-reset svg { transition: transform .3s ease; }
+.filter-reset:hover:not(:disabled) { border-style: solid; border-color: var(--line); background: var(--control-bg); color: var(--foreground); }
+.filter-reset:hover:not(:disabled) svg { transform: rotate(-120deg); }
+.filter-reset:focus-visible { outline: 2px solid var(--ring, currentColor); outline-offset: 2px; }
+.filter-reset:disabled { opacity: .5; cursor: default; }
 .work-filter-bar select, .form-select { border: 1px solid transparent; border-radius: var(--control-radius); padding: 8px 10px; background: var(--control-bg); color: var(--foreground); font-size: 13px; }
 .form-select { display: block; width: 100%; margin-top: 8px; height: 44px; font-size: 13px; }
 .issue-linked-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 100px; }

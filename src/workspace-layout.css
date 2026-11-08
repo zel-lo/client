@@ -95,6 +95,7 @@
 .pr-filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
 .pr-filter-row .work-filter-bar { margin: 0; }
 .pr-filter-row .work-filter-bar select { height: 44px; min-height: 44px; font-size: 14px; }
+.pr-filter-row .work-filter-bar .filter-reset { min-height: 44px; }
 /* 모바일은 키우기 전 글자 크기를 유지한다. */
 @media (max-width: 767px) {
   .board-toolbar select, .board-toolbar input, .board-toolbar .board-search { font-size: 12px; }
