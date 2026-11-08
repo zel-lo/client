@@ -5,7 +5,10 @@ import { describe, expect, it, vi } from 'vitest'
 import App from '../src/App'
 import { preferredProject, rememberProjectForUser } from '../src/lib/workspace'
 
-vi.mock('../src/components/ui/contribution-skyline', () => ({ default: () => <div />, generateContributions: () => [] }))
+vi.mock('../src/components/ui/contribution-skyline', async importOriginal => {
+  const actual = await importOriginal<typeof import('../src/components/ui/contribution-skyline')>()
+  return { ...actual, default: () => <div />, generateContributions: () => [] }
+})
 const current = { id: '42', githubId: '123', login: 'octocat', displayName: '나', avatarUrl: null, email: null, theme: 'light' }
 const projectA = { id: '1', name: '다른 공간', role: 'OWNER', canManageRepositories: true, description: '', version: 0 }
 const projectB = { ...projectA, id: '2', name: 'ㅎㅇ' }
@@ -40,7 +43,7 @@ function mount(route = '/settings?tab=repositories') { return render(<MemoryRout
 describe('프로젝트 안에서 유지되는 작업 범위', () => {
   it('탭마다 재선택하지 않고 현재 프로젝트의 이슈·멤버·저장소를 사용한다', async () => {
     const { fetcher } = backend(); rememberProjectForUser('42', '2'); mount('/issues'); const user = userEvent.setup()
-    await screen.findByText('아직 표시할 작업이 없어요')
+    await screen.findByText('표시할 작업이 없어요')
     expect(screen.queryByRole('combobox', { name: '현재 프로젝트' })).not.toBeInTheDocument()
     await user.click(screen.getAllByRole('link', { name: '프로젝트 설정', exact: true }).at(-1)!)
     await screen.findByRole('textbox', { name: '프로젝트 이름' })

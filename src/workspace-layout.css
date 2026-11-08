@@ -1,4 +1,8 @@
 /* Shared page geometry keeps titles, controls and content on the same reading lines. */
+.workspace-entry { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; width: min(720px, 100%); min-height: 100svh; margin: auto; padding: 32px; text-align: center; }
+.workspace-entry > .loading-state { width: 100%; }
+.workspace-entry h1 { font-size: 22px; font-weight: 650; }
+.workspace-entry p { color: var(--muted-foreground); font-size: 14px; line-height: 1.8; }
 :root {
   --workspace-section-gap: 24px;
   --workspace-reading-width: 800px;

@@ -11,8 +11,12 @@ vi.mock('../src/components/ui/contribution-skyline', async importOriginal => {
   const original = await importOriginal<typeof import('../src/components/ui/contribution-skyline')>()
   return { ...original, default: () => <div aria-label="활동 시각화" /> }
 })
-function mount(route = '/overview') {
-  return render(<MemoryRouter initialEntries={[route]}><App /></MemoryRouter>)
+async function mount(route = '/overview') {
+  const view = render(<MemoryRouter initialEntries={[route]}><App /></MemoryRouter>)
+  await screen.findByRole('button', { name: '메뉴 열기 또는 닫기' })
+  if (route === '/activity' || route === '/patches') await screen.findByRole('heading', { level: 1, name: /^변경 소식/ })
+  if (route === '/repositories') await screen.findByRole('heading', { level: 1, name: /^프로젝트 설정/ })
+  return view
 }
 
 describe('목데이터 대시보드의 주요 사용자 흐름', () => {
@@ -22,7 +26,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     localStorage.setItem('gyeol.repositories.v1', legacy(initialRepos))
     localStorage.setItem('gyeol.issues.v1', legacy(initialIssues.map(issue => issue.id === 'ZELLO-44' ? { ...issue, description: '직접 수정한 설명' } : issue)))
     localStorage.setItem('gyeol.inbox.isu-bin.v1', legacy(createInitialInbox()))
-    mount('/inbox')
+    await mount('/inbox')
     const inbox = screen.getByRole('region', { name: '개인 알림함' })
     await user.click(within(inbox).getByRole('button', { name: /주간 회의에서 다음 작업/ }))
     const editor = screen.getByRole('dialog', { name: '이슈 상세' })
@@ -34,12 +38,12 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('사이드바에서 PR 검토와 이슈 관리 화면으로 이동한다', async () => {
     const user = userEvent.setup()
-    mount()
+    await mount()
     const prLink = screen.getByRole('link', { name: /^코드 검토/ })
     await user.click(prLink)
     expect(prLink).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('heading', { name: /^코드 검토/ })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Pull requests 목록' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: /^코드 검토/ })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: '코드 검토 요청 목록' })).toBeInTheDocument()
     expect(within(screen.getByRole('table')).getAllByText('수정 요청').length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: /컬렉션을 링크 하나로 공유/ })).not.toBeInTheDocument()
     const issuesLink = screen.getByRole('link', { name: /^팀 작업/ })
@@ -53,7 +57,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('이슈 생성과 PR 연결을 저장하고 양쪽 상세에서 확인한다', async () => {
     const user = userEvent.setup()
-    const view = mount('/issues')
+    const view = await mount('/issues')
     await user.click(screen.getAllByRole('button', { name: '새 작업 등록', exact: true })[0])
     let editor = screen.getByRole('dialog', { name: '새 이슈' })
     const create = within(editor).getByRole('button', { name: '이슈 만들기' })
@@ -70,7 +74,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(within(editor).getByLabelText('담당자')).toHaveValue('박지훈')
     expect(within(editor).getByRole('checkbox', { name: /#87/ })).toBeChecked()
     await user.click(within(editor).getByRole('button', { name: 'PR 보기' }))
-    const pr = screen.getByRole('dialog', { name: 'Pull request 상세' })
+    const pr = screen.getByRole('dialog', { name: '코드 검토 상세' })
     expect(within(pr).queryByText('CI 검사')).not.toBeInTheDocument()
     expect(within(pr).queryByText('서비스 배포')).not.toBeInTheDocument()
     await user.click(within(pr).getByRole('button', { name: /ZELLO-46.*검색 응답 모니터링/ }))
@@ -79,7 +83,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     await user.selectOptions(within(editor).getByLabelText('우선순위'), 'high')
     await user.click(within(editor).getByRole('button', { name: '이슈 저장' }))
     view.unmount()
-    mount('/issues')
+    await mount('/issues')
     await user.click(screen.getByRole('button', { name: /ZELLO-46.*검색 응답 모니터링/ }))
     editor = screen.getByRole('dialog', { name: '이슈 상세' })
     expect(within(editor).getByLabelText('우선순위')).toHaveValue('high')
@@ -94,7 +98,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('전체 현황은 주간 진행률과 담당 현황을 보여주고 작업을 바로 연다', async () => {
     const user = userEvent.setup()
-    mount()
+    await mount()
     expect(screen.getByRole('progressbar', { name: '이번 주 작업 완료율' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '업무 담당' })).toBeInTheDocument()
     expect(screen.queryByRole('combobox', { name: '저장소 필터' })).not.toBeInTheDocument()
@@ -103,17 +107,17 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(screen.getByRole('dialog', { name: '업무 담당' })).toBeInTheDocument()
     await user.keyboard('{Escape}')
     await user.click(screen.getByRole('button', { name: /수정 요청키보드로도 메뉴를 이동할 수 있도록/ }))
-    expect(screen.getByRole('dialog', { name: 'Pull request 상세' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '코드 검토 상세' })).toBeInTheDocument()
   })
 
   it('밝은 테마와 어두운 테마를 전환하고 다시 열어도 유지한다', async () => {
     const user = userEvent.setup()
-    const view = mount()
+    const view = await mount()
     await user.click(screen.getByRole('button', { name: '어두운 테마로 전환' }))
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
     expect(document.documentElement).toHaveClass('dark')
     view.unmount()
-    mount()
+    await mount()
     await user.click(screen.getByRole('button', { name: '밝은 테마로 전환' }))
     expect(document.documentElement).toHaveAttribute('data-theme', 'light')
     expect(document.documentElement).not.toHaveClass('dark')
@@ -121,7 +125,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('주간 대시보드에서 검토 항목을 골라 담당자와 대기 상태를 확인한다', async () => {
     const user = userEvent.setup()
-    mount()
+    await mount()
     const progress = screen.getByRole('progressbar', { name: '이번 주 작업 완료율' })
     expect(progress).toHaveAttribute('aria-valuenow', '25')
     await user.click(screen.getByRole('button', { name: '검토 기다림1' }))
@@ -133,7 +137,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('개발 기록에서 저장소와 기간을 바꾸면 해당 이력을 보여준다', async () => {
     const user = userEvent.setup()
-    mount('/activity')
+    await mount('/activity')
     await user.selectOptions(screen.getByLabelText('저장소 필터'), 'api')
     expect(screen.queryByRole('button', { name: /컬렉션을 링크 하나로 공유할 수 있어요/ })).not.toBeInTheDocument()
     await user.selectOptions(screen.getByLabelText('조회 기간'), 'previous')
@@ -143,7 +147,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('주간 상태별 개수를 누르면 해당 상태의 작업만 보고 필터를 해제할 수 있다', async () => {
     const user = userEvent.setup()
-    mount()
+    await mount()
     await user.click(screen.getByRole('link', { name: '진행 중2개' }))
     expect(screen.getByRole('button', { name: /ZELLO-45.*비어 있는 컬렉션/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /ZELLO-41.*컬렉션을 링크/ })).not.toBeInTheDocument()
@@ -153,7 +157,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('타임라인을 활동 유형으로 필터링하고 배포 전 상태를 보여준다', async () => {
     const user = userEvent.setup()
-    mount('/activity')
+    await mount('/activity')
     await user.click(screen.getByRole('button', { name: '검토 중', exact: true }))
     expect(screen.getByText(/2\s*개의 기록/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /컬렉션을 링크 하나로 공유/ })).not.toBeInTheDocument()
@@ -167,7 +171,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('다른 도메인과 중복 저장소를 거절하고 새 데모 저장소를 저장한다', async () => {
     const user = userEvent.setup()
-    mount('/repositories')
+    await mount('/repositories')
     await user.click(screen.getByRole('button', { name: '저장소 연결', exact: true }))
     const dialog = screen.getByRole('dialog', { name: '프로젝트에 저장소 연결' })
     const url = within(dialog).getByLabelText(/GitHub 저장소 URL/)
@@ -189,11 +193,11 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('PR 요약으로 초안을 만들고 편집·공개하며 새로 열어도 유지한다', async () => {
     const user = userEvent.setup()
-    const view = mount('/patches')
-    await user.click(screen.getByRole('button', { name: '패치노트 작성', exact: true }))
+    const view = await mount('/patches')
+    await user.click(screen.getByRole('button', { name: '팀 업데이트 작성', exact: true }))
     const create = screen.getByRole('dialog', { name: '새로운 패치노트' })
     expect(within(create).getByRole('button', { name: '초안 만들기' })).toBeDisabled()
-    await user.type(within(create).getByLabelText('패치노트 제목'), '우리 팀의 첫 이야기')
+    await user.type(within(create).getByLabelText('업데이트 제목'), '우리 팀의 첫 이야기')
     await user.click(within(create).getByRole('checkbox', { name: /이미지 업로드 실패 시 안내/ }))
     await user.click(within(create).getByRole('button', { name: '초안 만들기' }))
     const detail = screen.getByRole('dialog', { name: '패치노트' })
@@ -209,13 +213,13 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(within(detail).getByText('공개됨')).toBeInTheDocument()
     expect(within(detail).getByText('아직 배포 전이에요')).toBeInTheDocument()
     view.unmount()
-    mount('/patches')
+    await mount('/patches')
     expect(screen.getByRole('button', { name: /함께 정리한 업데이트.*공개됨/ })).toBeInTheDocument()
   })
 
   it('전체 검색에서 요약과 작성자를 찾아 상세로 이동한다', async () => {
     const user = userEvent.setup()
-    mount()
+    await mount()
     await user.click(screen.getByRole('button', { name: '검색 및 빠른 이동', exact: true }))
     const search = screen.getByRole('dialog', { name: '프로젝트 검색' })
     await user.type(within(search).getByLabelText('프로젝트 검색어'), '없는검색어123')
@@ -229,7 +233,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('명령 메뉴에서 키보드로 화면을 이동하고 작업을 실행한다', async () => {
     const user = userEvent.setup()
-    mount()
+    await mount()
     await user.keyboard('{Control>}k{/Control}')
     let palette = screen.getByRole('dialog', { name: '프로젝트 검색' })
     await user.type(within(palette).getByLabelText('프로젝트 검색어'), '개발 타임라인')
@@ -240,8 +244,8 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(screen.getByRole('heading', { name: /^변경 소식/ })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '검색 및 빠른 이동', exact: true }))
     palette = screen.getByRole('dialog', { name: '프로젝트 검색' })
-    await user.type(within(palette).getByLabelText('프로젝트 검색어'), '패치노트 작성')
-    await user.click(within(palette).getByRole('button', { name: /패치노트 작성/ }))
+    await user.type(within(palette).getByLabelText('프로젝트 검색어'), '팀 업데이트 작성')
+    await user.click(within(palette).getByRole('button', { name: /팀 업데이트 작성/ }))
     expect(screen.getByRole('dialog', { name: '새로운 패치노트' })).toBeInTheDocument()
     await user.keyboard('{Escape}')
     await user.keyboard('{Control>}k{/Control}')
@@ -250,7 +254,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('회의에서 이슈를 만들고 PR을 작성하면 번호·담당자·변경 요약이 이어진다', async () => {
     const user = userEvent.setup()
-    let view = mount('/issues')
+    let view = await mount('/issues')
     await user.click(screen.getAllByRole('button', { name: '새 작업 등록', exact: true })[0])
     let editor = screen.getByRole('dialog', { name: '새 이슈' })
     await user.type(within(editor).getByLabelText('이슈 제목'), '검색 시간 확인 기능')
@@ -263,12 +267,12 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     const issueRow = screen.getByRole('button', { name: /ZELLO-46.*검색 시간 확인 기능/ }).closest('tr')!
     expect(within(issueRow).getByText(/zello-api#88.*주간 회의/)).toBeInTheDocument()
     expect(within(issueRow).getByText('박지훈')).toBeInTheDocument()
-    await user.click(within(issueRow).getByRole('button', { name: 'PR 작성' }))
-    const create = screen.getByRole('dialog', { name: '새 Pull request' })
-    const submit = within(create).getByRole('button', { name: '코드 검토 요청' })
+    await user.click(within(issueRow).getByRole('button', { name: '검토 요청 만들기' }))
+    const create = screen.getByRole('dialog', { name: '새 코드 검토 요청' })
+    const submit = within(create).getByRole('button', { name: '검토 요청 만들기' })
     expect(submit).toBeDisabled()
     expect(within(create).getByRole('checkbox', { name: /검색 시간 확인 기능.*zello-api#88/ })).toBeChecked()
-    await user.type(within(create).getByLabelText('팀을 위한 변경 요약'), '팀이 검색 응답 시간을 확인할 수 있어요.')
+    await user.type(within(create).getByLabelText('팀에 전할 변경 요약'), '팀이 검색 응답 시간을 확인할 수 있어요.')
     const branch = within(create).getByLabelText('작업 브랜치')
     await user.clear(branch)
     await user.type(branch, 'main')
@@ -277,7 +281,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     await user.clear(branch)
     await user.type(branch, 'feat/search-timing')
     await user.click(submit)
-    let detail = screen.getByRole('dialog', { name: 'Pull request 상세' })
+    let detail = screen.getByRole('dialog', { name: '코드 검토 상세' })
     expect(within(detail).getByText('zello-api#89')).toBeInTheDocument()
     expect(within(detail).getByText('팀이 검색 응답 시간을 확인할 수 있어요.')).toBeInTheDocument()
     expect(within(detail).getByText('아직 병합되지 않았어요')).toBeInTheDocument()
@@ -289,16 +293,16 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(within(editor).getByLabelText('완료 조건')).toHaveValue('팀이 검색 응답 시간을 확인할 수 있다.')
     expect(within(editor).getByLabelText('담당자')).toHaveValue('박지훈')
     view.unmount()
-    view = mount('/pull-requests')
+    view = await mount('/pull-requests')
     await user.click(screen.getByRole('button', { name: /검색 시간 확인 기능.*zello-api#89/ }))
-    detail = screen.getByRole('dialog', { name: 'Pull request 상세' })
+    detail = screen.getByRole('dialog', { name: '코드 검토 상세' })
     expect(within(detail).getByText('팀이 검색 응답 시간을 확인할 수 있어요.')).toBeInTheDocument()
     expect(within(detail).getByRole('button', { name: /zello-api#88/ })).toBeInTheDocument()
   })
 
   it('팀 작업에서 담당자·회의·PR 필터를 적용하고 초기화한다', async () => {
     const user = userEvent.setup()
-    mount('/issues?focus=unassigned')
+    await mount('/issues?focus=unassigned')
     expect(screen.getByLabelText('작업 확인 필터')).toHaveValue('unassigned')
     expect(screen.getByRole('button', { name: /ZELLO-44.*컬렉션 공동 편집/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /ZELLO-42/ })).not.toBeInTheDocument()
@@ -309,13 +313,13 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(screen.getByRole('button', { name: /ZELLO-42.*컬렉션 검색/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /ZELLO-44/ })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'zello-api#87', exact: true }))
-    expect(screen.getByRole('dialog', { name: 'Pull request 상세' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '코드 검토 상세' })).toBeInTheDocument()
   })
 
   it('기존에 편집한 이슈의 값과 저장소를 유지하며 잘못된 샘플 번호를 붙이지 않는다', async () => {
     const user = userEvent.setup()
     localStorage.setItem('gyeol.issues.v1', JSON.stringify([{ id: 'ZELLO-44', title: '회의에서 수정한 작업', description: '기존 설명', repo: 'api', assignee: '김서연', priority: 'high', status: 'todo', pullRequestIds: [] }]))
-    mount('/issues')
+    await mount('/issues')
     const row = screen.getByRole('button', { name: /ZELLO-44.*회의에서 수정한 작업/ })
     expect(row.closest('article')).toHaveTextContent('zello-api')
     expect(row.closest('article')).not.toHaveTextContent('#132')
@@ -330,14 +334,14 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('알림함을 열어도 미확인이 유지되고 연결 내용을 열면 해당 알림만 읽음 처리한다', async () => {
     const user = userEvent.setup()
-    const view = mount('/inbox')
+    const view = await mount('/inbox')
     let inbox = screen.getByRole('region', { name: '개인 알림함' })
     expect(within(inbox).getByRole('button', { name: /^미확인 2$/ })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '알림', exact: true }))
     expect(within(inbox).getByRole('button', { name: /^미확인 2$/ })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '알림', exact: true }))
     await user.click(within(inbox).getByRole('button', { name: /검색 응답 개선 PR의 검토/ }))
-    expect(screen.getByRole('dialog', { name: 'Pull request 상세' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '코드 검토 상세' })).toBeInTheDocument()
     await user.keyboard('{Escape}')
     expect(within(inbox).getByRole('button', { name: /^미확인 1$/ })).toBeInTheDocument()
     expect(within(inbox).queryByRole('button', { name: /검색 응답 개선 PR의 검토/ })).not.toBeInTheDocument()
@@ -347,7 +351,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     await user.click(within(work).getByRole('button', { name: /^검토 요청/ }))
     expect(within(work).getByRole('button', { name: /검색 결과를 더 빠르게.*zello-api#87/ })).toBeInTheDocument()
     view.unmount()
-    mount('/inbox')
+    await mount('/inbox')
     inbox = screen.getByRole('region', { name: '개인 알림함' })
     expect(within(inbox).getByRole('button', { name: /^미확인 1$/ })).toBeInTheDocument()
     await user.click(within(inbox).getByRole('button', { name: /^전체/ }))
@@ -361,7 +365,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('내 작업은 담당자와 검토 요청 대상으로 구분하고 저장소 범위를 반영한다', async () => {
     const user = userEvent.setup()
-    mount('/my-work')
+    await mount('/my-work')
     const work = screen.getByRole('region', { name: '내 작업 목록' })
     expect(within(work).getByRole('button', { name: /비어 있는 컬렉션의 첫 사용 안내/ })).toBeInTheDocument()
     expect(within(work).queryByRole('button', { name: /컬렉션 검색 응답/ })).not.toBeInTheDocument()
@@ -380,7 +384,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('변경 소식은 업데이트와 개발 기록을 묶고 저장소 관리는 설정으로 이동한다', async () => {
     const user = userEvent.setup()
-    mount('/patches')
+    await mount('/patches')
     const changes = screen.getByRole('navigation', { name: '변경 소식 메뉴' })
     expect(within(changes).getByRole('link', { name: '팀 업데이트' })).toHaveAttribute('aria-current', 'page')
     expect(within(changes).getByRole('link', { name: '개발 기록' })).not.toHaveAttribute('aria-current')
@@ -405,7 +409,7 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
       { id: 'missing', recipient: '이수빈', title: '없는 PR 요청', body: '확인', repo: 'api', kind: 'review', createdAt: '2026-10-27T13:00:00+09:00', readAt: null, target: { type: 'pr', id: 'missing' } },
       { id: 'other', recipient: '박지훈', title: '다른 사람 알림', body: '확인', repo: 'web', kind: 'meeting', createdAt: '2026-10-27T13:00:00+09:00', readAt: null, target: { type: 'issue', id: 'ZELLO-44' } },
     ]))
-    mount('/inbox')
+    await mount('/inbox')
     expect(screen.queryByText('다른 사람 알림')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /없는 PR 요청/ }))
     expect(screen.getByRole('status')).toHaveTextContent('연결된 PR을 찾지 못했어요')
@@ -419,12 +423,12 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
 
   it('설정을 저장하고 다시 열면 선택값을 유지한다', async () => {
     const user = userEvent.setup()
-    const view = mount('/settings')
+    const view = await mount('/settings')
     await user.selectOptions(screen.getByLabelText('집계 시간대'), 'UTC')
     await user.selectOptions(screen.getByLabelText('자동 동기화 간격'), '30')
     await user.click(screen.getByRole('button', { name: '설정 저장' }))
     view.unmount()
-    mount('/settings')
+    await mount('/settings')
     expect(screen.getByLabelText('집계 시간대')).toHaveValue('UTC')
     expect(screen.getByLabelText('자동 동기화 간격')).toHaveValue('30')
   })

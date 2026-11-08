@@ -2,7 +2,7 @@
 .workspace-metrics { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; margin: 24px 0; }
 .workspace-metrics .card { padding: 24px; border: 1px solid var(--border); border-radius: 18px; display: flex; flex-direction: column; gap: 12px; }
 .workspace-metrics strong { font-size: 32px; }
-.workspace-record { display: block; padding: 22px 0; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.workspace-record { display: block; padding: 22px 0; border-bottom: 1px solid var(--quiet-line); overflow-wrap: anywhere; }
 .workspace-record p { margin: 8px 0; white-space: pre-wrap; }
 .workspace-record small { color: var(--muted-foreground); margin-right: 20px; }
 .workspace-record h3 { margin: 10px 0; }
@@ -10,3 +10,38 @@
 .workspace-live-content .contributions-section { overflow: hidden; }
 .workspace-live-content .section-heading { margin-top: 28px; }
 @media(max-width:700px) { .workspace-metrics { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+.live-records { min-width: 0; }
+.live-records > .section-heading { align-items: flex-start; gap: 16px; margin-bottom: 22px; }
+.live-records .section-heading h2 { font-size: 18px; font-weight: 650; }
+.live-records .section-subheading { margin: 7px 0 0; font-size: 13px; line-height: 1.8; }
+.live-record-list { border: 1px solid var(--quiet-line); border-radius: 20px; padding: 0 24px; background: var(--card); }
+.live-record-item { display: flex; align-items: flex-start; gap: 16px; min-width: 0; padding: 23px 0; border-bottom: 1px solid var(--quiet-line); text-align: left; overflow-wrap: anywhere; }
+.live-record-item:last-child { border-bottom: 0; }
+a.live-record-item:hover strong { color: var(--primary); }
+.live-record-item > svg { color: var(--muted-foreground); flex-shrink: 0; margin-top: 4px; }
+.live-record-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 13px; flex-shrink: 0; color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--card)); }
+.live-record-copy { display: block; min-width: 0; flex: 1; }
+.live-record-copy strong { display: block; font-size: 14px; font-weight: 600; line-height: 1.7; }
+.live-record-copy p { margin: 5px 0 8px; color: var(--text-secondary); font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+.live-record-copy small { display: block; margin-top: 5px; color: var(--muted-foreground); font-size: 12px; line-height: 1.7; }
+.sync-intro { display: flex; align-items: flex-start; gap: 18px; padding: 28px; background: var(--card); border: 1px solid var(--quiet-line); border-radius: 20px; }
+.sync-intro-icon { display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; border-radius: 16px; color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--card)); }
+.sync-intro > div { flex: 1; min-width: 0; }
+.sync-intro h2 { font-size: 19px; font-weight: 650; line-height: 1.6; }
+.sync-intro p { color: var(--text-secondary); font-size: 13px; line-height: 1.9; margin-top: 8px; }
+.sync-intro > .button { flex-shrink: 0; align-self: center; }
+.sync-source-note { display: flex; align-items: flex-start; gap: 7px; color: var(--muted-foreground); font-size: 12px; line-height: 1.9; margin: 16px 0 32px; }
+.sync-source-note svg { flex-shrink: 0; margin-top: 4px; }
+.sync-panel .sync-run-error { color: var(--git-red); }
+.project-search { padding: 8px 28px 28px; }
+.project-search input { width: 100%; }
+.project-search-label { display: block; color: var(--text-secondary); font-size: 13px; font-weight: 500; line-height: 1.7; }
+.search-quick-links { display: grid; gap: 4px; margin-top: 18px; }
+.search-quick-links > a { display: flex; justify-content: space-between; align-items: center; padding: 13px 12px; border-radius: 10px; font-size: 14px; }
+.search-quick-links > a:hover { color: var(--primary); background: var(--control-bg); }
+.operations-filter { margin-top: 24px !important; }
+.operations-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+.operations-grid h3 { font-size: 16px; font-weight: 650; }
+.operations-empty { margin-top: 18px; font-size: 13px; color: var(--muted-foreground); line-height: 1.9; }
+@media (max-width: 900px) { .operations-grid { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .sync-intro { padding: 22px; flex-wrap: wrap; } .sync-intro > .button { margin-left: 66px; } .live-record-list { padding: 0 18px; } .live-record-item { gap: 12px; padding: 20px 0; } .project-search { padding: 8px 20px 24px; } }
