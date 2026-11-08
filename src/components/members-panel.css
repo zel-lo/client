@@ -10,7 +10,7 @@
 .member-settings .member-role-heading { display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; }
 .member-settings .member-permission-trigger { display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--primary, var(--foreground)); cursor: help; }
 .member-settings .member-permission-trigger:hover, .member-settings .member-permission-trigger:focus-visible { color: var(--foreground); background: var(--card); }
-.member-permission-tooltip { max-width: 260px; padding: 14px 16px; text-align: left; }
+.member-permission-tooltip { max-width: 260px; padding: 14px 16px; text-align: left; text-wrap: wrap; word-break: keep-all; }
 .member-permission-tooltip dl { display: grid; gap: 8px; margin: 0; }
 .member-permission-tooltip dl > div { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; }
 .member-permission-tooltip dt { font-weight: 600; }
