@@ -44,7 +44,7 @@ export type PullRequest = {
   projectId?: string
 }
 export const issueStatuses: Record<IssueStatus, string> = {
-  backlog: '백로그', todo: '진행 중', in_progress: '진행 중', in_review: '검토 중', done: '완료',
+  backlog: '할 일', todo: '진행 중', in_progress: '진행 중', in_review: '검토 중', done: '완료',
 }
 export const issuePriorities: Record<IssuePriority, string> = { high: '높음', medium: '보통', low: '낮음' }
 export const initialIssues: Issue[] = [

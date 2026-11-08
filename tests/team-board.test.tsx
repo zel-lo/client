@@ -49,8 +49,8 @@ describe('주간 작업 보드', () => {
   it('메뉴로 빈 열에 옮기고 CSRF·최신 버전·위치를 서버에 저장한다', async () => {
     const { fetcher } = setup(); const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'ZELLO-20 작업 메뉴' }))
-    await user.click(screen.getByRole('menuitem', { name: '백로그로 이동' }))
-    await waitFor(() => expect(within(screen.getByRole('region', { name: '백로그 열' })).getByRole('button', { name: /보드에서 진행할 작업/ })).toBeInTheDocument())
+    await user.click(screen.getByRole('menuitem', { name: '할 일로 이동' }))
+    await waitFor(() => expect(within(screen.getByRole('region', { name: '할 일 열' })).getByRole('button', { name: /보드에서 진행할 작업/ })).toBeInTheDocument())
     const write = fetcher.mock.calls.find(([, init]) => init?.method === 'PATCH')!
     expect(JSON.parse(write[1]!.body as string)).toMatchObject({ version: 2, details: { status: 'BACKLOG', plannedWeekStart: seed.plannedWeekStart }, placement: { beforeId: null } })
     expect(write[1]!.headers).toMatchObject({ 'X-CSRF-TOKEN': 'csrf' })
@@ -58,7 +58,7 @@ describe('주간 작업 보드', () => {
   it('저장 충돌 시 성공을 표시하지 않고 원래 열로 복구한다', async () => {
     setup({ fail: true }); const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'ZELLO-20 작업 메뉴' }))
-    await user.click(screen.getByRole('menuitem', { name: '백로그로 이동' }))
+    await user.click(screen.getByRole('menuitem', { name: '할 일로 이동' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('다른 변경이 있어요.')
     expect(within(screen.getByRole('region', { name: '진행 중 열' })).getByRole('button', { name: /보드에서 진행할 작업/ })).toBeInTheDocument()
     expect(screen.queryByText(/작업 위치를 저장했어요/)).not.toBeInTheDocument()
@@ -77,7 +77,7 @@ describe('주간 작업 보드', () => {
     await user.click(await screen.findByRole('button', { name: 'ZELLO-20 작업 메뉴' }))
     await user.click(screen.getByRole('menuitem', { name: '완료로 이동' }))
     expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false)
-    await user.type(screen.getByLabelText('패치노트 제목'), '작업 결과를 팀에 반영했어요')
+    await user.type(screen.getByLabelText('팀에 알릴 변경 제목'), '작업 결과를 팀에 반영했어요')
     await user.click(screen.getByRole('button', { name: '완료하고 GitHub 이슈 닫기' }))
     await waitFor(() => expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(true))
     const write = fetcher.mock.calls.find(([, init]) => init?.method === 'PATCH')!
@@ -137,7 +137,7 @@ describe('키보드 조작', () => {
     expect(move).not.toHaveBeenCalled()
     screen.getByRole('button', { name: 'Z-1 작업 메뉴' }).focus()
     await user.keyboard('{Enter}')
-    await screen.findByRole('menuitem', { name: '백로그로 이동' })
+    await screen.findByRole('menuitem', { name: '할 일로 이동' })
     await user.keyboard('{ArrowDown}{Enter}')
     expect(move).toHaveBeenCalledWith({ id: 'a', status: 'in_review', beforeId: null })
   })
@@ -159,19 +159,19 @@ describe('카드가 많을 때', () => {
     await user.click(within(done).getByRole('button', { name: '최근 완료만 보기' }))
     expect(within(done).getAllByRole('article')).toHaveLength(5)
   })
-  it('백로그를 접으면 다음에 열어도 접힌 상태를 기억한다', async () => {
+  it('할 일을 접으면 다음에 열어도 접힌 상태를 기억한다', async () => {
     localStorage.clear()
     const { TeamBoard } = await import('../src/components/team-board')
     const user = userEvent.setup()
     const items = [card(0, 'backlog')]
     const first = render(<TeamBoard items={items} week={week} actions={actions} />)
-    expect(screen.getByRole('region', { name: '백로그 열' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '백로그 1' }))
-    expect(screen.queryByRole('region', { name: '백로그 열' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: '할 일 열' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '할 일 1' }))
+    expect(screen.queryByRole('region', { name: '할 일 열' })).not.toBeInTheDocument()
     first.unmount()
     render(<TeamBoard items={items} week={week} actions={actions} />)
-    expect(screen.queryByRole('region', { name: '백로그 열' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '백로그 1' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryByRole('region', { name: '할 일 열' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '할 일 1' })).toHaveAttribute('aria-pressed', 'false')
     localStorage.clear()
   })
 })

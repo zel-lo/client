@@ -26,19 +26,19 @@ export function Notes({ project }: { project: Project }) {
   const publishBlocked = !!editing && editing !== 'new' && editing.status !== 'PUBLISHED' && !!editing.changes?.some(c => c.needsTitle && ['COMPLETED', 'MERGED'].includes(c.status))
   const failure = error || (noteId ? selected.error : result.error)
   return <section className="release-notes" aria-label="패치노트">
-    {!noteId && <header className="release-toolbar"><span />{canWrite && <div className="release-actions"><button className="button" disabled={busy} onClick={() => void collect()}><RefreshCw size={14} />완료 기록 모으기</button><button className="button button-dark" disabled={busy} onClick={() => edit('new')}><Plus size={14} />패치노트 작성</button></div>}</header>}
+    {!noteId && <header className="release-toolbar"><span />{canWrite && <div className="release-actions"><button className="button" disabled={busy} onClick={() => void collect()}><RefreshCw size={14} />완료 기록 모으기</button><button className="button button-dark" disabled={busy} onClick={() => edit('new')}><Plus size={14} />팀 업데이트 작성</button></div>}</header>}
     {noteId && <Link className="release-back" to="/changes"><ArrowLeft size={14} />전체 패치노트 보기</Link>}
     {failure && <div role="alert" className="connection-error">{failure}<button className="button" onClick={() => { result.refresh(); selected.refresh() }}>다시 시도</button></div>}
     {editing && <form className="dialog-form release-editor" aria-label={editing === 'new' ? '새 패치노트' : '패치노트 편집'} onSubmit={e => { e.preventDefault(); void save(false) }}>
-      <div className="release-editor-head"><h3>{editing === 'new' ? '새 패치노트' : '패치노트 편집'}</h3><p>저장하면 초안으로 남고, 팀에 공개하면 변경 소식에서 모두가 볼 수 있어요.</p></div>
-      <label>제목<input required maxLength={255} value={title} disabled={busy} placeholder="예: 11월 2주차 업데이트" onChange={e => setTitle(e.target.value)} /></label>
+      <div className="release-editor-head"><h3>{editing === 'new' ? '새 패치노트' : '패치노트 편집'}</h3><p>완료한 변경을 묶어 팀에 전할 글이에요. 초안으로 저장한 뒤 내용을 확인하고 공개할 수 있어요.</p></div>
+      <label>업데이트 제목<input required maxLength={255} value={title} disabled={busy} placeholder="예: 11월 2주차 업데이트" onChange={e => setTitle(e.target.value)} /></label>
       <MarkdownEditor label="변경 내용" value={body} onChange={setBody} disabled={busy} maxLength={20000} placeholder="이번에 바뀐 점과 팀이 알아두면 좋을 내용을 적어 주세요." />
-      <div className="form-actions">{publishBlocked && <span className="help-text">제목이 비어 있는 항목을 먼저 채워야 공개할 수 있어요.</span>}<button type="button" className="button" disabled={busy} onClick={() => setEditing(null)}>취소</button><button className="button" disabled={busy || !title.trim() || !body.trim()}>저장</button><button type="button" className="button button-dark" disabled={busy || !title.trim() || !body.trim() || publishBlocked} onClick={() => void save(true)}>팀에 공개</button></div>
+      <div className="form-actions">{publishBlocked && <span className="help-text">제목이 비어 있는 항목을 먼저 채워야 공개할 수 있어요.</span>}<button type="button" className="button" disabled={busy} onClick={() => setEditing(null)}>취소</button><button className="button" disabled={busy || !title.trim() || !body.trim()}>초안 저장</button><button type="button" className="button button-dark" disabled={busy || !title.trim() || !body.trim() || publishBlocked} onClick={() => void save(true)}>팀에 공개</button></div>
     </form>}
     {loading && !notes.length ? <LoadingState /> : <>
       {noteId ? notes.map(note => <ReleaseEntry key={note.id} note={note} project={project.id} canWrite={canWrite} busy={busy} onEdit={() => edit(note)} onSaved={titleSaved} />)
         : <div className="release-card-list">{entries.map(note => <NoteCard key={note.id} note={note} />)}</div>}
-      {!(noteId ? notes : entries).length && !failure && <div className="release-empty"><FileText size={28} /><h3>첫 번째 변화를 기다리고 있어요</h3><p>작업을 완료하거나 PR을 병합하면 이곳에 기록이 모여요.</p></div>}
+      {!(noteId ? notes : entries).length && !failure && <div className="release-empty"><FileText size={28} /><h3>첫 번째 변화를 기다리고 있어요</h3><p>작업을 완료하거나 검토한 코드를 반영하면 여기에 변경 내용이 모여요. 여러 변경을 묶어 팀 업데이트(패치노트)로 공유할 수 있어요.</p></div>}
     </>}
 
     {!noteId && result.data && (page > 1 || result.data.hasNext) && <nav className="connection-pagination" aria-label="패치노트 페이지"><button className="button" disabled={page === 1 || loading} onClick={() => setPage(value => value - 1)}><ChevronLeft size={14} />이전</button><span>{page} 페이지</span><button className="button" disabled={!result.data.hasNext || loading} onClick={() => setPage(value => value + 1)}>다음<ChevronRight size={14} /></button></nav>}
@@ -96,7 +96,7 @@ function NoteChanges({ project, note, canWrite, onSaved }: { project: string; no
   const pending = note.status !== 'PUBLISHED' && changes.some(c => c.needsTitle && ['COMPLETED', 'MERGED'].includes(c.status))
   return <section className="release-changes" aria-label="패치노트에 모인 작업">
     <h4 className="release-changes-title">포함된 변경<span>{changes.length}</span></h4>
-    {pending && <p className="release-pending-help">제목이 비어 있는 항목을 채우면 팀에 공개할 수 있어요.</p>}
+    {pending && <p className="release-pending-help">팀원이 무엇이 달라졌는지 알 수 있도록 각 변경의 제목을 적어 주세요. 모두 채우면 공개할 수 있어요.</p>}
     <ul className="release-change-list">{changes.map(change => <li className="release-change" key={change.id}>
       <div className="release-change-body">
         <div className="release-change-heading"><span className={`release-kind release-kind-${change.category.toLowerCase()}`}>{categories[change.category]}</span><h5>{change.title}</h5></div>
@@ -119,7 +119,7 @@ function ChangeTitleEditor({ project, note, change, onSaved }: { project: string
   }
   if (!editing) return <button type="button" className="button" onClick={() => { setTitle(change.needsTitle ? '' : change.title); setEditing(true) }}>{change.needsTitle ? '제목 작성' : '제목 수정'}</button>
   return <form className="dialog-form note-change-editor" onSubmit={event => { event.preventDefault(); void save() }}>
-    <label>패치노트 제목<input autoFocus required maxLength={255} value={title} disabled={busy} onChange={event => setTitle(event.target.value)} placeholder="예: 검색 결과를 더 빠르게 볼 수 있어요" /></label>
+    <label>팀에 알릴 변경 제목<input autoFocus required maxLength={255} value={title} disabled={busy} onChange={event => setTitle(event.target.value)} placeholder="예: 검색 결과를 더 빠르게 볼 수 있어요" /></label>
     {error && <p role="alert" className="form-error">{error}</p>}
     <div className="form-actions"><button type="button" className="button" disabled={busy} onClick={() => setEditing(false)}>취소</button><button className="button button-dark" disabled={busy || !title.trim()}>{busy ? '저장 중…' : '제목 저장'}</button></div>
   </form>

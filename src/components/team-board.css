@@ -6,7 +6,7 @@
 .board-toolbar select, .board-toolbar input { min-height: 40px; border: 1px solid transparent; border-radius: 11px; background: var(--control-bg); color: var(--text-secondary); padding: 8px 11px; font-size: 14px; }
 .board-search { flex: 1 1 180px; max-width: 300px; }
 .week-navigation { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin: 30px 0 0; }
-.week-heading > div { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.week-heading > div { display: flex; align-items: center; gap: 12px; }
 .week-heading h2 { font-size: 24px; letter-spacing: -.7px; font-weight: 700; line-height: 1.4; }
 .week-eyebrow { display: flex; align-items: center; gap: 6px; color: var(--muted-foreground); font-size: 13px; line-height: 1.5; }
 .week-current { font-size: 12px; font-weight: 600; background: var(--accent-bg); color: var(--brand); padding: 4px 8px; border-radius: 7px; }

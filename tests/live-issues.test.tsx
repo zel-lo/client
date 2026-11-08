@@ -45,19 +45,19 @@ function backend({ viewer = false, conflict = false, saved = [] as LiveIssue[], 
 }
 
 describe('실제 팀 작업', () => {
-  it('새 작업은 담당자 없이 백로그에만 저장하고 이슈를 생성하지 않는다', async () => {
+  it('새 작업은 담당자 없이 할 일에만 저장하고 이슈를 생성하지 않는다', async () => {
     const { fetcher, mount, notify } = backend(); mount()
     const user = userEvent.setup()
-    await screen.findByText('아직 표시할 작업이 없어요')
+    await screen.findByText('표시할 작업이 없어요')
     await user.click(screen.getByRole('button', { name: '새 작업 등록' }))
     const dialog = screen.getByRole('dialog', { name: '새 작업 등록' })
     await user.type(within(dialog).getByRole('textbox', { name: '작업 제목' }), '회의에서 정한 일')
     await user.type(within(dialog).getByRole('textbox', { name: '완료 조건' }), '사용자가 확인할 결과')
-    await user.click(within(dialog).getByRole('button', { name: '백로그에 추가' }))
-    await waitFor(() => expect(notify).toHaveBeenCalledWith('Z-unique을 백로그에 추가했어요.'))
+    await user.click(within(dialog).getByRole('button', { name: '할 일로 저장' }))
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Z-unique 작업을 할 일로 저장했어요.'))
     expect(screen.queryByRole('dialog', { name: '새 작업 등록' })).not.toBeInTheDocument()
     expect(fetcher.mock.calls.filter(([path]) => path.endsWith('/publish'))).toHaveLength(0)
-    expect(within(screen.getByRole('region', { name: '백로그 열' })).getByRole('button', { name: /회의에서 정한 일/ })).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: '할 일 열' })).getByRole('button', { name: /회의에서 정한 일/ })).toBeInTheDocument()
     const request = fetcher.mock.calls.find(([path, init]) => path === '/api/projects/1/issues' && init?.method === 'POST')!
     expect(JSON.parse(request[1]!.body as string).details).toMatchObject({ status: 'BACKLOG', assignee: null })
     expect(localStorage.getItem('accessToken')).toBeNull()
@@ -87,7 +87,7 @@ describe('실제 팀 작업', () => {
     expect(criteriaEditor.getAllByRole('checkbox')[0]).toBeChecked()
     expect(criteriaEditor.getAllByRole('checkbox')[1]).not.toBeChecked()
     expect(fetcher.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false)
-    await user.click(within(dialog).getByRole('button', { name: '백로그에 추가' }))
+    await user.click(within(dialog).getByRole('button', { name: '할 일로 저장' }))
     await waitFor(() => expect(fetcher.mock.calls.some(([path, init]) => path === '/api/projects/1/issues' && init?.method === 'POST')).toBe(true))
     const sent = fetcher.mock.calls.find(([path, init]) => path === '/api/projects/1/issues' && init?.method === 'POST')!
     expect(JSON.parse(sent[1]!.body as string).details).toMatchObject({ description, acceptanceCriteria: criteria })
@@ -106,11 +106,11 @@ describe('실제 팀 작업', () => {
     expect(screen.getByText('기존 설명').tagName).toBe('STRONG')
     expect(screen.getByRole('checkbox', { name: '' })).toBeChecked()
     expect(screen.getByRole('heading', { name: '회의 결정' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '작업 저장' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '변경 사항 저장' })).not.toBeInTheDocument()
     expect(fetcher.mock.calls.some(([, init]) => init?.method === 'POST' || init?.method === 'PATCH')).toBe(false)
   })
 
-  it('백로그에서 담당자를 배정하고 이슈 생성 후 브랜치를 선택한다', async () => {
+  it('할 일에서 담당자를 배정하고 이슈 생성 후 브랜치를 선택한다', async () => {
     const { fetcher, mount } = backend({ saved: [{ ...issue, status: 'BACKLOG' }] }); mount(); const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'Z-unique 작업 메뉴' }))
     await user.click(screen.getByRole('menuitem', { name: '진행 중으로 이동' }))
@@ -127,7 +127,7 @@ describe('실제 팀 작업', () => {
     expect(await screen.findByLabelText('작업 브랜치 전환 명령어')).toHaveTextContent('git switch feat/7')
     expect(fetcher).toHaveBeenCalledWith('/api/projects/1/issues/20/branch', expect.objectContaining({ body: JSON.stringify({ version: 3 }) }))
   })
-  it('이슈 생성 실패는 백로그와 입력을 보존하고 같은 작업에서 재시도한다', async () => {
+  it('이슈 생성 실패는 할 일과 입력을 보존하고 같은 작업에서 재시도한다', async () => {
     const { fetcher, mount } = backend({ saved: [{ ...issue, status: 'BACKLOG' }], failPublish: true }); mount(); const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'Z-unique 담당자 지정' }))
     await user.click(await screen.findByRole('button', { name: 'team-member', exact: true }))
@@ -136,20 +136,20 @@ describe('실제 팀 작업', () => {
     await user.click(within(dialog).getByRole('button', { name: '배정하고 이슈 만들기' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('저장소의 이슈 권한을 확인해 주세요.')
     expect(within(dialog).getByLabelText('담당자')).toHaveValue('team-member')
-    expect(within(screen.getByRole('region', { name: '백로그 열' })).getByRole('button', { name: /로그인 개선/ })).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: '할 일 열' })).getByRole('button', { name: /로그인 개선/ })).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: '배정하고 이슈 만들기' }))
-    await user.click(await screen.findByRole('button', { name: '나중에' }))
+    await user.click(await screen.findByRole('button', { name: '지금은 건너뛰기' }))
     expect(fetcher.mock.calls.some(([path]) => path === '/api/projects/1/issues' )).toBe(false)
     expect(fetcher.mock.calls.filter(([path]) => path.endsWith('/publish')).map(([, init]) => JSON.parse(init!.body as string).version)).toEqual([1, 3])
     expect(within(screen.getByRole('region', { name: '진행 중 열' })).getByRole('button', { name: /로그인 개선/ })).toBeInTheDocument()
   })
-  it('발행 결과 확인이 필요한 백로그는 먼저 같은 이슈의 결과를 확인한다', async () => {
+  it('발행 결과 확인이 필요한 할 일은 먼저 같은 이슈의 결과를 확인한다', async () => {
     const { fetcher, mount } = backend({ saved: [{ ...issue, status: 'BACKLOG', publishStatus: 'UNKNOWN', assignee: 'team-member' }] }); mount(); const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: /로그인 개선/ }))
     await user.click(screen.getByRole('button', { name: '담당자 배정하고 진행하기' }))
     await waitFor(() => expect(screen.getByRole('button', { name: '배정하고 이슈 만들기' })).toBeEnabled())
     await user.click(screen.getByRole('button', { name: '배정하고 이슈 만들기' }))
-    await screen.findByRole('button', { name: '나중에' })
+    await screen.findByRole('button', { name: '지금은 건너뛰기' })
     const writes = fetcher.mock.calls.filter(([, init]) => init?.method === 'POST' || init?.method === 'PATCH')
     expect(writes.map(([path]) => path)).toEqual(['/api/projects/1/issues/20/publish', '/api/projects/1/issues/20'])
     expect(JSON.parse(writes[0][1]!.body as string)).toEqual({ version: 0 })
@@ -167,9 +167,9 @@ describe('실제 팀 작업', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: '배정하고 이슈 만들기' })).toBeEnabled())
     await user.click(screen.getByRole('button', { name: '배정하고 이슈 만들기' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('잠시 후 다시 시도해 주세요.')
-    expect(within(screen.getByRole('region', { name: '백로그 열' })).getByRole('button', { name: /로그인 개선/ })).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: '할 일 열' })).getByRole('button', { name: /로그인 개선/ })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '배정하고 이슈 만들기' }))
-    await screen.findByRole('button', { name: '나중에' })
+    await screen.findByRole('button', { name: '지금은 건너뛰기' })
     expect(fetcher.mock.calls.filter(([path]) => path.endsWith('/publish'))).toHaveLength(1)
     expect(patches).toBe(3)
   })
@@ -186,7 +186,7 @@ describe('실제 팀 작업', () => {
     await user.click(screen.getByRole('menuitem', { name: '진행 중으로 이동' }))
     await waitFor(() => expect(screen.getByRole('button', { name: '배정하고 이슈 만들기' })).toBeEnabled())
     await user.click(screen.getByRole('button', { name: '배정하고 이슈 만들기' }))
-    await screen.findByRole('button', { name: '나중에' })
+    await screen.findByRole('button', { name: '지금은 건너뛰기' })
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(within(screen.getByRole('region', { name: '진행 중 열' })).getByRole('button', { name: /로그인 개선/ })).toBeInTheDocument()
     expect(fetcher.mock.calls.filter(([path]) => path.endsWith('/publish'))).toHaveLength(1)
@@ -197,7 +197,7 @@ describe('실제 팀 작업', () => {
     await user.click(await screen.findByRole('button', { name: /로그인 개선/ }))
     const title = screen.getByRole('textbox', { name: '작업 제목' })
     await user.clear(title); await user.type(title, '내 수정 내용')
-    await user.click(screen.getByRole('button', { name: '작업 저장' }))
+    await user.click(screen.getByRole('button', { name: '변경 사항 저장' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('다른 변경이 있어요.')
     expect(title).toHaveValue('내 수정 내용')
     expect(screen.queryByText('작업을 저장했어요.')).not.toBeInTheDocument()
@@ -218,7 +218,7 @@ describe('실제 팀 작업', () => {
   it('조회 전용 멤버에게 쓰기 기능을 표시하지 않는다', async () => {
     const { mount } = backend({ saved: [issue], viewer: true }); mount()
     await userEvent.setup().click(await screen.findByRole('button', { name: /로그인 개선/ }))
-    expect(screen.queryByRole('button', { name: '작업 저장' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '변경 사항 저장' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '저장한 작업 GitHub에 발행' })).not.toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: '작업 제목' })).toBeDisabled()
   })

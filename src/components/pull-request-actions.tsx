@@ -5,7 +5,7 @@ import type { PullRequestItem, ReviewEvent } from '../lib/project-api'
 import { MarkdownEditor } from './markdown'
 
 const reviewOptions: { value: ReviewEvent; label: string; help: string }[] = [
-  { value: 'APPROVE', label: '승인', help: '병합해도 좋아요.' },
+  { value: 'APPROVE', label: '승인', help: '이 코드를 반영해도 좋아요.' },
   { value: 'REQUEST_CHANGES', label: '수정 요청', help: '고친 뒤 다시 봐야 해요.' },
   { value: 'COMMENT', label: '코멘트', help: '승인·수정 요청 없이 의견만 남겨요.' },
 ]
@@ -91,7 +91,7 @@ export function MergePanel({ projectId, detail, onMerged, onRecheck }: {
     <p className={`merge-state merge-${ready ? 'ready' : 'blocked'}`}>{mergeReason(actions.mergeState, actions.canMerge)}</p>
     {error && <p className="form-error" role="alert">{error}</p>}
     {confirming
-      ? <div className="merge-confirm"><p><code>{detail.headBranch}</code>을 <code>{detail.baseBranch}</code>에 merge commit으로 병합할까요? 브랜치는 삭제하지 않아요.</p>
+      ? <div className="merge-confirm"><p><code>{detail.headBranch}</code>을 <code>{detail.baseBranch}</code>에 합쳐 반영할까요? GitHub에 기록되며, 작업 브랜치는 남겨둬요. 서비스 배포는 별도로 진행해야 해요.</p>
         <div className="form-actions"><button type="button" className="button" disabled={merging} onClick={() => setConfirming(false)}>취소</button><button type="button" className="button button-dark" disabled={merging} onClick={() => void merge()}>{merging ? '병합 중…' : '병합 확인'}</button></div></div>
       : <div className="form-actions">
         {!ready && actions.mergeState === 'unknown' && <button type="button" className="button" onClick={onRecheck}><RefreshCw size={13} />다시 확인</button>}
