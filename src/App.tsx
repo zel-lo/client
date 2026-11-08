@@ -198,7 +198,9 @@ function WorkspaceApp() {
   const searchParams = new URLSearchParams(location.search)
   const changesView = searchParams.get('view') === 'history' ? 'history' : 'updates'
   const settingsTab = ['general', 'members', 'repositories', 'sync'].includes(searchParams.get('tab') ?? '') ? searchParams.get('tab')! : 'general'
-  const showScope = !['/overview', '/inbox', '/settings', '/repositories'].includes(location.pathname)
+  // 실제 패치노트 화면은 저장소·기간 필터를 쓰지 않는다
+  const liveNotesPage = Boolean(session.user) && location.pathname === '/changes' && changesView !== 'history'
+  const showScope = !['/overview', '/inbox', '/settings', '/repositories'].includes(location.pathname) && !liveNotesPage
   function openIssue(issue: Issue | null) { if (session.user) { navigate(issue ? '/issues' : '/issues?new=1'); return }; setEditingIssue(issue); setModal('issue') }
   function openPr(issue: Issue | null = null) { setLivePrIssue(null); if (session.user && !live.project) { navigate('/onboarding'); return }; setPrIssue(issue); setModal('pr') }
   const [period, setPeriod] = useState<Period>('week')
