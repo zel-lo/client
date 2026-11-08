@@ -157,6 +157,8 @@ export function RepositoryConnections({ project: currentProject, onboarding = fa
       setNotice(`${successes.length}개 저장소 연결 완료${failed.length ? ` · ${failed.length}개 연결 실패. 실패한 저장소만 다시 시도할 수 있어요.` : '.'}`)
       if (successes.length) {
         projectsChanged()
+        window.dispatchEvent(new Event('zello:repositories-changed'))
+        window.dispatchEvent(new Event('zello:workspace-updated'))
         // Collection runs once per project after the entire batch, not once per repository.
         void syncIssues(target).then(() => window.dispatchEvent(new Event('zello:issues-updated'))).catch(cause => window.dispatchEvent(new CustomEvent('zello:issues-sync-error', { detail: { projectId: target, message: cause instanceof Error ? cause.message : '기존 이슈를 가져오지 못했어요. 다시 가져오기를 눌러주세요.' } })))
         void syncPullRequests(target).catch(() => {})
@@ -171,6 +173,8 @@ export function RepositoryConnections({ project: currentProject, onboarding = fa
     setBusy(true); setError(''); setNotice('')
     try {
       await disconnectRepository(projectId, item.id)
+      window.dispatchEvent(new Event('zello:repositories-changed'))
+      window.dispatchEvent(new Event('zello:workspace-updated'))
       setConnected(current => current.filter(repo => repo.id !== item.id)); setNotice('저장소 연결을 해제했어요. GitHub 저장소는 유지됩니다.')
     } catch (cause) { report(cause) } finally { setBusy(false) }
   }
