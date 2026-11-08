@@ -2,7 +2,7 @@
 .zello-skeleton { background: var(--control-bg); animation: zello-skeleton-pulse 1.65s ease-in-out infinite; }
 @keyframes zello-skeleton-pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
 .loading-state { width: 100%; min-width: 0; }
-.board-skeleton-grid { display: grid; grid-template-columns: minmax(220px, .9fr) repeat(4, minmax(245px, 1fr)); gap: 12px; min-height: 480px; overflow: hidden; }
+.board-skeleton-grid { display: grid; grid-template-columns: minmax(220px, .9fr) repeat(3, minmax(245px, 1fr)); gap: 12px; min-height: 480px; overflow: hidden; }
 .board-skeleton-column { border-radius: 18px; padding: 17px 10px; background: color-mix(in srgb, var(--surface) 58%, var(--card)); }
 .skeleton-column-title { width: 100px; height: 16px; margin: 0 4px 25px; }
 .skeleton-work-card { border: 1px solid var(--quiet-line); border-radius: 14px; background: var(--card); padding: 15px; margin-bottom: 10px; }
@@ -24,9 +24,32 @@
 .assignee-options .skeleton-table { border: 0; }
 .assignee-options .skeleton-table-row { padding: 9px; min-height: 48px; }
 .assignee-options .skeleton-badge { display: none; }
+.settings-skeleton, .dashboard-skeleton { display: grid; gap: 24px; }
+.settings-skeleton-panel { padding: 28px; border: 1px solid var(--quiet-line); border-radius: var(--panel-radius); background: var(--card); }
+.settings-skeleton-panel > .skeleton-column-title { margin: 0 0 24px; }
+.settings-skeleton-field { display: grid; grid-template-columns: 144px minmax(0, 1fr); gap: 24px; align-items: start; margin-bottom: 24px; }
+.settings-skeleton-field > .skeleton-reference { margin-top: 16px; }
+.skeleton-settings-input { height: 50px; }
+.skeleton-settings-textarea { height: 100px; }
+.skeleton-settings-footer { display: flex; justify-content: flex-end; padding-top: 20px; border-top: 1px solid var(--quiet-line); }
+.skeleton-settings-button { height: 44px; width: 100px; }
+.skeleton-period-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.skeleton-dashboard-toolbar { display: flex; justify-content: space-between; min-height: 42px; align-items: center; }
+.skeleton-dashboard-next { padding: 24px; border: 1px solid var(--quiet-line); border-radius: var(--panel-radius); }
+.skeleton-dashboard-next .skeleton-title { max-width: 440px; }
+.skeleton-dashboard-progress { height: 300px; border-radius: var(--panel-radius); }
+.skeleton-dashboard-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 24px; }
+.skeleton-activity-grid { display: grid; grid-template-columns: repeat(52, minmax(8px, 1fr)); gap: 4px; overflow: hidden; padding: 12px 0; }
+.skeleton-activity-grid > div { display: grid; gap: 4px; }
+.skeleton-activity-cell { aspect-ratio: 1; border-radius: 2px; }
 
 @media (max-width: 760px) {
   .board-skeleton-grid { grid-template-columns: repeat(4, minmax(260px, 80vw)); }
+  .settings-skeleton-panel { padding: 20px; }
+  .settings-skeleton-field { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .settings-skeleton-field > .skeleton-reference { margin-top: 0; }
+  .skeleton-period-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .skeleton-dashboard-grid { grid-template-columns: minmax(0, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {
   .zello-skeleton { animation: none; }
