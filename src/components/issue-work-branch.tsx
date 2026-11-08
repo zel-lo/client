@@ -40,10 +40,10 @@ export function IssueWorkBranchPanel({ projectId, issue, canWrite, disabled, onB
     catch { setCopied(false); setError('자동 복사가 되지 않았어요. 아래 명령어를 선택해 복사해 주세요.') }
   }
   const completed = issue.status === 'DONE' || issue.githubState === 'CLOSED'
-  return <section className="issue-work-branch" aria-label="작업 브랜치"><div className="work-branch-heading"><h3><GitBranch size={15} />작업 브랜치</h3>
+  return <section className="issue-work-branch" aria-label="작업 브랜치"><div className="work-branch-heading"><h3><GitBranch size={15} />개발할 공간 · 작업 브랜치</h3>
     {canWrite && published && !issue.archived && !completed && <button type="button" className="button" disabled={disabled || busy || loading} onClick={() => void start()}><Play size={13} />{busy ? '브랜치 확인 중…' : branch?.ready ? '작업 브랜치 확인' : '브랜치 만들기'}</button>}
   </div>
-    {!published && <p className="help-text">GitHub에 이슈를 발행하면 이슈 번호로 작업 브랜치를 만들 수 있어요.</p>}
+    {!published && <p className="help-text">진행을 시작하면 GitHub 이슈가 연결돼요. 개발 담당자는 그다음 이 작업의 브랜치를 만들 수 있어요.</p>}
     {loading && <p className="help-text" role="status">작업 브랜치를 불러오는 중…</p>}
     {branch && <p className="help-text"><strong>{branch.repository}</strong> · <code>{branch.name}</code>{!branch.ready && <> · <code>{branch.baseBranch}</code>에서 시작</>}</p>}
     {branch && !branch.ready && canWrite && !completed && !issue.archived && <p className="help-text">브랜치 만들기를 누르면 GitHub에 실제 브랜치를 만들어요. 같은 이름이 있으면 기존 브랜치를 사용해요.</p>}

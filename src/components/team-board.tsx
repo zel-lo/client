@@ -9,16 +9,17 @@ import { DropdownMenu, Popover } from 'radix-ui'
 import { Archive, ArrowRight, ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight, Circle, CircleAlert, CircleDot, Github, GitBranch, GitPullRequest, GripVertical, LayoutList, Columns3, LoaderCircle, Mic, MoreHorizontal, Plus, RotateCcw, UserRound, X } from 'lucide-react'
 import type { IssueStatus } from '../data/work-items'
 import { BrandMark } from './brand-mark'
-import { shiftWeek, startOfWeek, weekLabel, projectWeeks, projectWeekCount, projectWeekNumber, today } from '../lib/work-weeks'
+import { shiftWeek, startOfWeek, weekLabel, projectWeeks, projectWeekNumber, today } from '../lib/work-weeks'
 import type { ProjectPeriod } from '../lib/work-weeks'
 import { useWorkWeek } from '../hooks/use-work-week'
 import { LoadingState } from './loading-state'
+import { WorkflowHelp } from './workflow-help'
 
 export const boardStates: { id: IssueStatus; label: string; hint: string; icon: typeof Circle }[] = [
-  { id: 'backlog', label: '백로그', hint: '다음 계획을 기다리는 일', icon: Archive },
-  { id: 'in_progress', label: '진행 중', hint: '담당자를 배정하고 GitHub 이슈를 만들어요', icon: CircleDot },
-  { id: 'in_review', label: '검토 중', hint: '팀의 확인을 기다리고 있어요', icon: GitPullRequest },
-  { id: 'done', label: '완료', hint: '이번 주에 마무리한 일이에요', icon: CheckCircle2 },
+  { id: 'backlog', label: '할 일', hint: '아직 시작하지 않은 작업을 모아요', icon: Archive },
+  { id: 'in_progress', label: '진행 중', hint: '담당자가 개발하고 있는 작업이에요', icon: CircleDot },
+  { id: 'in_review', label: '검토 중', hint: '개발한 코드의 확인을 기다려요', icon: GitPullRequest },
+  { id: 'done', label: '완료', hint: '마친 작업이에요 · 서비스 배포와는 별개예요', icon: CheckCircle2 },
 ]
 export type BoardItem = {
   id: string; key: string; title: string; status: IssueStatus; priority: 'high' | 'medium' | 'low'
@@ -58,7 +59,7 @@ export function WeekNavigation({ week, onChange, disabled = false, period }: { w
   const upcoming = !!period?.startDate && today() < period.startDate
   const ended = !!period?.endDate && today() > period.endDate
   return <div className="week-navigation">
-    <div className="week-heading"><span className="week-eyebrow"><CalendarDays size={13} />{number ? `전체 ${projectWeekCount(period)}주 · 프로젝트 계획` : `${week.slice(0, 4)}년 · 주간 계획`}</span><div><h2>{number ? `${number}주차` : weekLabel(week)}</h2>{number && <span className="week-range">{weekLabel(week, period)}</span>}{week === current ? <span className="week-current">{upcoming ? '시작 예정' : ended ? '프로젝트 종료' : '이번 주'}</span> : <button className="text-button" disabled={disabled} onClick={() => onChange(current)}>이번 주로</button>}</div></div>
+    <div className="week-heading"><div><h2>{number ? `${number}주차` : weekLabel(week)}</h2>{number && <span className="week-range">{weekLabel(week, period)}</span>}{week === current ? <span className="week-current">{upcoming ? '시작 예정' : ended ? '프로젝트 종료' : '이번 주'}</span> : <button className="text-button" disabled={disabled} onClick={() => onChange(current)}>이번 주로</button>}</div></div>
     <div className="week-actions"><button type="button" className="icon-button" aria-label="이전 주" disabled={disabled || !!weeks.length && week === weeks[0]} onClick={() => onChange(shiftWeek(week, -1))}><ChevronLeft size={18} /></button>{weeks.length ? <select className="project-week-select" aria-label="프로젝트 주차" value={week} disabled={disabled} onChange={event => onChange(event.target.value)}>{weeks.map((value, index) => <option key={value} value={value}>{index + 1}주차 · {weekLabel(value, period)}</option>)}</select> : <label className="week-date-picker" title="주차 선택"><CalendarDays size={16} /><input type="date" aria-label="주차 선택" value={week} disabled={disabled} onChange={event => { if (event.target.value) onChange(startOfWeek(event.target.value, period)) }} /></label>}<button type="button" className="icon-button" aria-label="다음 주" disabled={disabled || !!weeks.length && week === weeks.at(-1)} onClick={() => onChange(shiftWeek(week, 1))}><ChevronRight size={18} /></button></div>
   </div>
 }
@@ -156,7 +157,7 @@ function BoardColumn({ state, items, week, canWrite, busyId, disabled, actions, 
   const hidden = state.id === 'done' && !expanded ? Math.max(0, items.length - DONE_VISIBLE) : 0
   const visible = hidden ? items.slice(hidden) : items
   return <section ref={setNodeRef} className={`board-column board-column-${state.id} ${isOver ? 'is-over' : ''} ${hint ? `has-drop-hint is-${hint.tone}` : ''}`} aria-label={`${state.label} 열`}>
-    <div className="board-column-heading"><state.icon size={16} /><h3>{state.label}</h3><span className="board-column-count">{items.length}</span>{onCreate && canWrite && state.id === 'backlog' && <button type="button" className="icon-button tiny" aria-label="백로그 작업 추가" disabled={disabled} onClick={onCreate}><Plus size={15} /></button>}</div><p className="board-column-hint">{state.hint}</p>
+    <div className="board-column-heading"><state.icon size={16} /><h3>{state.label}</h3><span className="board-column-count">{items.length}</span>{onCreate && canWrite && state.id === 'backlog' && <button type="button" className="icon-button tiny" aria-label="할 일 작업 추가" disabled={disabled} onClick={onCreate}><Plus size={15} /></button>}</div><p className="board-column-hint">{state.hint}</p>
     {hint && <div className={`board-drop-hint is-${hint.tone}`} role="note">{hint.tone === 'blocked' ? <CircleAlert size={13} /> : state.id === 'in_review' ? <GitPullRequest size={13} /> : state.id === 'in_progress' ? <GitBranch size={13} /> : <ArrowRight size={13} />}<span>{hint.label}</span></div>}
     <SortableContext items={visible.map(item => item.id)} strategy={verticalListSortingStrategy}><div className="board-column-cards">
       {state.id === 'done' && items.length > DONE_VISIBLE && <button type="button" className="board-column-more" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? '최근 완료만 보기' : `앞서 완료한 ${hidden}개 더 보기`}</button>}
@@ -209,7 +210,8 @@ export function TeamBoard({ items: sourceItems, week, actions, canWrite = true, 
     await actions.onMove({ id: item.id, status, beforeId })
   }
   return <div className={`team-board ${meeting ? 'meeting-mode' : ''}`}>
-    <div className="board-overview"><div className="board-summary"><span>{items.filter(item => item.status !== 'backlog' && item.status !== 'done').length}개 진행 중</span><i /><span><RotateCcw size={12} />{items.filter(item => item.status !== 'backlog' && item.status !== 'done' && item.plannedWeekStart < week).length}개 이월</span><i /><span className="board-summary-done"><CheckCircle2 size={12} />{items.filter(item => item.status === 'done').length}개 완료</span></div><div className="board-display-actions"><button type="button" aria-pressed={showBacklog} onClick={toggleBacklog}><Archive size={13} />백로그 {items.filter(item => item.status === 'backlog').length}</button><button type="button" aria-pressed={meeting} onClick={() => { setMeeting(value => !value); setAttentionOnly(false) }}><Mic size={13} />회의 모드</button></div></div>
+    <WorkflowHelp />
+    <div className="board-overview"><div className="board-summary"><span>{items.filter(item => item.status !== 'backlog' && item.status !== 'done').length}개 진행 중</span><i /><span><RotateCcw size={12} />{items.filter(item => item.status !== 'backlog' && item.status !== 'done' && item.plannedWeekStart < week).length}개 이어서 진행</span><i /><span className="board-summary-done"><CheckCircle2 size={12} />{items.filter(item => item.status === 'done').length}개 완료</span></div><div className="board-display-actions"><button type="button" aria-pressed={showBacklog} onClick={toggleBacklog}><Archive size={13} />할 일 {items.filter(item => item.status === 'backlog').length}</button><button type="button" aria-pressed={meeting} onClick={() => { setMeeting(value => !value); setAttentionOnly(false) }}><Mic size={13} />회의 모드</button></div></div>
     {meeting && <div className="meeting-summary"><div><span className="week-eyebrow"><Mic size={12} />이번 회의에서 함께 확인해요</span><strong>먼저 확인할 작업이 {attention.length}개 있어요</strong><p>담당자 미지정과 확인이 필요한 작업을 모았어요.</p></div><button className="button" type="button" aria-pressed={attentionOnly} onClick={() => setAttentionOnly(value => !value)}>{attentionOnly ? '모든 작업 보기' : '확인할 작업만 보기'}<ArrowRight size={14} /></button></div>}
     <DndContext id={id} sensors={sensors} collisionDetection={collisionDetection} onDragStart={event => setActiveId(String(event.active.id))} onDragCancel={() => setActiveId(null)} onDragEnd={event => { void drop(event) }} accessibility={{ screenReaderInstructions: { draggable: 'Space 또는 Enter로 카드를 들고, 방향키로 옮긴 뒤 다시 눌러 놓으세요. Escape로 취소합니다.' }, announcements: {
       onDragStart: ({ active }) => `${items.find(item => item.id === active.id)?.key ?? '작업'}을 들었어요.`,

@@ -5,7 +5,10 @@ import { MemoryRouter, useLocation } from 'react-router-dom'
 import App from '../src/App'
 import { githubAuthUrl } from '../src/lib/auth'
 
-vi.mock('../src/components/ui/contribution-skyline', () => ({ default: () => <div />, generateContributions: () => [] }))
+vi.mock('../src/components/ui/contribution-skyline', async importOriginal => {
+  const actual = await importOriginal<typeof import('../src/components/ui/contribution-skyline')>()
+  return { ...actual, default: () => <div />, generateContributions: () => [] }
+})
 
 function RouteProbe() { const location = useLocation(); return <div data-testid="auth-route">{location.pathname}{location.search}</div> }
 function mount(route = '/') {
@@ -13,17 +16,27 @@ function mount(route = '/') {
 }
 
 describe('메인과 GitHub 로그인 흐름', () => {
+  it('로그인 없이 개인정보처리방침과 실제 문의 주소를 확인할 수 있다', async () => {
+    const user = userEvent.setup()
+    mount('/')
+    await user.click(screen.getByRole('link', { name: '개인정보처리방침' }))
+    expect(screen.getByRole('heading', { level: 1, name: '개인정보처리방침' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '97choijw@gmail.com' })).toHaveAttribute('href', 'mailto:97choijw@gmail.com')
+    expect(screen.getByRole('heading', { name: '4. 처리 위탁과 국외 보관' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'GitHub로 계속하기' })).not.toBeInTheDocument()
+  })
+
   it('메인에서 하나의 GitHub 시작 화면으로 이동한다', async () => {
     const user = userEvent.setup()
     mount()
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Git에 익숙하지 않아도괜찮아요.')
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('지금 어떤 일 하고 계세요?')
     expect(screen.queryByRole('link', { name: '회원가입' })).not.toBeInTheDocument()
     expect(await screen.findByRole('link', { name: '시작하기' })).toHaveAttribute('href', '/login')
     await user.click(screen.getByRole('link', { name: /GitHub로 시작하기/ }))
     expect(screen.getByRole('heading', { name: 'zello 시작하기' })).toBeInTheDocument()
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'GitHub로 계속하기' })).toBeInTheDocument()
-    expect(screen.getByText(/처음이라면 계정이 만들어지고/)).toBeInTheDocument()
+    expect(screen.getByText(/처음 방문했다면 zello 계정이 만들어져요/)).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: '회원가입' })).not.toBeInTheDocument()
   })
 

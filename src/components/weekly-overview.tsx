@@ -10,6 +10,9 @@ import { LoadingState } from './loading-state'
 import { Dialog } from './workspace-dialog'
 import { projectWeeks, projectWeekNumber, shiftWeek, startOfWeek, weekLabel } from '../lib/work-weeks'
 import type { ProjectPeriod } from '../lib/work-weeks'
+import type { Summary } from '../lib/workspace-api'
+import { TeamContributions } from './team-contributions'
+import { displayDate } from '../lib/display-date'
 import './weekly-overview.css'
 
 type OpenTask = (task: Pick<DashboardTask, 'id' | 'type'>) => void
@@ -21,6 +24,7 @@ export function WeeklyOverview({ project }: { project: string }) {
   const [params, setParams] = useSearchParams()
   const requestedWeek = params.get('week')
   const result = useWorkspaceData<WeeklyDashboard>(project, `dashboard${requestedWeek ? `?week=${encodeURIComponent(requestedWeek)}` : ''}`)
+  const summary = useWorkspaceData<Summary>(project, 'summary')
   function selectWeek(week?: string) {
     setParams(current => {
       const next = new URLSearchParams(current)
@@ -30,8 +34,8 @@ export function WeeklyOverview({ project }: { project: string }) {
     })
   }
   if (result.error && !result.data) return <div className="weekly-error" role="alert"><CircleHelp size={28} /><h2>주간 현황을 불러오지 못했어요</h2><p>{result.error}</p><button className="button" onClick={result.refresh}>다시 불러오기</button>{requestedWeek && <button className="weekly-text-link" onClick={() => selectWeek()}>이번 주로 돌아가기</button>}</div>
-  if (!result.data) return <LoadingState layout="cards" label="선택한 주의 팀 작업을 모으고 있어요" />
-  return <>{result.error && <p role="alert" className="connection-error">{result.error}</p>}<WeeklyDashboardView key={result.data.weekStart} data={result.data} refreshing={result.loading} onRefresh={result.refresh} onWeekChange={selectWeek} /></>
+  if (!result.data) return <LoadingState layout="dashboard" label="선택한 주의 팀 작업을 모으고 있어요" />
+  return <>{result.error && <p role="alert" className="connection-error">{result.error}</p>}<WeeklyDashboardView key={result.data.weekStart} data={result.data} refreshing={result.loading} onRefresh={() => { result.refresh(); summary.refresh() }} onWeekChange={selectWeek} activity={<TeamContributions days={summary.data?.contributions ?? null} loading={summary.loading} error={summary.error} onRetry={summary.refresh} />} /></>
 }
 
 function DashboardWeekPicker({ data, onChange, disabled }: { data: WeeklyDashboard; onChange: (week: string) => void; disabled: boolean }) {
@@ -54,7 +58,7 @@ function TaskLink({ task, onOpen, className, children }: { task: Pick<DashboardT
   return onOpen ? <button type="button" className={className} onClick={() => onOpen(task)}>{children}</button> : <Link className={className} to={dashboardTaskPath(task)}>{children}</Link>
 }
 
-export function WeeklyDashboardView({ data, onOpen, onRefresh, onWeekChange, refreshing = false, demo = false }: { data: WeeklyDashboard; onOpen?: OpenTask; onRefresh?: () => void; onWeekChange?: (week: string) => void; refreshing?: boolean; demo?: boolean }) {
+export function WeeklyDashboardView({ data, onOpen, onRefresh, onWeekChange, refreshing = false, demo = false, activity }: { data: WeeklyDashboard; onOpen?: OpenTask; onRefresh?: () => void; onWeekChange?: (week: string) => void; refreshing?: boolean; demo?: boolean; activity?: ReactNode }) {
   const [filter, setFilter] = useState('ALL')
   const [allAttention, setAllAttention] = useState(false)
   const [allPeople, setAllPeople] = useState(false)
@@ -70,8 +74,20 @@ export function WeeklyDashboardView({ data, onOpen, onRefresh, onWeekChange, ref
     { key: 'REVIEW_AGING', label: '검토 기다림', count: data.attentionCounts.reviewAging },
     { key: 'CHANGES_REQUESTED', label: '수정 요청', count: data.attentionCounts.changesRequested },
   ]
+  const firstAttention = [...data.attention].sort((a, b) => {
+    const order = { CHANGES_REQUESTED: 0, REVIEW_AGING: 1, UNASSIGNED: 2 }
+    return order[a.kind] - order[b.kind] || (b.ageDays ?? 0) - (a.ageDays ?? 0)
+  })[0]
+  const hasWork = data.total > 0 || data.recentTotal > 0
   return <div className="weekly-dashboard" aria-label="주간 프로젝트 대시보드">
     <div className="weekly-period">{onWeekChange ? <DashboardWeekPicker data={data} onChange={onWeekChange} disabled={refreshing} /> : <span><CalendarDays size={15} />{shortDate(data.weekStart)} — {shortDate(data.weekEnd)}<i />{data.periodLabel}</span>}<div>{demo ? <span className="weekly-demo-label">샘플 데이터</span> : <button type="button" className="weekly-refresh" disabled={refreshing} onClick={onRefresh}><RefreshCw size={14} className={refreshing ? 'is-syncing' : ''} />{refreshing ? '불러오는 중' : '새로고침'}</button>}</div></div>
+
+    {!demo && <div className="weekly-data-source"><span>zello 기록 · {displayDate(data.fetchedAt, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 확인</span><Link to="/settings?tab=sync">GitHub 최신 상태 가져오기<ArrowUpRight size={13} /></Link></div>}
+    {isCurrent && <section className={`weekly-next-step ${firstAttention ? 'needs-attention' : ''}`} aria-label="팀의 다음 할 일">
+      <span className="weekly-next-icon">{firstAttention ? <Clock3 size={22} /> : hasWork ? <CheckCircle2 size={22} /> : <CalendarDays size={22} />}</span>
+      <div><span className="weekly-next-eyebrow">{firstAttention ? '지금 먼저 확인할 일' : hasWork ? '오늘의 팀 현황' : '팀의 첫 번째 작업부터'}</span><h2>{firstAttention ? firstAttention.kind === 'CHANGES_REQUESTED' ? '수정 요청을 확인하면 다음 단계로 갈 수 있어요' : firstAttention.kind === 'REVIEW_AGING' ? '기다리는 코드 검토를 함께 확인해 주세요' : '담당자를 정하면 작업을 시작할 수 있어요' : hasWork ? '지금 확인이 필요한 항목은 없어요' : '회의에서 정한 일을 첫 작업으로 남겨 보세요'}</h2><p>{firstAttention ? firstAttention.title : hasWork ? '내 작업에서 맡은 일과 검토 요청을 이어서 확인하세요.' : '제목만 적어도 시작할 수 있어요. 담당자는 실제로 진행할 때 정해요.'}</p></div>
+      {firstAttention ? <TaskLink task={{ id: firstAttention.id, type: firstAttention.kind === 'UNASSIGNED' ? 'ISSUE' : 'PR' }} onOpen={onOpen} className="button">{firstAttention.kind === 'UNASSIGNED' ? '작업 확인하기' : firstAttention.kind === 'CHANGES_REQUESTED' ? '수정 요청 확인' : '검토할 PR 보기'}<ArrowRight size={15} /></TaskLink> : <Link className="button" to={hasWork ? '/my-work' : '/issues?new=1'}>{hasWork ? '내 작업 보기' : '첫 작업 등록'}<ArrowRight size={15} /></Link>}
+    </section>}
 
     <section className="weekly-card weekly-progress" aria-labelledby="weekly-progress-heading" data-tour="weekly-progress">
       <div className="weekly-progress-main">
@@ -81,11 +97,11 @@ export function WeeklyDashboardView({ data, onOpen, onRefresh, onWeekChange, ref
           <span className="weekly-track-done" style={{ width: `${data.percentage}%` }} />
         </div>
         <div className="weekly-status-counts">{states.map(state => <Link key={state.key} to={`/issues?${weekQuery}&status=${state.key}`}><span><i className={`weekly-dot-${state.tone}`} />{state.label}</span><strong>{(data.states[state.key] ?? 0) + (state.key === 'IN_PROGRESS' ? data.states.TODO ?? 0 : 0)}<small>개</small></strong></Link>)}</div>
-        <p className="weekly-progress-note">{isCurrent ? '이번 주 계획과 이전 주에서 이어온 작업 기준 · 백로그 제외' : '선택한 주 완료와 현재 미완료 작업 기준 · 백로그 제외'}</p>
+        <p className="weekly-progress-note">{isCurrent ? '이번 주 계획과 이전 주 미완료 작업 기준 · 아직 시작하지 않은 할 일 제외' : '선택한 주 완료와 현재 미완료 작업 기준 · 아직 시작하지 않은 할 일 제외'}</p>
       </div>
       <div className="weekly-highlights">
         <div><span className="weekly-highlight-icon is-done"><CheckCircle2 size={20} /></span><div><p>{data.periodLabel} 완료</p><strong>{data.completedThisWeek}<small>개</small></strong><span>팀이 마무리한 작업과 반영된 PR</span></div></div>
-        <div><span className="weekly-highlight-icon is-carry"><RotateCcw size={19} /></span><div><p>이어온 작업</p><strong>{data.carriedOver}<small>개</small></strong><span>이전 주에 마치지 못한 작업</span></div></div>
+        <div><span className="weekly-highlight-icon is-carry"><RotateCcw size={19} /></span><div><p>지난주부터 이어온 작업</p><strong>{data.carriedOver}<small>개</small></strong><span>이전 주에 마치지 못한 작업</span></div></div>
       </div>
     </section>
 
@@ -94,7 +110,7 @@ export function WeeklyDashboardView({ data, onOpen, onRefresh, onWeekChange, ref
         <div className="weekly-card-heading"><h2 id="weekly-attention-heading">먼저 확인해 주세요{data.attention.length > 0 && <span className="weekly-count">{data.attention.length}</span>}</h2>{!isCurrent && <span className="weekly-soft-label">현재 상태 기준</span>}</div>
         <div className="weekly-attention-filters" aria-label="확인할 작업 종류">{filters.map(item => <button key={item.key} type="button" aria-pressed={filter === item.key} onClick={() => { setFilter(item.key); setAllAttention(false) }}>{item.label}<span>{item.count}</span></button>)}</div>
         <div className="weekly-attention-list">{shownAttention.map(item => <AttentionRow key={`${item.kind}-${item.id}`} item={item} onOpen={onOpen} />)}</div>
-        {!attention.length && <div className="weekly-clear-state"><span><Check size={24} /></span><strong>{filter === 'ALL' ? '지금은 순조롭게 진행 중이에요' : '확인이 필요한 항목이 없어요'}</strong><p>{filter === 'ALL' ? '담당자 없는 작업과 오래 기다린 PR이 없어요.' : '다른 항목에서도 팀의 상황을 확인해 보세요.'}</p></div>}
+        {!attention.length && <div className="weekly-clear-state"><span><Check size={24} /></span><strong>{filter === 'ALL' ? hasWork ? '지금 확인이 필요한 항목은 없어요' : '등록한 작업부터 함께 살펴봐요' : '확인이 필요한 항목이 없어요'}</strong><p>{filter === 'ALL' ? hasWork ? '담당자 없는 작업과 오래 기다린 PR이 없어요.' : '작업을 계획하면 담당자와 검토 상태를 여기서 확인할 수 있어요.' : '다른 항목에서도 팀의 상황을 확인해 보세요.'}</p></div>}
         {attention.length > 4 && <button type="button" className="weekly-show-more" aria-expanded={allAttention} onClick={() => setAllAttention(value => !value)}>{allAttention ? '간단히 보기' : `${attention.length - 4}개 더 보기`}<ChevronDown size={14} /></button>}
       </section>
 
@@ -109,10 +125,11 @@ export function WeeklyDashboardView({ data, onOpen, onRefresh, onWeekChange, ref
     </div>
 
     <section className="weekly-card weekly-completed" aria-labelledby="weekly-completed-heading" data-tour="weekly-completed">
-      <div className="weekly-card-heading"><h2 id="weekly-completed-heading">{data.periodLabel}, 이런 일을 마쳤어요<span className="weekly-count is-blue">{data.recentTotal}</span></h2><Link className="weekly-text-link" to="/changes">패치노트 보기<ArrowUpRight size={14} /></Link></div>
+      <div className="weekly-card-heading"><h2 id="weekly-completed-heading">{data.periodLabel}, 이런 일을 마쳤어요<span className="weekly-count is-blue">{data.recentTotal}</span></h2><Link className="weekly-text-link" to="/changes">팀 업데이트 보기<ArrowUpRight size={14} /></Link></div>
       <div className="weekly-completed-list">{data.recent.map(item => <TaskLink key={`${item.type}-${item.id}`} task={item} onOpen={onOpen} className="weekly-completed-row"><span className="weekly-complete-check"><Check size={16} strokeWidth={2.5} /></span><span className="weekly-row-copy"><strong>{item.title}</strong><small>{item.repository}<i />{item.owner ?? '담당자 없음'}{item.type === 'PR' && <><i />PR 병합</>}</small></span>{item.needsTitle && <span className="weekly-title-pending">반영 제목 미작성</span>}<time dateTime={item.completedAt}>{shortDate(new Date(item.completedAt.endsWith('Z') ? item.completedAt : item.completedAt + 'Z').toLocaleDateString('sv-SE', { timeZone: data.timezone }))}</time><ChevronRight size={15} /></TaskLink>)}</div>
       {!data.recent.length && <div className="weekly-completed-empty"><CheckCircle2 size={22} /><p>완료한 작업이 여기에 차곡차곡 모여요.</p><Link className="weekly-text-link" to={`/issues?${weekQuery}`}>팀 작업으로 이동<ArrowRight size={14} /></Link></div>}
     </section>
+    {activity}
     {assignment && <Dialog title="업무 담당" drawer onClose={() => setAssignment(null)}><div className="weekly-assignment-detail">
       <div className="weekly-assignment-profile"><span className="weekly-avatar">{initial(assignment.name)}</span><div><h2>{assignment.name}</h2><p>{assignment.jobTitle ?? `@${assignment.login}`}</p></div></div>
       <h3>담당 업무</h3>

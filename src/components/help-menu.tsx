@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen, CircleHelp, Compass } from 'lucide-react'
+import { BookOpen, CircleHelp, Compass, ShieldCheck } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { HELP_URL, hasTour, startTour } from '../lib/tours'
 
 export function HelpMenu({ pathname }: { pathname: string }) {
@@ -23,6 +24,7 @@ export function HelpMenu({ pathname }: { pathname: string }) {
       {HELP_URL
         ? <a role="menuitem" href={HELP_URL} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}><BookOpen size={15} /><span><strong>도움말 보기</strong><small>새 탭에서 사용 안내를 열어요</small></span></a>
         : <button role="menuitem" disabled><BookOpen size={15} /><span><strong>도움말 보기</strong><small>준비 중이에요</small></span></button>}
+      <Link role="menuitem" to="/privacy" target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}><ShieldCheck size={15} /><span><strong>개인정보처리방침</strong><small>정보 처리와 보관 기준</small></span></Link>
     </div>}
   </div>
 }

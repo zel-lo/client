@@ -19,14 +19,14 @@ describe('서버 세션 로그인 연결', () => {
     await screen.findByText('로그인 사용자님 · 로그인됨')
     expect(screen.getByRole('link', { name: '워크스페이스로 이동' })).toHaveAttribute('href', '/overview')
     expect(screen.queryByRole('link', { name: '로그인', exact: true })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '프로젝트와 저장소 연결하기' })).toHaveAttribute('href', '/settings?tab=repositories')
+    expect(screen.getByRole('link', { name: '우리 팀 현황 보기' })).toHaveAttribute('href', '/overview')
   })
 
   it('로그인한 사용자가 로그인 페이지를 열면 워크스페이스로 이동한다', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(currentUser)))
     render(<MemoryRouter initialEntries={['/login']}><App /></MemoryRouter>)
     await screen.findByRole('heading', { name: /^전체 현황/ })
-    expect(screen.getByText('@octocat · GitHub 로그인됨')).toBeInTheDocument()
+    expect(screen.getByText('@octocat')).toBeInTheDocument()
   })
 
   it('다시 활성화한 탭에서 세션이 만료되면 로그인 상태를 갱신한다', async () => {

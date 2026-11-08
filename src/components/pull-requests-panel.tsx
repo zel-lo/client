@@ -1,4 +1,5 @@
 import { LoadingState } from './loading-state'
+import { WorkflowHelp } from './workflow-help'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, CircleDashed, GitMerge, GitPullRequest, Link2, Plus, RefreshCw } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -44,18 +45,18 @@ export function PullRequestsPanel({ pullRequests, repos, issues, repoFilter, onS
   const visible = paging ? scoped : scoped.filter(pr => filter === 'all' || (filter === 'open' ? pr.status === 'open' || pr.status === 'draft' : pr.status === filter))
   const tabCount = (value: string) => paging ? paging.counts[value as keyof PullRequestPaging['counts']]
     : scoped.filter(pr => value === 'all' || (value === 'open' ? ['open', 'draft'].includes(pr.status) : pr.status === value)).length
-  return <section className="work-panel" aria-label="Pull requests 목록">
-    <div className="section-heading"><h2>변경 요청 <span className="count-text">{paging ? paging.total : visible.length}</span></h2>
+  return <section className="work-panel" aria-label="코드 검토 요청 목록"><WorkflowHelp review />
+    <div className="section-heading"><h2>코드 검토 요청 <span className="count-text">{paging ? paging.total : visible.length}</span></h2>
       <div className="issue-actions">
         {onSync && <button className="button" data-tour="pr-sync" disabled={syncing || needsSetup} onClick={onSync}><RefreshCw size={14} className={syncing ? 'board-saving' : ''} />{syncing ? 'GitHub 확인 중…' : 'GitHub PR 가져오기'}</button>}
-        {onCreate && <button className="button button-dark" data-tour="pr-create" onClick={onCreate}><Plus size={14} />PR 작성</button>}
+        {onCreate && <button className="button button-dark" data-tour="pr-create" onClick={onCreate}><Plus size={14} />검토 요청 만들기</button>}
       </div></div>
     <div className="content-filter"><div className="pr-filter-row"><div className="segmented-tabs" data-tour="pr-tabs">
       {[['open', '열림'], ['merged', '병합됨'], ['all', '전체']].map(([value, label]) => <button key={value} aria-pressed={filter === value} className={filter === value ? 'selected' : ''} onClick={() => change('status', value)}>{label}<span className="tab-count">{tabCount(value)}</span></button>)}
     </div><div className="work-filter-bar" data-tour="pr-filter"><select aria-label="PR 확인 필터" value={focus} onChange={event => change('focus', event.target.value)}><option value="all">모든 검토 상태</option><option value="pending">검토 대기</option><option value="failing">수정 요청</option><option value="unlinked">이슈 미연결</option></select>{params.size > 0 && <button className="subtle-link" onClick={() => setParams({})}>필터 초기화</button>}</div></div><span className="muted small">{needsSetup ? '저장소 연결 필요' : live ? `GitHub 연동${paging && focus !== 'all' && focus !== 'unlinked' ? ` · 조건에 맞는 PR ${paging.total}개` : ''}` : '샘플 PR · GitHub 미연결'}</span></div>
     {error && <div className="connection-error" role="alert">{error}{reauth && <Link to="/login?reauth=github">GitHub 다시 로그인</Link>}</div>}
     {loading && !pullRequests.length && <LoadingState label="PR을 불러오는 중" />}
-    <div className="data-frame"><Table><TableHeader><TableRow><TableHead>변경 요청</TableHead><TableHead>코드 검토</TableHead><TableHead>리뷰어</TableHead><TableHead>작성자</TableHead></TableRow></TableHeader><TableBody>
+    {(!loading || pullRequests.length > 0) && <div className="data-frame" aria-busy={loading}><Table><TableHeader><TableRow><TableHead>변경 요청</TableHead><TableHead>코드 검토</TableHead><TableHead>리뷰어</TableHead><TableHead>작성자</TableHead></TableRow></TableHeader><TableBody>
       {visible.map((pr, index) => {
         const linked = issues.filter(issue => issue.pullRequestIds.includes(pr.id))
         const Icon = pr.status === 'merged' ? GitMerge : pr.status === 'draft' ? CircleDashed : GitPullRequest
@@ -64,7 +65,7 @@ export function PullRequestsPanel({ pullRequests, repos, issues, repoFilter, onS
         <TableCell className="table-secondary">{pr.reviewers?.length ? pr.reviewers.join(', ') : <span className="muted">지정 안 함</span>}</TableCell>
         <TableCell className="table-secondary">{pr.author}</TableCell></TableRow>
       })}
-    </TableBody></Table></div>
+    </TableBody></Table></div>}
     {paging && (page > 1 || paging.hasNext) && <div className="connection-pagination" aria-label="PR 페이지"><button className="button" disabled={loading || page === 1} onClick={() => change('page', String(page - 1))}><ChevronLeft size={14} />이전</button><span>{page} 페이지</span><button className="button" disabled={loading || !paging.hasNext} onClick={() => change('page', String(page + 1))}>다음<ChevronRight size={14} /></button></div>}
     {!visible.length && !loading &&<div className="empty-state"><GitPullRequest size={25} />{needsSetup ? <><h3>팀의 저장소를 연결해 주세요</h3><p>저장소를 고르면 실제 코드 검토와 작업을 확인할 수 있어요.</p><Link className="button" to="/onboarding">프로젝트와 저장소 연결</Link></> : live && !pullRequests.length ? <><h3>아직 가져온 PR이 없어요</h3><p>위의 'GitHub PR 가져오기' 버튼으로 GitHub에서 PR을 가져와 보세요. 저장소가 연결되어 있어야 해요.</p></> : <><h3>이 조건의 PR이 없어요</h3><p>저장소나 상태를 바꿔서 확인해 보세요.</p></>}</div>}
   </section>

@@ -11,6 +11,7 @@ import { useSession } from '../hooks/use-session'
 import { initialIssues, initialPullRequests, issueSources, issueStatuses } from '../data/work-items'
 import { initialRepos } from '../data/mock'
 import './public-pages.css'
+import { PrivacyPolicy } from './privacy-policy'
 
 function Brand() {
   return <Link to="/" className="public-brand" aria-label="zello 홈"><BrandMark />zello</Link>
@@ -26,7 +27,12 @@ function SkipLink() {
 }
 
 function Footer() {
-  return <footer className="public-footer">© {new Date().getFullYear()} zello</footer>
+  return <footer className="public-footer"><span>© {new Date().getFullYear()} zello</span><Link to="/privacy">개인정보처리방침</Link></footer>
+}
+
+export function PrivacyPage() {
+  useEffect(() => { document.title = '개인정보처리방침 · zello' }, [])
+  return <div className="public-shell"><SkipLink /><header className="public-header"><Brand /><nav aria-label="서비스 메뉴"><Link className="public-login-link" to="/">서비스 소개</Link><ThemeToggle /></nav></header><main id="public-main" tabIndex={-1} className="privacy-main"><PrivacyPolicy /></main><Footer /></div>
 }
 
 function ProjectPreview() {
@@ -66,9 +72,10 @@ export function LandingPage() {
     <SkipLink />
     <header className="public-header"><Brand /><nav aria-label="서비스 메뉴"><ThemeToggle />{session.status === 'loading' ? <span className="public-session-label" role="status">로그인 확인 중…</span> : session.user ? <><span className="public-session-label"><span className="public-session-dot" />{session.user.displayName}님 · 로그인됨</span><Button asChild size="sm" variant="outline"><Link to="/overview">워크스페이스로 이동</Link></Button></> : <Button asChild size="sm"><Link to="/login">시작하기<ArrowRight size={13} /></Link></Button>}</nav></header>
     <main id="public-main" tabIndex={-1} className="landing-main">
-      <section className="landing-intro"><div><h1>Git에 익숙하지 않아도<br />괜찮아요.</h1><p>할 일을 나누고, 어디까지 됐는지 쉽게 확인해요.<br />복잡한 GitHub 기록도 팀이 이해하기 쉽게 모아봐요.</p></div><div className="landing-actions"><Button asChild size="lg"><Link to={session.user ? '/settings?tab=repositories' : '/login'}><Github size={17} />{session.user ? '프로젝트와 저장소 연결하기' : 'GitHub로 시작하기'}</Link></Button></div></section>
+      <section className="landing-intro"><div><span className="landing-eyebrow">회의에서 정한 일, 팀에 반영되는 순간까지</span><h1>지금 어떤 일 하고 계세요?</h1><p>각자의 작업이 팀의 흐름으로 보이도록.<br />할 일과 개발 진행을 한곳에서 연결하세요.</p></div><div className="landing-actions"><Button asChild size="lg"><Link to={session.user ? '/overview' : '/login'}><Github size={17} />{session.user ? '우리 팀 현황 보기' : 'GitHub로 시작하기'}</Link></Button></div></section>
+      <ol className="landing-workflow" aria-label="zello로 함께 일하는 흐름"><li><span>01</span><div><strong>회의의 결정을 작업으로</strong><p>해야 할 일과 완료 조건을 남기고 담당자를 정해요.</p></div></li><li><span>02</span><div><strong>막힌 곳을 함께 확인</strong><p>개발한 코드의 검토 요청(PR)과 수정할 내용을 확인해요.</p></div></li><li><span>03</span><div><strong>완료한 일을 팀의 소식으로</strong><p>완료한 변경을 팀 업데이트로 모아 함께 확인해요.</p></div></li></ol>
       <ProjectPreview />
-      <div className="landing-footnote"><p>회의에서 정한 일부터 담당자와 진행 상황까지, 한곳에서 확인해요.</p></div>
+      <div className="landing-footnote"><p>진행 상황을 다시 묻는 대신, 같은 화면을 보며 다음 일을 정하세요.</p></div>
     </main><Footer />
   </div>
 }
@@ -121,15 +128,16 @@ export function AuthPage() {
       <section className="auth-form-content auth-welcome-card" aria-labelledby="auth-title">
         <span className="auth-welcome-mark" aria-hidden="true"><BrandMark /></span>
         <h1 id="auth-title">zello 시작하기</h1>
-        <p className="auth-description">팀의 작업부터 코드 검토까지.<br />GitHub 계정으로 한곳에서 함께해요.</p>
+        <p className="auth-description">회의에서 정한 일과 개발 진행을 함께 확인해요.<br />팀이 사용하는 GitHub 계정으로 시작하세요.</p>
         {reauthorize && <p className="auth-context-note">저장소 접근 권한을 갱신하려면 GitHub에 다시 연결해 주세요.</p>}
         {next && <p className="auth-context-note">로그인 후 초대받은 프로젝트로 안내해 드릴게요.</p>}
         <Button className="github-auth-button" size="lg" onClick={continueWithGithub} disabled={pending} aria-busy={pending}>
           {pending ? <LoaderCircle size={19} className="auth-spinner" /> : <Github size={19} />}<span>{pending ? 'GitHub로 이동 중' : 'GitHub로 계속하기'}</span>{!pending && <ArrowRight size={16} />}
         </Button>
-        <p className="auth-account-note">처음이라면 계정이 만들어지고,<br />이미 함께하고 있다면 바로 로그인돼요.</p>
+        <p className="auth-account-note">처음 방문했다면 zello 계정이 만들어져요.<br />이미 가입했다면 같은 GitHub 계정으로 로그인돼요.</p>
+        <p className="auth-privacy-note"><Link to="/privacy" target="_blank" rel="noopener noreferrer">개인정보처리방침</Link>에서 수집 정보와 보관 기준을 확인하세요.</p>
         {notice && <div className="auth-notice" role="status"><p>{notice}</p></div>}
-        <details className="auth-permissions"><summary><ShieldCheck size={14} />GitHub 연결 권한 안내<ChevronRight size={13} /></summary><p>프로필·조직과 공개·비공개 저장소에 접근합니다. GitHub의 저장소 권한에는 읽기와 쓰기가 함께 포함됩니다.</p></details>
+        <details className="auth-permissions"><summary><ShieldCheck size={14} />GitHub 연결 권한 안내<ChevronRight size={13} /></summary><p>팀의 저장소를 찾고, zello에서 이슈·코드 검토 요청을 만들기 위해 GitHub 프로필·조직·저장소 접근 권한을 요청해요. GitHub의 공개·비공개 저장소 권한에는 읽기와 쓰기가 함께 포함돼요. 연결할 저장소는 로그인 후 직접 선택해요.</p></details>
       </section>
     </main><Footer />
   </div>

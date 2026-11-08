@@ -9,7 +9,7 @@ import type { Member, MembersPage } from '../src/lib/members-api'
 const member: Member = { userId: '2', githubId: '20', login: 'teammate', displayName: '팀원', avatarUrl: null, role: 'MEMBER', version: 4, joinedAt: '2026-11-01T00:00:00', self: false, canChangeRole: true, canRemove: true, canTransferTo: true }
 const owner: Member = { ...member, userId: '1', login: 'owner', displayName: '소유자', role: 'OWNER', self: true, canChangeRole: false, canRemove: false, canTransferTo: false }
 const page: MembersPage = { items: [owner, member], total: 2, page: 1, hasNext: false, projectName: '우리 프로젝트', projectVersion: 8, ownerUserId: '1', currentMemberVersion: 3, canInvite: true, canInviteAdmin: true }
-const invitation = { id: '7', role: 'MEMBER', expiresAt: '2026-11-04T00:00:00', createdAt: '2026-11-01T00:00:00', status: 'PENDING', createdBy: 'owner', targetLogin: null, acceptedByUserId: null }
+const invitation = { id: '7', role: 'MEMBER', expiresAt: '2026-11-04T00:00:00', createdAt: '2026-11-01T00:00:00', status: 'PENDING', reusable: true, useCount: 2, createdBy: 'owner', targetLogin: null, acceptedByUserId: null }
 const inviteUrl = `https://zello.example/#/invite/${'a'.repeat(43)}`
 function backend(data = page, conflict = false) {
   const fetcher = vi.fn(async (path: string, init?: RequestInit) => {
@@ -29,15 +29,19 @@ function backend(data = page, conflict = false) {
 const mount = (onLeft = vi.fn()) => render(<MemoryRouter><MembersPanel projectId="9" onLeft={onLeft} /></MemoryRouter>)
 
 describe('실제 프로젝트의 멤버와 권한', () => {
-  it('기본 초대 권한은 멤버이며 CSRF로 지정 계정과 유효 기간을 전송한다', async () => {
+  it('초대는 계정 입력 없이 링크로 생성하고 CSRF와 선택한 권한·유효 기간을 전송한다', async () => {
     const fetcher = backend(); mount()
     const user = userEvent.setup()
     await screen.findByRole('button', { name: '초대 링크 만들기' })
     expect(screen.getByRole('combobox', { name: '참여 권한' })).toHaveValue('MEMBER')
-    await user.type(screen.getByLabelText('초대받을 GitHub 아이디 · 선택'), '@octocat')
+    expect(screen.queryByLabelText(/초대받을 GitHub 아이디/)).not.toBeInTheDocument()
+    await user.selectOptions(screen.getByRole('combobox', { name: '참여 권한' }), 'VIEWER')
+    await user.selectOptions(screen.getByRole('combobox', { name: '링크 유효 기간' }), '24')
     await user.click(screen.getByRole('button', { name: '초대 링크 만들기' }))
     expect(await screen.findByLabelText('생성한 초대 링크')).toHaveValue(inviteUrl)
-    expect(fetcher).toHaveBeenCalledWith('/api/projects/9/invitations', expect.objectContaining({ method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'csrf' }, body: JSON.stringify({ role: 'MEMBER', expiresInHours: 72, githubLogin: 'octocat' }) }))
+    expect(screen.getByText(/이 링크 하나로 여러 팀원을 초대/)).toBeInTheDocument()
+    expect(screen.getByText(/여러 명 사용 · 2명 참여/)).toBeInTheDocument()
+    expect(fetcher).toHaveBeenCalledWith('/api/projects/9/invitations', expect.objectContaining({ method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'csrf' }, body: JSON.stringify({ role: 'VIEWER', expiresInHours: 24, githubLogin: null }) }))
     expect(JSON.stringify({ ...localStorage, ...sessionStorage })).not.toContain('a'.repeat(43))
     await user.click(screen.getByRole('button', { name: '초대 7 취소' }))
     await waitFor(() => expect(screen.queryByLabelText('생성한 초대 링크')).not.toBeInTheDocument())
@@ -90,6 +94,18 @@ describe('실제 프로젝트의 멤버와 권한', () => {
 })
 
 describe('프로젝트 기본 설정', () => {
+  it('설정을 불러오는 동안 입력 폼을 대신하고 실제 응답 뒤에 편집을 허용한다', async () => {
+    let respond!: (response: Response) => void
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { respond = resolve })))
+    render(<ProjectGeneralSettings projectId="9" />)
+    expect(screen.getByRole('status', { name: '프로젝트 설정을 불러오는 중' })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.queryByRole('textbox', { name: '프로젝트 이름' })).not.toBeInTheDocument()
+    respond(Response.json({ id: '9', name: '우리 프로젝트', description: '', role: 'OWNER', version: 8, startDate: '2026-11-01', endDate: '2026-11-24', totalWeeks: 4 }))
+    expect(await screen.findByRole('textbox', { name: '프로젝트 이름' })).toHaveValue('우리 프로젝트')
+    expect(screen.queryByRole('status', { name: '프로젝트 설정을 불러오는 중' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: '프로젝트 기간' })).toHaveTextContent('2026.11.01')
+  })
+
   it('실제 프로젝트의 버전으로 이름과 설명을 저장한다', async () => {
     const project = { id: '9', name: '기존 이름', description: '설명', role: 'OWNER', canManageRepositories: true, version: 8 }
     const fetcher = vi.fn(async (path: string, init?: RequestInit) => {

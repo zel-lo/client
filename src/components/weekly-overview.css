@@ -1,6 +1,18 @@
 .weekly-dashboard { --weekly-blue: var(--primary); --weekly-green: var(--git-green); display: grid; gap: 22px; padding-top: 2px; padding-bottom: 8px; }
 .weekly-dashboard button, .weekly-dashboard a { -webkit-tap-highlight-color: transparent; }
 .weekly-dashboard :is(button, a):focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 50%, transparent); outline-offset: 4px; }
+.weekly-data-source { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: -10px; color: var(--muted-foreground); font-size: 12px; line-height: 1.8; }
+.weekly-data-source > a { display: inline-flex; align-items: center; gap: 4px; }
+.weekly-data-source > a:hover { color: var(--primary); }
+.weekly-next-step { display: flex; align-items: center; gap: 18px; padding: 24px 28px; border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--line)); border-radius: 20px; background: color-mix(in srgb, var(--primary) 4%, var(--card)); }
+.weekly-next-icon { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 15px; color: var(--primary); background: color-mix(in srgb, var(--primary) 9%, var(--card)); }
+.weekly-next-step > div { min-width: 0; flex: 1; }
+.weekly-next-eyebrow { color: var(--primary); font-size: 12px; font-weight: 600; }
+.weekly-next-step h2 { font-size: 17px; font-weight: 650; line-height: 1.6; letter-spacing: -.4px; margin: 4px 0; }
+.weekly-next-step p { color: var(--text-secondary); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
+.weekly-next-step > .button { flex-shrink: 0; }
+@media (max-width: 760px) { .weekly-next-step { flex-wrap: wrap; align-items: flex-start; padding: 22px; gap: 14px; } .weekly-next-step > div { flex-basis: calc(100% - 60px); } .weekly-next-step > .button { margin-left: 58px; } }
+@media (max-width: 470px) { .weekly-next-step { padding: 20px 17px; } .weekly-next-step h2 { font-size: 16px; } .weekly-next-icon { width: 36px; height: 36px; border-radius: 12px; } .weekly-next-step > .button { margin-left: 50px; } }
 .weekly-period { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted-foreground); font-size: 13px; }
 .weekly-period > span { display: inline-flex; align-items: center; gap: 9px; font-weight: 500; }
 .weekly-period i { height: 3px; width: 3px; border-radius: 50%; background: var(--muted-foreground); opacity: .5; }

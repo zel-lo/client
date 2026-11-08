@@ -35,11 +35,11 @@ describe('이슈와 PR 연결', () => {
   it('작업에서 PR을 작성하면 저장소·제목·이슈를 미리 채우고 선택한 ID를 보낸다', async () => {
     const fetcher = backend(), created = vi.fn(), control = userEvent.setup()
     mount(<CreateLivePullRequest projectId="7" initialIssue={issue} onCancel={() => {}} onCreated={created} />)
-    expect(screen.getByLabelText('PR 제목')).toHaveValue('검색 개선')
+    expect(screen.getByLabelText('검토 요청 제목')).toHaveValue('검색 개선')
     expect(await screen.findByRole('checkbox', { name: /검색 개선/ })).toBeChecked()
     await control.selectOptions(screen.getByLabelText('작업 브랜치'), 'feat/search')
-    await control.type(screen.getByLabelText('팀을 위한 변경 요약'), '검색을 빠르게 했어요')
-    await control.click(screen.getByRole('button', { name: '코드 검토 요청' }))
+    await control.type(screen.getByLabelText('팀에 전할 변경 요약'), '검색을 빠르게 했어요')
+    await control.click(screen.getByRole('button', { name: '검토 요청 만들기' }))
     await waitFor(() => expect(created).toHaveBeenCalled())
     const sent = fetcher.mock.calls.find(([path, init]) => path.endsWith('/pull-requests') && init?.method === 'POST')!
     expect(JSON.parse(sent[1]!.body as string)).toMatchObject({ repositoryId: '40', title: '검색 개선', issueIds: ['12'] })
@@ -48,7 +48,7 @@ describe('이슈와 PR 연결', () => {
   it('기존 PR을 연결할 때 같은 저장소를 조회하고 작업 version과 CSRF를 전송한다', async () => {
     const fetcher = backend(), changed = vi.fn(), busy = vi.fn(), control = userEvent.setup()
     mount(<IssuePullRequestLinks projectId="7" issue={issue} canWrite disabled={false} onBusyChange={busy} onChanged={changed} />)
-    await control.click(screen.getByRole('button', { name: '기존 PR 연결' }))
+    await control.click(screen.getByRole('button', { name: '기존 검토 요청 연결' }))
     await screen.findByRole('option', { name: '#30 · 검색 PR' })
     await control.selectOptions(screen.getByLabelText('연결할 PR'), '3')
     await control.click(screen.getByRole('button', { name: '선택한 PR 연결' }))

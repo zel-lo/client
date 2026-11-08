@@ -1,0 +1,33 @@
+.privacy-main { width: 100%; max-width: 920px; padding: 56px 36px 80px; margin: 0 auto; }
+.privacy-policy { color: var(--text-secondary); font-size: 14px; line-height: 1.9; overflow-wrap: anywhere; }
+.privacy-policy > header { padding-bottom: 32px; border-bottom: 1px solid var(--quiet-line); }
+.privacy-policy h1 { margin: 12px 0 18px; color: var(--foreground); font-size: 32px; line-height: 1.5; letter-spacing: -1px; }
+.privacy-policy .privacy-effective { margin-top: 16px; font-size: 12px; color: var(--muted-foreground); }
+.privacy-policy > section { margin-top: 36px; }
+.privacy-policy h2 { margin-bottom: 14px; color: var(--foreground); font-size: 18px; font-weight: 600; line-height: 1.6; }
+.privacy-policy p + p, .privacy-policy .privacy-table-wrap + p, .privacy-policy dl + p { margin-top: 14px; }
+.privacy-policy a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.privacy-policy dl { display: grid; gap: 12px; margin: 20px 0 0; padding: 20px; border: 1px solid var(--quiet-line); border-radius: 14px; }
+.privacy-policy dl > div { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 18px; }
+.privacy-policy dt { color: var(--foreground); font-weight: 500; }
+.privacy-policy dd { margin: 0; }
+.privacy-table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--quiet-line); border-radius: 12px; }
+.privacy-policy table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+.privacy-policy :is(th, td) { padding: 14px 16px; border-bottom: 1px solid var(--quiet-line); vertical-align: top; min-width: 140px; }
+.privacy-policy thead th { background: var(--control-bg); color: var(--foreground); font-weight: 600; }
+.privacy-policy th[scope="row"] { color: var(--foreground); font-weight: 500; }
+.privacy-policy tbody tr:last-child > * { border-bottom: 0; }
+.privacy-policy ul { display: grid; gap: 14px; padding-left: 20px; margin: 0 0 16px; }
+.privacy-policy-source { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--quiet-line); font-size: 12px; }
+.public-footer > a { color: var(--text-secondary); font-weight: 500; }
+.public-footer > a:hover { color: var(--primary); }
+.auth-privacy-note { margin-top: 18px; font-size: 12px; color: var(--muted-foreground); }
+.auth-privacy-note a { color: var(--text-secondary); text-decoration: underline; text-underline-offset: 3px; }
+@media (max-width: 600px) {
+  .privacy-main { padding: 32px 22px 56px; }
+  .privacy-policy { font-size: 13px; }
+  .privacy-policy h1 { font-size: 27px; }
+  .privacy-policy h2 { font-size: 16px; }
+  .privacy-policy dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .privacy-policy dl { padding: 16px; gap: 16px; }
+}

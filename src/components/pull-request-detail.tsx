@@ -59,10 +59,10 @@ export function PullRequestDetail({ pr, repos, issues, onViewIssue, canEdit = fa
   return <div className="detail-content pr-detail"><span className={`event-icon large event-${status === 'merged' ? 'merge' : 'pr'}`}>{status === 'merged' ? <GitMerge size={24} /> : <GitPullRequest size={24} />}</span>
     <div className="detail-kicker"><span className="badge">{status === 'merged' ? '병합됨' : status === 'draft' ? '초안' : status === 'closed' ? '닫힘' : '검토 요청'}</span><span className="mono muted">{repositoryRef(pr.repo, pr.number, repos)}</span></div><h2>{pr.title}</h2><div className="detail-author"><strong>{pr.author}</strong><span>{pr.live ? 'GitHub 연동' : 'PR'}</span>{pr.url && <a className="subtle-link" href={pr.url} target="_blank" rel="noopener noreferrer">GitHub에서 보기</a>}</div>
     <div className="pr-branch-flow"><GitBranch size={14} /><code>{pr.branch}</code><ArrowRight size={13} /><code>{pr.base}</code></div>
-    <section className="detail-summary" aria-label="팀을 위한 변경 요약">
-      <div className="detail-summary-head"><span className="eyebrow">팀을 위한 변경 요약</span>{pr.live && canEdit && detail && !editing && <button type="button" className="subtle-link" onClick={() => { setText(summary); setError(''); setEditing(true) }}><Pencil size={12} />{summary ? '수정' : '작성하기'}</button>}</div>
+    <section className="detail-summary" aria-label="팀에 전할 변경 요약">
+      <div className="detail-summary-head"><span className="eyebrow">팀에 전할 변경 요약</span>{pr.live && canEdit && detail && !editing && <button type="button" className="subtle-link" onClick={() => { setText(summary); setError(''); setEditing(true) }}><Pencil size={12} />{summary ? '수정' : '작성하기'}</button>}</div>
       {editing
-        ? <div className="summary-editor"><textarea aria-label="팀을 위한 변경 요약" rows={5} maxLength={10000} value={text} disabled={saving} onChange={event => setText(event.target.value)} placeholder="무엇을 바꿨고, 사용자가 어떤 차이를 확인할 수 있나요?" />
+        ? <div className="summary-editor"><textarea aria-label="팀에 전할 변경 요약" rows={5} maxLength={10000} value={text} disabled={saving} onChange={event => setText(event.target.value)} placeholder="무엇을 바꿨고, 사용자가 어떤 차이를 확인할 수 있나요?" />
           {error && <p className="form-error" role="alert">{error}</p>}
           <div className="form-actions"><button type="button" className="button" disabled={saving} onClick={() => setEditing(false)}>취소</button><button type="button" className="button button-dark" disabled={saving} onClick={() => void save()}>{saving ? '저장 중…' : '저장'}</button></div></div>
         : <p className={summary ? undefined : 'muted'}>{summary || '아직 작성되지 않았어요.'}</p>}

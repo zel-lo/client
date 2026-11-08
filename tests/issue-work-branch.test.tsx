@@ -58,7 +58,7 @@ describe('작업 브랜치', () => {
   })
   it('로컬 작업에는 GitHub 발행을 안내한다', () => {
     const fetcher = backend(); mount({ ...issue, publishStatus: 'LOCAL', number: 0 })
-    expect(screen.getByText(/GitHub에 이슈를 발행하면/)).toBeInTheDocument()
+    expect(screen.getByText(/진행을 시작하면 GitHub 이슈가 연결돼요/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '브랜치 만들기' })).not.toBeInTheDocument()
     expect(fetcher).not.toHaveBeenCalled()
   })
@@ -76,7 +76,7 @@ describe('작업 브랜치', () => {
     backend()
     render(<MemoryRouter><CreateLivePullRequest projectId="7" initialIssue={{ ...issue, workBranch: 'feat/23' }} onCreated={() => {}} onCancel={() => {}} /></MemoryRouter>)
     await waitFor(() => expect(screen.getByLabelText('작업 브랜치')).toHaveValue('feat/23'))
-    expect(screen.getByLabelText('PR 제목')).toHaveValue('검색 개선')
+    expect(screen.getByLabelText('검토 요청 제목')).toHaveValue('검색 개선')
     expect(await screen.findByRole('checkbox', { name: /검색 개선/ })).toBeChecked()
   })
 })

@@ -54,14 +54,14 @@ async function moveWithMenu(target: string) {
 }
 
 describe('보드 단계 이동과 GitHub 작업', () => {
-  it.each(['LOCAL', 'PUBLISHED'] as const)('%s 작업은 패치노트 제목을 작성한 뒤 완료한다', async publishStatus => {
+  it.each(['LOCAL', 'PUBLISHED'] as const)('%s 작업은 팀에 알릴 변경 제목을 작성한 뒤 완료한다', async publishStatus => {
     const fetcher = setup({ status: 'IN_PROGRESS', publishStatus })
     const user = await moveWithMenu('완료로')
     const dialog = screen.getByRole('dialog', { name: '작업을 완료할까요?' })
-    const save = within(dialog).getByRole('button', { name: publishStatus === 'PUBLISHED' ? '완료하고 GitHub 이슈 닫기' : '완료하고 패치노트에 반영' })
+    const save = within(dialog).getByRole('button', { name: publishStatus === 'PUBLISHED' ? '완료하고 GitHub 이슈 닫기' : '완료하고 변경 내용 저장' })
     expect(save).toBeDisabled()
     expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false)
-    await user.type(within(dialog).getByLabelText('패치노트 제목'), '  검색 결과가 더 빨라졌어요  ')
+    await user.type(within(dialog).getByLabelText('팀에 알릴 변경 제목'), '  검색 결과가 더 빨라졌어요  ')
     await user.click(save)
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '작업을 완료할까요?' })).not.toBeInTheDocument())
     const request = fetcher.mock.calls.find(([, init]) => init?.method === 'PATCH')!
@@ -71,7 +71,7 @@ describe('보드 단계 이동과 GitHub 작업', () => {
     const fetcher = setup({ publishStatus: 'LOCAL' })
     const user = await moveWithMenu('완료로')
     const dialog = screen.getByRole('dialog', { name: '작업을 완료할까요?' })
-    await user.type(within(dialog).getByLabelText('패치노트 제목'), '팀에 알릴 제목')
+    await user.type(within(dialog).getByLabelText('팀에 알릴 변경 제목'), '팀에 알릴 제목')
     await user.click(within(dialog).getByRole('button', { name: '취소' }))
     expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false)
     expect(column('진행 중').getByRole('button', { name: /검색 응답 개선/ })).toBeInTheDocument()
@@ -86,10 +86,10 @@ describe('보드 단계 이동과 GitHub 작업', () => {
     })
     const user = await moveWithMenu('완료로')
     const dialog = screen.getByRole('dialog', { name: '작업을 완료할까요?' })
-    await user.type(within(dialog).getByLabelText('패치노트 제목'), '검색 결과 개선')
+    await user.type(within(dialog).getByLabelText('팀에 알릴 변경 제목'), '검색 결과 개선')
     await user.click(within(dialog).getByRole('button', { name: '완료하고 GitHub 이슈 닫기' }))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('잠시 후 다시 시도해 주세요.')
-    expect(within(dialog).getByLabelText('패치노트 제목')).toHaveValue('검색 결과 개선')
+    expect(within(dialog).getByLabelText('팀에 알릴 변경 제목')).toHaveValue('검색 결과 개선')
     await user.click(within(dialog).getByRole('button', { name: '완료하고 GitHub 이슈 닫기' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: '작업을 완료할까요?' })).not.toBeInTheDocument())
   })
@@ -112,7 +112,7 @@ describe('보드 단계 이동과 GitHub 작업', () => {
     const user = await moveWithMenu('진행 중으로')
     await waitFor(() => expect(screen.getByRole('button', { name: '배정하고 진행 중으로' })).toBeEnabled())
     await user.click(screen.getByRole('button', { name: '배정하고 진행 중으로' }))
-    await user.click(await screen.findByRole('button', { name: '나중에' }))
+    await user.click(await screen.findByRole('button', { name: '지금은 건너뛰기' }))
     expect(column('진행 중').getByRole('button', { name: /검색 응답 개선/ })).toBeInTheDocument()
     expect(fetcher.mock.calls.some(([path, init]) => path.endsWith('/branch') && init?.method === 'POST')).toBe(false)
     expect(fetcher.mock.calls.some(([path]) => path.endsWith('/publish'))).toBe(false)

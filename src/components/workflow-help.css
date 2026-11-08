@@ -1,0 +1,40 @@
+.action-context { display: flex; align-items: flex-start; gap: 12px; padding: 18px; margin: 0 0 24px; border: 1px solid color-mix(in srgb, var(--primary) 15%, var(--line)); border-radius: 14px; background: color-mix(in srgb, var(--primary) 4%, var(--card)); }
+.action-context-icon { display: grid; place-items: center; color: var(--primary); padding-top: 2px; flex-shrink: 0; }
+.action-context > div { flex: 1; min-width: 0; }
+.action-context strong { display: block; color: var(--foreground); font-size: 14px; font-weight: 600; line-height: 1.6; }
+.action-context p { margin: 5px 0 0; color: var(--text-secondary); font-size: 13px; line-height: 1.8; }
+.action-destination { flex-shrink: 0; color: var(--primary); font-size: 11px; font-weight: 600; line-height: 1.6; padding: 3px 7px; border-radius: 6px; background: color-mix(in srgb, var(--primary) 8%, var(--card)); }
+.inline-explanation { margin-top: 24px; border: 1px solid var(--quiet-line); border-radius: 14px; }
+.inline-explanation > summary, .workflow-help > summary { display: flex; align-items: center; gap: 8px; padding: 16px 18px; cursor: pointer; list-style: none; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+.inline-explanation > summary::-webkit-details-marker, .workflow-help > summary::-webkit-details-marker { display: none; }
+.inline-explanation > summary > svg, .workflow-help > summary > svg { margin-left: auto; flex-shrink: 0; transition: transform .15s ease; }
+.inline-explanation[open] > summary > svg, .workflow-help[open] > summary > svg { transform: rotate(180deg); }
+.inline-explanation-body { padding: 0 18px 20px; border-top: 1px solid var(--quiet-line); }
+.inline-explanation-body .help-text { line-height: 1.8; }
+.field-help { display: block; margin-top: 7px; color: var(--muted-foreground); font-size: 12px; font-weight: 400; line-height: 1.7; }
+.field-optional { margin-left: 6px; color: var(--muted-foreground); font-size: 11px; font-weight: 400; }
+.field-required { margin-left: 6px; font-size: 11px; font-weight: 400; color: var(--primary); }
+.issue-editor-form .action-context { margin-bottom: 20px; }
+.form-section { margin: 28px 0 0; padding-top: 24px; border-top: 1px solid var(--quiet-line); }
+.form-section > h3 { font-size: 15px; font-weight: 600; line-height: 1.6; color: var(--foreground); }
+.form-section-description { margin: 7px 0 0; color: var(--muted-foreground); font-size: 12px; line-height: 1.8; }
+.form-section > label { display: block; margin-top: 22px; font-size: 13px; font-weight: 500; color: var(--text-secondary); line-height: 1.6; }
+.markdown-editor .markdown-frame textarea { font-family: var(--font-sans); font-size: 14px; line-height: 1.8; }
+.markdown-editor.is-compact .markdown-frame textarea, .markdown-editor.is-compact .markdown-preview { min-height: 100px; }
+.markdown-toolbar { flex-wrap: wrap; }
+.markdown-editor .markdown-toolbar button { width: 32px; height: 32px; }
+.workflow-help { margin-bottom: 22px; border: 1px solid var(--quiet-line); border-radius: 14px; background: var(--card); }
+.workflow-help ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; list-style: none; padding: 4px 20px 22px; }
+.workflow-help li { display: flex; align-items: flex-start; gap: 10px; }
+.workflow-step-number { width: 22px; height: 22px; display: grid; place-items: center; flex-shrink: 0; border-radius: 7px; color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--card)); font-size: 11px; font-weight: 650; }
+.workflow-help li strong { display: flex; align-items: center; gap: 5px; font-size: 13px; line-height: 1.7; font-weight: 600; }
+.workflow-help li strong svg { color: var(--muted-foreground); flex-shrink: 0; }
+.workflow-help li p, .workflow-review-help { color: var(--muted-foreground); font-size: 12px; line-height: 1.9; }
+.workflow-help li p { margin-top: 6px; }
+.workflow-review-help { padding: 0 18px 18px; }
+.workflow-review-help strong { font-weight: 500; color: var(--text-secondary); }
+.workflow-review-help p + p { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; color: var(--text-secondary); }
+.workflow-help :is(summary, a):focus-visible, .inline-explanation > summary:focus-visible { outline: 3px solid var(--focus-halo); outline-offset: 3px; border-radius: 12px; }
+@media (max-width: 1000px) { .workflow-help ol { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .action-context { flex-wrap: wrap; padding: 15px; } .action-destination { margin-left: 30px; } .workflow-help ol { grid-template-columns: 1fr; gap: 16px; } }
+@media (prefers-reduced-motion: reduce) { .inline-explanation > summary > svg, .workflow-help > summary > svg { transition: none; } }

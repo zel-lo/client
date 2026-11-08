@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, Copy, ExternalLink, GitBranch, GitPullRequest, RefreshCw } from 'lucide-react'
 import { changeIssuePullRequest, getIssue, listAssignees, publishIssue, updateIssue, listPullRequests, startIssueWorkBranch, syncPullRequests, ProjectApiError } from '../lib/project-api'
+import { ActionContext, InlineExplanation } from './workflow-help'
 import { projectWeeks, startOfWeek, weekLabel } from '../lib/work-weeks'
 import type { IssueWorkBranch, LiveIssue, PullRequestItem, Project } from '../lib/project-api'
 
@@ -18,7 +19,7 @@ function useMounted() {
   return mounted
 }
 
-/** 백로그에서 배정과 발행을 마친 뒤에만 진행 중으로 옮긴다. 발행 재시도는 기존 요청 키를 사용한다. */
+/** 할 일에서 배정과 발행을 마친 뒤에만 진행 중으로 옮긴다. 발행 재시도는 기존 요청 키를 사용한다. */
 export function ActivateIssuePanel({ project, issue, week, initialAssignee, placement, onBusyChange, onActivated, onRefresh, onClose }: {
   project: Project; issue: LiveIssue; week: string; initialAssignee?: string | null; placement?: { beforeId: string | null }
   onBusyChange: (busy: boolean) => void; onActivated: (issue: LiveIssue) => void
@@ -71,7 +72,7 @@ export function ActivateIssuePanel({ project, issue, week, initialAssignee, plac
   if (started) return <StartWorkPanel projectId={project.id} issue={started} onBusyChange={onBusyChange} onStarted={onRefresh} onClose={onClose} />
   const weeks = projectWeeks(project)
   return <form className="dialog-form board-move-panel" onSubmit={event => { event.preventDefault(); void activate() }}>
-    <p><strong>{issue.key} {issue.title}</strong></p><p>이번에 진행할 작업의 담당자를 정하고 GitHub 이슈를 만들어요.</p>
+    <p><strong>{issue.key} {issue.title}</strong></p><ActionContext title="담당자를 정하고 진행을 시작해요" destination="github">아래 담당자와 주차로 작업을 시작해요. GitHub에도 개발할 내용을 기록한 작업(이슈)이 연결돼요.</ActionContext>
     <label>연결 저장소<input readOnly value={`${issue.repositoryOwner}/${issue.repositoryName}`} /></label>
     <label>담당자<select required value={assignee} disabled={busy || loading} onChange={event => setAssignee(event.target.value)}><option value="">담당자를 선택해 주세요</option>{assignee && !people.some(person => person.login === assignee) && <option value={assignee}>{assignee}</option>}{people.map(person => <option key={person.login} value={person.login}>{person.login}</option>)}</select></label>
     {loading && <p className="help-text" role="status">담당자를 불러오는 중…</p>}{loadError && <p className="form-error" role="alert">{loadError}<button type="button" className="subtle-link" onClick={() => setRetry(value => value + 1)}>다시 불러오기</button></p>}
@@ -117,10 +118,10 @@ export function StartWorkPanel({ projectId, issue, onBusyChange, onStarted, onCl
   </div>
   return <div className="dialog-form board-move-panel">
     <p><strong>{issue.key} {issue.title}</strong></p>
-    <p>GitHub 이슈를 준비했어요. 작업 브랜치도 준비할까요?</p><p className="help-text"><code>{name}</code> 이름을 사용하고, 같은 이름의 브랜치가 있으면 이어서 작업해요.</p>
-    <p className="help-text">브랜치를 만들어 두면 PR을 작성할 때 이 브랜치가 미리 선택되고, PR 상태에 따라 단계가 자동으로 바뀌어요.</p>
+    <ActionContext title="작업이 진행 중으로 바뀌었어요">담당자 배정과 GitHub 이슈 연결을 마쳤어요. 아래는 개발을 직접 맡은 사람을 위한 선택 단계예요.</ActionContext><InlineExplanation title="작업 브랜치가 무엇인가요?"><p className="help-text">브랜치는 기존 코드에서 나눠 이 작업을 개발할 공간이에요. 개발을 마치면 이 브랜치의 코드로 검토를 요청해요.</p></InlineExplanation><p className="help-text"><code>{name}</code> 이름을 사용하고, 같은 이름의 브랜치가 있으면 이어서 작업해요.</p>
+    <p className="help-text">브랜치를 만들어 두면 코드 검토 요청을 만들 때 자동으로 선택돼요. 지금 건너뛰어도 작업 상세에서 준비할 수 있어요.</p>
     {error && <p className="form-error" role="alert">{error}</p>}
-    <div className="form-actions"><button type="button" className="button" disabled={busy} onClick={onClose}>나중에</button><button type="button" className="button button-dark" disabled={busy} onClick={() => void start()}><GitBranch size={14} />{busy ? '브랜치 만드는 중…' : '브랜치 만들기'}</button></div>
+    <div className="form-actions"><button type="button" className="button" disabled={busy} onClick={onClose}>지금은 건너뛰기</button><button type="button" className="button button-dark" disabled={busy} onClick={() => void start()}><GitBranch size={14} />{busy ? '브랜치 만드는 중…' : '브랜치 만들기'}</button></div>
   </div>
 }
 
@@ -173,9 +174,9 @@ export function LinkPullRequestPanel({ projectId, issue, onBusyChange, onLinked,
   return <div className="dialog-form board-move-panel">
     <p>검토 중은 팀의 확인을 기다리는 PR이 있는 단계예요. <strong>{issue.key}</strong>을 해결하는 PR을 골라 주세요.</p>
     {!pulls ? <p className="help-text" role="status">열린 PR을 불러오는 중…</p> : pulls.length ? <div className="pr-checklist" role="radiogroup" aria-label="검토받을 PR">{pulls.map(pull => <label key={pull.id}><input type="radio" name="board-link-pull" value={pull.id} checked={selected === pull.id} disabled={busy} onChange={() => setSelected(pull.id)} /><span><strong>#{pull.number} {pull.title}{recommended(pull, issue) && <span className="board-move-recommend">작업 브랜치</span>}</strong><small className="mono">{pull.headBranch} → {pull.baseBranch} · {pull.draft ? '초안' : pull.reviewDecision === 'CHANGES_REQUESTED' ? '수정 요청' : pull.reviewDecision === 'APPROVED' ? '승인됨' : '검토 대기'}</small></span></label>)}</div>
-      : <p className="help-text">{issue.repositoryName} 저장소에 연결할 수 있는 열린 PR이 없어요. 작업 브랜치를 push한 뒤 PR을 작성해 주세요.</p>}
+      : <p className="help-text">{issue.repositoryName} 저장소에 연결할 수 있는 열린 PR이 없어요. 개발한 코드를 GitHub에 올린 뒤 검토 요청을 만들어 주세요.</p>}
     {chosen && (chosen.draft || chosen.reviewDecision === 'CHANGES_REQUESTED') && <p className="help-text">{chosen.draft ? '초안 PR이라 연결해도 진행 중에 남아요. GitHub에서 Ready for review로 바꾸면 검토 중으로 옮겨져요.' : '수정 요청을 받은 PR이라 연결해도 진행 중에 남아요. 수정 후 다시 검토를 받으면 검토 중으로 옮겨져요.'}</p>}
     {error && <p className="form-error" role="alert">{error}</p>}
-    <div className="form-actions"><button type="button" className="subtle-link" disabled={busy || syncing} onClick={() => void sync()}><RefreshCw size={12} className={syncing ? 'board-saving' : ''} />{syncing ? 'GitHub 확인 중…' : 'GitHub PR 다시 가져오기'}</button><button type="button" className="button" disabled={busy} onClick={onClose}>취소</button><Link className="button" to={`/pull-requests?createForIssue=${encodeURIComponent(issue.id)}`}>이 작업으로 새 PR 작성</Link><button type="button" className="button button-dark" disabled={busy || !chosen} onClick={() => void link()}><GitPullRequest size={14} />{busy ? '연결하는 중…' : 'PR 연결'}</button></div>
+    <div className="form-actions"><button type="button" className="subtle-link" disabled={busy || syncing} onClick={() => void sync()}><RefreshCw size={12} className={syncing ? 'board-saving' : ''} />{syncing ? 'GitHub 확인 중…' : 'GitHub PR 다시 가져오기'}</button><button type="button" className="button" disabled={busy} onClick={onClose}>취소</button><Link className="button" to={`/pull-requests?createForIssue=${encodeURIComponent(issue.id)}`}>이 작업으로 검토 요청 만들기</Link><button type="button" className="button button-dark" disabled={busy || !chosen} onClick={() => void link()}><GitPullRequest size={14} />{busy ? '연결하는 중…' : 'PR 연결'}</button></div>
   </div>
 }
