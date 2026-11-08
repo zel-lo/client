@@ -34,14 +34,14 @@ function mount(value = issue, canWrite = true, disabled = false) {
 }
 
 describe('작업 브랜치', () => {
-  it('조회만으로 생성하지 않고 작업 시작 후 Git 명령어를 복사한다', async () => {
+  it('조회만으로 생성하지 않고 브랜치 만들기 후 Git 명령어를 복사한다', async () => {
     const fetcher = backend(), control = userEvent.setup()
     const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue()
     const { changed, busy } = mount()
     expect(await screen.findByText('feat/23')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Git 명령어 복사' })).not.toBeInTheDocument()
     expect(fetcher.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false)
-    await control.click(screen.getByRole('button', { name: '작업 시작' }))
+    await control.click(screen.getByRole('button', { name: '브랜치 만들기' }))
     await waitFor(() => expect(changed).toHaveBeenCalledWith(expect.objectContaining({ status: 'IN_PROGRESS', workBranch: 'feat/23', version: 5 })))
     expect(fetcher).toHaveBeenCalledWith('/api/projects/7/issues/12/branch', expect.objectContaining({ method: 'POST', body: JSON.stringify({ version: 4 }), headers: expect.objectContaining({ 'X-CSRF': 'csrf' }) }))
     await control.click(screen.getByRole('button', { name: 'Git 명령어 복사' }))
@@ -51,7 +51,7 @@ describe('작업 브랜치', () => {
   })
   it('실패하면 진행 중으로 바꾸거나 성공 명령어를 표시하지 않는다', async () => {
     backend({ failure: true }); const { changed } = mount()
-    await userEvent.setup().click(await screen.findByRole('button', { name: '작업 시작' }))
+    await userEvent.setup().click(await screen.findByRole('button', { name: '브랜치 만들기' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('브랜치를 다시 확인해 주세요.')
     expect(changed).not.toHaveBeenCalled()
     expect(screen.queryByRole('button', { name: 'Git 명령어 복사' })).not.toBeInTheDocument()
@@ -59,18 +59,18 @@ describe('작업 브랜치', () => {
   it('로컬 작업에는 GitHub 발행을 안내한다', () => {
     const fetcher = backend(); mount({ ...issue, publishStatus: 'LOCAL', number: 0 })
     expect(screen.getByText(/GitHub에 이슈를 발행하면/)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '작업 시작' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '브랜치 만들기' })).not.toBeInTheDocument()
     expect(fetcher).not.toHaveBeenCalled()
   })
   it('조회 전용 멤버는 기존 명령어를 볼 수 있지만 브랜치를 만들 수 없다', async () => {
     backend({ ready: true }); mount({ ...issue, workBranch: 'feat/23' }, false)
     expect(await screen.findByRole('button', { name: 'Git 명령어 복사' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /작업 시작|작업 브랜치 확인/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /브랜치 만들기|작업 브랜치 확인/ })).not.toBeInTheDocument()
   })
-  it('저장하지 않은 수정이 있으면 작업 시작을 막는다', async () => {
+  it('저장하지 않은 수정이 있으면 브랜치 만들기을 막는다', async () => {
     backend(); mount(issue, true, true)
     await screen.findByText('feat/23')
-    expect(screen.getByRole('button', { name: '작업 시작' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '브랜치 만들기' })).toBeDisabled()
   })
   it('브랜치가 저장된 이슈에서 PR을 작성하면 작업 브랜치를 자동 선택한다', async () => {
     backend()

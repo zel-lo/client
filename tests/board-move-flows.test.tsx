@@ -19,6 +19,7 @@ function setup(initial: Partial<LiveIssue> = {}, pulls: PullRequestItem[] = []) 
   let row: LiveIssue = { ...seed, ...initial }
   const fetcher = vi.fn(async (path: string, init?: RequestInit) => {
     if (path === '/api/auth/csrf') return Response.json({ headerName: 'X-CSRF-TOKEN', token: 'csrf' })
+    if (path.includes('/assignees?')) return Response.json({ items: [{ login: 'me' }], hasNext: false })
     if (path.endsWith('/repositories')) return Response.json([{ id: '10', name: 'server', owner: 'team' }])
     if (path === '/api/projects/1/issues/20/branch' && init?.method === 'POST') {
       row = { ...row, status: 'IN_PROGRESS', workBranch: 'feat/23', workBranchBase: 'main', version: row.version + 1 }
@@ -53,25 +54,68 @@ async function moveWithMenu(target: string) {
 }
 
 describe('보드 단계 이동과 GitHub 작업', () => {
-  it('작업 중으로 옮기면 이슈 번호 브랜치를 만들고 명령어를 보여준다', async () => {
-    const fetcher = setup()
-    const user = await moveWithMenu('작업 중으로')
-    const dialog = screen.getByRole('dialog', { name: '작업을 시작할까요?' })
-    expect(within(dialog).getByText('feat/23')).toBeInTheDocument()
-    expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH' || init?.method === 'POST')).toBe(false)
-    await user.click(within(dialog).getByRole('button', { name: /브랜치 만들고 시작/ }))
-    expect(await within(dialog).findByLabelText('작업 브랜치 전환 명령어')).toHaveTextContent('git switch feat/23')
-    expect(fetcher).toHaveBeenCalledWith('/api/projects/1/issues/20/branch', expect.objectContaining({ method: 'POST', body: JSON.stringify({ version: 2 }) }))
-    await user.click(within(dialog).getByRole('button', { name: '확인' }))
-    await waitFor(() => expect(column('작업 중').getByRole('button', { name: /검색 응답 개선/ })).toBeInTheDocument())
-    expect(column('작업 중').getByTitle('작업 브랜치 feat/23')).toBeInTheDocument()
+  it.each(['LOCAL', 'PUBLISHED'] as const)('%s 작업은 패치노트 제목을 작성한 뒤 완료한다', async publishStatus => {
+    const fetcher = setup({ status: 'IN_PROGRESS', publishStatus })
+    const user = await moveWithMenu('완료로')
+    const dialog = screen.getByRole('dialog', { name: '작업을 완료할까요?' })
+    const save = within(dialog).getByRole('button', { name: publishStatus === 'PUBLISHED' ? '완료하고 GitHub 이슈 닫기' : '완료하고 패치노트에 반영' })
+    expect(save).toBeDisabled()
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false)
+    await user.type(within(dialog).getByLabelText('패치노트 제목'), '  검색 결과가 더 빨라졌어요  ')
+    await user.click(save)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '작업을 완료할까요?' })).not.toBeInTheDocument())
+    const request = fetcher.mock.calls.find(([, init]) => init?.method === 'PATCH')!
+    expect(JSON.parse(request[1]!.body as string)).toMatchObject({ patchNoteTitle: '검색 결과가 더 빨라졌어요', githubState: 'CLOSED', details: { status: 'DONE', title: seed.title } })
   })
-  it('브랜치 없이 옮기기는 기존처럼 상태만 저장한다', async () => {
-    const fetcher = setup()
-    const user = await moveWithMenu('작업 중으로')
-    await user.click(screen.getByRole('button', { name: '브랜치 없이 옮기기' }))
-    await waitFor(() => expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(true))
+  it('완료를 취소하면 상태를 저장하지 않는다', async () => {
+    const fetcher = setup({ publishStatus: 'LOCAL' })
+    const user = await moveWithMenu('완료로')
+    const dialog = screen.getByRole('dialog', { name: '작업을 완료할까요?' })
+    await user.type(within(dialog).getByLabelText('패치노트 제목'), '팀에 알릴 제목')
+    await user.click(within(dialog).getByRole('button', { name: '취소' }))
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false)
+    expect(column('진행 중').getByRole('button', { name: /검색 응답 개선/ })).toBeInTheDocument()
+  })
+  it('완료 저장에 실패하면 제목을 유지하고 다시 저장할 수 있다', async () => {
+    const fetcher = setup({ status: 'IN_PROGRESS' })
+    const original = fetcher.getMockImplementation()!
+    let fail = true
+    fetcher.mockImplementation(async (path, init) => {
+      if (init?.method === 'PATCH' && fail) { fail = false; return Response.json({ message: '잠시 후 다시 시도해 주세요.' }, { status: 503 }) }
+      return original(path, init)
+    })
+    const user = await moveWithMenu('완료로')
+    const dialog = screen.getByRole('dialog', { name: '작업을 완료할까요?' })
+    await user.type(within(dialog).getByLabelText('패치노트 제목'), '검색 결과 개선')
+    await user.click(within(dialog).getByRole('button', { name: '완료하고 GitHub 이슈 닫기' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('잠시 후 다시 시도해 주세요.')
+    expect(within(dialog).getByLabelText('패치노트 제목')).toHaveValue('검색 결과 개선')
+    await user.click(within(dialog).getByRole('button', { name: '완료하고 GitHub 이슈 닫기' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '작업을 완료할까요?' })).not.toBeInTheDocument())
+  })
+  it('기존 GitHub 이슈를 배정한 뒤 선택해서 브랜치를 만든다', async () => {
+    const fetcher = setup({ status: 'BACKLOG' })
+    const user = await moveWithMenu('진행 중으로')
+    const dialog = screen.getByRole('dialog', { name: '이번에 진행할 작업을 정해요' })
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH' || init?.method === 'POST')).toBe(false)
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '배정하고 진행 중으로' })).toBeEnabled())
+    await user.click(within(dialog).getByRole('button', { name: '배정하고 진행 중으로' }))
+    await user.click(await screen.findByRole('button', { name: '브랜치 만들기' }))
+    expect(await screen.findByLabelText('작업 브랜치 전환 명령어')).toHaveTextContent('git switch feat/23')
+    expect(fetcher).toHaveBeenCalledWith('/api/projects/1/issues/20/branch', expect.objectContaining({ method: 'POST', body: JSON.stringify({ version: 3 }) }))
+    expect(fetcher.mock.calls.some(([path]) => path.endsWith('/publish'))).toBe(false)
+    await user.click(screen.getByRole('button', { name: '확인' }))
+    expect(column('진행 중').getByTitle('작업 브랜치 feat/23')).toBeInTheDocument()
+  })
+  it('브랜치는 나중에 만들 수 있고 GitHub 이슈를 중복 생성하지 않는다', async () => {
+    const fetcher = setup({ status: 'BACKLOG' })
+    const user = await moveWithMenu('진행 중으로')
+    await waitFor(() => expect(screen.getByRole('button', { name: '배정하고 진행 중으로' })).toBeEnabled())
+    await user.click(screen.getByRole('button', { name: '배정하고 진행 중으로' }))
+    await user.click(await screen.findByRole('button', { name: '나중에' }))
+    expect(column('진행 중').getByRole('button', { name: /검색 응답 개선/ })).toBeInTheDocument()
     expect(fetcher.mock.calls.some(([path, init]) => path.endsWith('/branch') && init?.method === 'POST')).toBe(false)
+    expect(fetcher.mock.calls.some(([path]) => path.endsWith('/publish'))).toBe(false)
   })
   it('검토 중으로 옮기면 작업 브랜치의 PR을 추천하고 연결 후 검토 중에 둔다', async () => {
     const fetcher = setup({ status: 'IN_PROGRESS', workBranch: 'feat/23' }, [pull('31', 31, 'feat/other'), pull('41', 41, 'feat/23')])
@@ -85,29 +129,29 @@ describe('보드 단계 이동과 GitHub 작업', () => {
     expect(fetcher.mock.calls.some(([path, init]) => path === '/api/projects/1/issues/20/pull-requests/41?version=2' && init?.method === 'POST')).toBe(true)
     expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false)
   })
-  it('초안 PR을 연결하면 작업 중에 남는다고 안내한다', async () => {
+  it('초안 PR을 연결하면 진행 중에 남는다고 안내한다', async () => {
     setup({ status: 'IN_PROGRESS', workBranch: 'feat/23' }, [pull('41', 41, 'feat/23', true)])
     const user = await moveWithMenu('검토 중으로')
     const dialog = screen.getByRole('dialog', { name: '어떤 PR로 검토를 받을까요?' })
-    expect(await within(dialog).findByText(/초안 PR이라 연결해도 작업 중에 남아요/)).toBeInTheDocument()
+    expect(await within(dialog).findByText(/초안 PR이라 연결해도 진행 중에 남아요/)).toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: /PR 연결/ }))
-    expect(await screen.findByText(/#41을 연결했어요. 초안 PR이라 작업 중에 남아요/)).toBeInTheDocument()
+    expect(await screen.findByText(/#41을 연결했어요. 초안 PR이라 진행 중에 남아요/)).toBeInTheDocument()
   })
   it('열린 PR이 정한 단계는 손으로 바꾸지 않고 이유를 알려준다', async () => {
     const open = pull('41', 41, 'feat/23')
     const fetcher = setup({ status: 'IN_REVIEW', workBranch: 'feat/23', pullRequests: [linked(open)] })
-    await moveWithMenu('작업 중으로')
+    await moveWithMenu('진행 중으로')
     expect(screen.getByRole('dialog', { name: 'PR 상태로 단계가 정해져요' })).toHaveTextContent('#41 · PR 41 · 검토 중')
     expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH' || init?.method === 'POST')).toBe(false)
   })
   it('끄는 동안 카드가 갈 열에 놓으면 일어날 일을 보여준다', async () => {
     const user = userEvent.setup()
-    const item = { id: 'a', key: 'Z-1', title: '끌 작업', status: 'todo' as const, priority: 'medium' as const, repositoryId: 'repo', repositoryName: 'server', assignee: null, sourceLabel: '수시 요청', plannedWeekStart: week, dropHints: { in_progress: { label: '놓으면 feat/1 브랜치를 만들 수 있어요', tone: 'action' as const } } }
+    const item = { id: 'a', key: 'Z-1', title: '끌 작업', status: 'backlog' as const, priority: 'medium' as const, repositoryId: 'repo', repositoryName: 'server', assignee: null, sourceLabel: '수시 요청', plannedWeekStart: week, dropHints: { in_progress: { label: '놓으면 feat/1 브랜치를 만들 수 있어요', tone: 'action' as const } } }
     render(<TeamBoard items={[item]} week={week} actions={{ onOpen: vi.fn(), onMove: vi.fn(), onAssign: vi.fn(), loadAssignees: async () => ({ items: [], hasNext: false }) }} />)
     expect(screen.queryByText('놓으면 feat/1 브랜치를 만들 수 있어요')).not.toBeInTheDocument()
     screen.getByRole('button', { name: 'Z-1 끌어서 옮기기' }).focus()
     await user.keyboard('[Space]')
-    expect(await column('작업 중').findByText('놓으면 feat/1 브랜치를 만들 수 있어요')).toBeInTheDocument()
+    expect(await column('진행 중').findByText('놓으면 feat/1 브랜치를 만들 수 있어요')).toBeInTheDocument()
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByText('놓으면 feat/1 브랜치를 만들 수 있어요')).not.toBeInTheDocument())
   })

@@ -62,8 +62,10 @@ export async function json<T>(path: string, options?: RequestInit): Promise<T> {
 
 export async function mutate<T>(path: string, method: 'POST' | 'PATCH' | 'DELETE', body?: unknown): Promise<T> {
   const csrf = await json<{ headerName: string; token: string }>('/api/auth/csrf')
-  return json<T>(path, { method, headers: { 'Content-Type': 'application/json', [csrf.headerName]: csrf.token },
+  const result = await json<T>(path, { method, headers: { 'Content-Type': 'application/json', [csrf.headerName]: csrf.token },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
+  if (/\/issues(?:\/|$)/.test(path)) window.dispatchEvent(new Event('zello:workspace-updated'))
+  return result
 }
 
 export const listProjects = (signal?: AbortSignal) => json<Project[]>('/api/projects', { signal })
@@ -135,7 +137,7 @@ export const listIssues = (projectId: string, options: { page?: number; size?: n
 }
 export const getIssue = (projectId: string, id: string, signal?: AbortSignal) => json<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(id)}`, { signal })
 export const createIssue = (projectId: string, repositoryId: string, details: IssueDetails, requestKey: string) => mutate<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues`, 'POST', { repositoryId, details, requestKey })
-export const updateIssue = (projectId: string, issue: LiveIssue, details: IssueDetails, githubState: LiveIssue['githubState'], placement?: { beforeId: string | null }) => mutate<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}`, 'PATCH', { version: issue.version, details, githubState: githubState ?? 'OPEN', ...(placement ? { placement } : {}) })
+export const updateIssue = (projectId: string, issue: LiveIssue, details: IssueDetails, githubState: LiveIssue['githubState'], placement?: { beforeId: string | null }, patchNoteTitle?: string) => mutate<LiveIssue>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}`, 'PATCH', { version: issue.version, details, githubState: githubState ?? 'OPEN', ...(placement ? { placement } : {}), ...(patchNoteTitle !== undefined ? { patchNoteTitle } : {}) })
 export const archiveIssue = (projectId: string, issue: LiveIssue) => mutate<void>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}?version=${issue.version}`, 'DELETE')
 export const restoreIssue = (projectId: string, issue: LiveIssue) => mutate<void>(`/api/projects/${encodeURIComponent(projectId)}/issues/${encodeURIComponent(issue.id)}/restore?version=${issue.version}`, 'POST')
 export const syncIssues = (projectId: string) => mutate<{ collected: number; skippedRepositories: number; hasMore: boolean }>(`/api/projects/${encodeURIComponent(projectId)}/issues/sync`, 'POST')

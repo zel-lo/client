@@ -15,8 +15,7 @@ import { LoadingState } from './loading-state'
 
 export const boardStates: { id: IssueStatus; label: string; hint: string; icon: typeof Circle }[] = [
   { id: 'backlog', label: '백로그', hint: '다음 계획을 기다리는 일', icon: Archive },
-  { id: 'todo', label: '이번에 할 일', hint: '이번 주에 함께 할 일이에요', icon: Circle },
-  { id: 'in_progress', label: '작업 중', hint: '차근차근 진행하고 있어요', icon: CircleDot },
+  { id: 'in_progress', label: '진행 중', hint: '담당자를 배정하고 GitHub 이슈를 만들어요', icon: CircleDot },
   { id: 'in_review', label: '검토 중', hint: '팀의 확인을 기다리고 있어요', icon: GitPullRequest },
   { id: 'done', label: '완료', hint: '이번 주에 마무리한 일이에요', icon: CheckCircle2 },
 ]
@@ -30,7 +29,7 @@ export type BoardItem = {
   branch?: string | null
   /** 이 카드를 다른 열에 놓으면 일어나는 일. 끄는 동안 열 위에 보여준다. */
   dropHints?: Partial<Record<IssueStatus, DropHint>>
-  /** 실제 작업의 GitHub 발행 상태. 샘플 작업은 없다. */
+  /** 작업의 GitHub 발행 상태. */
   github?: { state: 'published' | 'local' | 'pending' | 'failed'; url?: string }
 }
 export type DropHint = { label: string; tone: 'action' | 'blocked' }
@@ -151,14 +150,25 @@ function WorkCard({ item, week, canWrite, busy, actions }: { item: BoardItem; we
 function BoardColumn({ state, items, week, canWrite, busyId, disabled, actions, onCreate, dragging }: { state: typeof boardStates[number]; items: BoardItem[]; week: string; canWrite: boolean; busyId: string | null; disabled: boolean; actions: BoardActions; onCreate?: () => void; dragging?: BoardItem }) {
   const { setNodeRef, isOver } = useDroppable({ id: `column:${state.id}`, data: { status: state.id, type: 'column' }, disabled: !canWrite || disabled })
   const hint = dragging && dragging.status !== state.id ? dragging.dropHints?.[state.id] : undefined
+  // 완료 열은 계속 쌓이므로 최근(열의 끝쪽) 몇 개만 보여주고 나머지는 접어 둔다. 새로 옮긴 카드는 끝에 붙어 항상 보인다.
+  const [expanded, setExpanded] = useState(false)
+  const hidden = state.id === 'done' && !expanded ? Math.max(0, items.length - DONE_VISIBLE) : 0
+  const visible = hidden ? items.slice(hidden) : items
   return <section ref={setNodeRef} className={`board-column board-column-${state.id} ${isOver ? 'is-over' : ''} ${hint ? `has-drop-hint is-${hint.tone}` : ''}`} aria-label={`${state.label} 열`}>
-    <div className="board-column-heading"><state.icon size={16} /><h3>{state.label}</h3><span className="board-column-count">{items.length}</span>{onCreate && canWrite && state.id === 'todo' && <button type="button" className="icon-button tiny" aria-label="이번 주 작업 추가" disabled={disabled} onClick={onCreate}><Plus size={15} /></button>}</div><p className="board-column-hint">{state.hint}</p>
+    <div className="board-column-heading"><state.icon size={16} /><h3>{state.label}</h3><span className="board-column-count">{items.length}</span>{onCreate && canWrite && state.id === 'backlog' && <button type="button" className="icon-button tiny" aria-label="백로그 작업 추가" disabled={disabled} onClick={onCreate}><Plus size={15} /></button>}</div><p className="board-column-hint">{state.hint}</p>
     {hint && <div className={`board-drop-hint is-${hint.tone}`} role="note">{hint.tone === 'blocked' ? <CircleAlert size={13} /> : state.id === 'in_review' ? <GitPullRequest size={13} /> : state.id === 'in_progress' ? <GitBranch size={13} /> : <ArrowRight size={13} />}<span>{hint.label}</span></div>}
-    <SortableContext items={items.map(item => item.id)} strategy={verticalListSortingStrategy}><div className="board-column-cards">{items.map(item => <WorkCard key={item.id} item={item} week={week} canWrite={canWrite && !disabled && !busyId} busy={busyId === item.id} actions={actions} />)}
+    <SortableContext items={visible.map(item => item.id)} strategy={verticalListSortingStrategy}><div className="board-column-cards">
+      {state.id === 'done' && items.length > DONE_VISIBLE && <button type="button" className="board-column-more" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? '최근 완료만 보기' : `앞서 완료한 ${hidden}개 더 보기`}</button>}
+      {visible.map(item => <WorkCard key={item.id} item={item} week={week} canWrite={canWrite && !disabled && !busyId} busy={busyId === item.id} actions={actions} />)}
       {!items.length && <div className="board-column-empty"><state.icon size={20} strokeWidth={1.3} /><p>{state.id === 'done' ? '마무리한 일이 여기에 모여요' : state.id === 'backlog' ? '다음에 할 일을 모아두세요' : '아직 작업이 없어요'}</p>{canWrite && <span>카드를 이곳으로 옮겨주세요</span>}</div>}
     </div></SortableContext>
   </section>
 }
+
+const DONE_VISIBLE = 5
+const BACKLOG_PREF = 'zello:board-show-backlog'
+function readBacklogPref() { try { return localStorage.getItem(BACKLOG_PREF) !== 'false' } catch { return true } }
+function writeBacklogPref(value: boolean) { try { localStorage.setItem(BACKLOG_PREF, String(value)) } catch { /* 저장소를 쓸 수 없으면 이번 화면에서만 유지한다. */ } }
 
 const collisionDetection: CollisionDetection = args => {
   const collisions = pointerWithin(args)
@@ -170,11 +180,13 @@ const collisionDetection: CollisionDetection = args => {
   return args.pointerCoordinates ? [] : closestCorners(args)
 }
 
-export function TeamBoard({ items, week, actions, canWrite = true, busyId = null, disabled = false, onCreate }: { items: BoardItem[]; week: string; actions: BoardActions; canWrite?: boolean; busyId?: string | null; disabled?: boolean; onCreate?: () => void }) {
+export function TeamBoard({ items: sourceItems, week, actions, canWrite = true, busyId = null, disabled = false, onCreate }: { items: BoardItem[]; week: string; actions: BoardActions; canWrite?: boolean; busyId?: string | null; disabled?: boolean; onCreate?: () => void }) {
+  const items = sourceItems.map(item => item.status === 'todo' ? { ...item, status: 'in_progress' as const } : item)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [meeting, setMeeting] = useState(false)
   const [attentionOnly, setAttentionOnly] = useState(false)
-  const [showBacklog, setShowBacklog] = useState(true)
+  const [showBacklog, setShowBacklog] = useState(readBacklogPref)
+  function toggleBacklog() { setShowBacklog(value => { writeBacklogPref(!value); return !value }) }
   const id = useId()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
   const attention = items.filter(item => item.status !== 'done' && (item.attention?.tone === 'danger' || item.attention?.tone === 'warning' || !item.assignee))
@@ -196,7 +208,7 @@ export function TeamBoard({ items, week, actions, canWrite = true, busyId = null
     await actions.onMove({ id: item.id, status, beforeId })
   }
   return <div className={`team-board ${meeting ? 'meeting-mode' : ''}`}>
-    <div className="board-overview"><div className="board-summary"><span>{items.filter(item => item.status !== 'backlog' && item.status !== 'done').length}개 진행 중</span><i /><span><RotateCcw size={12} />{items.filter(item => item.status !== 'backlog' && item.status !== 'done' && item.plannedWeekStart < week).length}개 이월</span><i /><span className="board-summary-done"><CheckCircle2 size={12} />{items.filter(item => item.status === 'done').length}개 완료</span></div><div className="board-display-actions"><button type="button" aria-pressed={showBacklog} onClick={() => setShowBacklog(value => !value)}><Archive size={13} />백로그 {items.filter(item => item.status === 'backlog').length}</button><button type="button" aria-pressed={meeting} onClick={() => { setMeeting(value => !value); setAttentionOnly(false) }}><Mic size={13} />회의 모드</button></div></div>
+    <div className="board-overview"><div className="board-summary"><span>{items.filter(item => item.status !== 'backlog' && item.status !== 'done').length}개 진행 중</span><i /><span><RotateCcw size={12} />{items.filter(item => item.status !== 'backlog' && item.status !== 'done' && item.plannedWeekStart < week).length}개 이월</span><i /><span className="board-summary-done"><CheckCircle2 size={12} />{items.filter(item => item.status === 'done').length}개 완료</span></div><div className="board-display-actions"><button type="button" aria-pressed={showBacklog} onClick={toggleBacklog}><Archive size={13} />백로그 {items.filter(item => item.status === 'backlog').length}</button><button type="button" aria-pressed={meeting} onClick={() => { setMeeting(value => !value); setAttentionOnly(false) }}><Mic size={13} />회의 모드</button></div></div>
     {meeting && <div className="meeting-summary"><div><span className="week-eyebrow"><Mic size={12} />이번 회의에서 함께 확인해요</span><strong>먼저 확인할 작업이 {attention.length}개 있어요</strong><p>담당자 미지정과 확인이 필요한 작업을 모았어요.</p></div><button className="button" type="button" aria-pressed={attentionOnly} onClick={() => setAttentionOnly(value => !value)}>{attentionOnly ? '모든 작업 보기' : '확인할 작업만 보기'}<ArrowRight size={14} /></button></div>}
     <DndContext id={id} sensors={sensors} collisionDetection={collisionDetection} onDragStart={event => setActiveId(String(event.active.id))} onDragCancel={() => setActiveId(null)} onDragEnd={event => { void drop(event) }} accessibility={{ screenReaderInstructions: { draggable: 'Space 또는 Enter로 카드를 들고, 방향키로 옮긴 뒤 다시 눌러 놓으세요. Escape로 취소합니다.' }, announcements: {
       onDragStart: ({ active }) => `${items.find(item => item.id === active.id)?.key ?? '작업'}을 들었어요.`,

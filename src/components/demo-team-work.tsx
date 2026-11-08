@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
 import { members } from '../data/mock'
 import type { Repo } from '../data/mock'
-import { CURRENT_USER, issueSources } from '../data/work-items'
+import { CURRENT_USER, issueSources, issueStatuses } from '../data/work-items'
 import type { Issue, PullRequest } from '../data/work-items'
 import { belongsToWeek, startOfWeek, validWeek } from '../lib/work-weeks'
 import { IssuesPanel } from './issues-panel'
@@ -24,8 +24,10 @@ export function DemoTeamWork({ issues, repos, pullRequests, repoFilter, onSelect
   const assignee = params.get('assignee') ?? 'all'
   const source = params.get('source') ?? 'all'
   const focus = params.get('focus') ?? 'all'
-  const normalized = issues.map(issue => ({ ...issue, plannedWeekStart: issue.plannedWeekStart ?? startOfWeek(issue.meetingDate), completedAt: issue.completedAt ?? (issue.status === 'done' ? '2026-10-27T09:00:00Z' : null) }))
-  const weekly = normalized.filter(issue => belongsToWeek(issue, week))
+  const requestedStatus = params.get('status')?.toLowerCase() ?? 'all'
+  const status = Object.hasOwn(issueStatuses, requestedStatus) ? requestedStatus : 'all'
+  const normalized = issues.map(issue => ({ ...issue, status: (issue.status === 'todo' ? 'in_progress' : issue.status) as Issue['status'], plannedWeekStart: issue.plannedWeekStart ?? startOfWeek(issue.meetingDate), completedAt: issue.completedAt ?? (issue.status === 'done' ? '2026-10-27T09:00:00Z' : null) }))
+  const weekly = normalized.filter(issue => belongsToWeek(issue, week) && (status === 'all' || issue.status === status))
   function setParam(key: string, value: string) {
     setParams(current => { const next = new URLSearchParams(current); if (value === 'all' || key === 'week' && value === currentWeek) next.delete(key); else next.set(key, value); return next })
   }
@@ -57,6 +59,7 @@ export function DemoTeamWork({ issues, repos, pullRequests, repoFilter, onSelect
   return <section className="demo-team-work" aria-label="주간 팀 작업">
     <WeekNavigation week={week} onChange={value => setParam('week', value)} />
     <div className="board-toolbar"><WorkViewToggle view={view} onChange={value => setParam('view', value)} />
+      {status !== 'all' && <button className="button" onClick={() => setParam('status', 'all')}>{issueStatuses[status as keyof typeof issueStatuses]} 필터 해제</button>}
       {view === 'board' && <><input className="board-search" type="search" aria-label="작업 검색" placeholder="제목 또는 작업 번호 검색" value={query} onChange={event => setQuery(event.target.value)} /><select aria-label="작업 확인 필터" value={focus} onChange={event => setParam('focus', event.target.value)}><option value="all">전체 작업</option><option value="mine">내가 맡은 작업</option><option value="unassigned">담당자 미지정</option><option value="unlinked">PR 미연결</option></select><select aria-label="담당자 필터" value={assignee} onChange={event => setParam('assignee', event.target.value)}><option value="all">모든 담당자</option>{members.map(member => <option key={member.name}>{member.name}</option>)}</select><select aria-label="회의 구분 필터" value={source} onChange={event => setParam('source', event.target.value)}><option value="all">모든 등록 경로</option>{Object.entries(issueSources).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></>}
     </div>
     {notice && <p className="connection-notice" role="status"><CheckCircle2 size={13} /> {notice}</p>}

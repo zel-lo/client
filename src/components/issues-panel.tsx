@@ -54,21 +54,21 @@ export function IssueEditor({ issue, repos, pullRequests, defaultRepo, onSave, o
   onSave: (issue: Omit<Issue, 'id'>) => void; onCancel: () => void; onViewPr: (pr: PullRequest) => void;
 }) {
   const [editorParams] = useSearchParams()
-  const [form, setForm] = useState<Omit<Issue, 'id'>>(() => issue ?? {
-    plannedWeekStart: startOfWeek(editorParams.get('week') ?? undefined), title: '', description: '', status: 'todo', priority: 'medium', assignee: '',
+  const [form, setForm] = useState<Omit<Issue, 'id'>>(() => issue ? { ...issue, status: issue.status === 'todo' ? 'in_progress' : issue.status } : {
+    plannedWeekStart: startOfWeek(editorParams.get('week') ?? undefined), title: '', description: '', status: 'backlog', priority: 'medium', assignee: '',
     repo: repos.some(repo => repo.id === defaultRepo) ? defaultRepo : repos[0]?.id ?? '', pullRequestIds: [], source: 'daily', meetingDate: '2026-10-27', acceptanceCriteria: '',
   })
   function submit(event: FormEvent) {
     event.preventDefault()
     if (!form.title.trim() || !repos.some(repo => repo.id === form.repo)) return
-    onSave({ ...form, title: form.title.trim(), description: form.description.trim(), acceptanceCriteria: form.acceptanceCriteria?.trim(), meetingDate: ['daily', 'weekly'].includes(form.source ?? '') ? form.meetingDate : undefined })
+    onSave({ ...form, ...(!issue ? { status: 'backlog' as const } : {}), title: form.title.trim(), description: form.description.trim(), acceptanceCriteria: form.acceptanceCriteria?.trim(), meetingDate: ['daily', 'weekly'].includes(form.source ?? '') ? form.meetingDate : undefined })
   }
   return <form className="dialog-form issue-editor" onSubmit={submit}>
     <span className="eyebrow">{issue ? `${issue.id} · ${repositoryRef(issue.repo, issue.githubNumber, repos, issue.id)}` : 'MEETING → ISSUE'}</span><h2>{issue ? '이슈 상세' : '어떤 작업을 할까요?'}</h2>
     <label>이슈 제목<input autoFocus required maxLength={180} placeholder="해야 할 작업을 한 문장으로 적어주세요" value={form.title} onChange={event => setForm({ ...form, title: event.target.value })} /></label>
     <MarkdownEditor label="설명" maxLength={5000} placeholder="해결할 문제와 기대하는 결과를 적어주세요" value={form.description} onChange={description => setForm({ ...form, description })} />
     <MarkdownEditor label="완료 조건" maxLength={2000} placeholder="무엇을 확인하면 이 작업이 끝났다고 할 수 있나요?" value={form.acceptanceCriteria ?? ''} onChange={acceptanceCriteria => setForm({ ...form, acceptanceCriteria })} />
-    <div className="issue-fields"><label>작업이 나온 곳<select value={form.source ?? 'request'} onChange={event => setForm({ ...form, source: event.target.value as IssueSource })}>{Object.entries(issueSources).filter(([value]) => value !== 'github' || form.source === 'github').map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{['daily', 'weekly'].includes(form.source ?? '') && <label>회의 날짜<input type="date" required value={form.meetingDate ?? '2026-10-27'} onChange={event => setForm({ ...form, meetingDate: event.target.value })} /></label>}<label>상태<select value={form.status} onChange={event => setForm({ ...form, status: event.target.value as IssueStatus })}>{Object.entries(issueStatuses).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
+    <div className="issue-fields"><label>작업이 나온 곳<select value={form.source ?? 'request'} onChange={event => setForm({ ...form, source: event.target.value as IssueSource })}>{Object.entries(issueSources).filter(([value]) => value !== 'github' || form.source === 'github').map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>{['daily', 'weekly'].includes(form.source ?? '') && <label>회의 날짜<input type="date" required value={form.meetingDate ?? '2026-10-27'} onChange={event => setForm({ ...form, meetingDate: event.target.value })} /></label>}{issue && <label>상태<select value={form.status} onChange={event => setForm({ ...form, status: event.target.value as IssueStatus })}>{Object.entries(issueStatuses).filter(([value]) => value !== 'todo').map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>}
     <label>우선순위<select value={form.priority} onChange={event => setForm({ ...form, priority: event.target.value as Issue['priority'] })}>{Object.entries(issuePriorities).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></label>
     <label>계획 주차<input type="date" value={form.plannedWeekStart ?? startOfWeek(form.meetingDate)} onChange={event => { if (event.target.value) setForm({ ...form, plannedWeekStart: startOfWeek(event.target.value) }) }} /></label>
     <label>담당자<select value={form.assignee} onChange={event => setForm({ ...form, assignee: event.target.value })}><option value="">미지정</option>{members.map(member => <option key={member.name}>{member.name}</option>)}</select></label>

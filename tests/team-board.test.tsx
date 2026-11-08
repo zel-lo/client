@@ -49,18 +49,18 @@ describe('주간 작업 보드', () => {
   it('메뉴로 빈 열에 옮기고 CSRF·최신 버전·위치를 서버에 저장한다', async () => {
     const { fetcher } = setup(); const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'ZELLO-20 작업 메뉴' }))
-    await user.click(screen.getByRole('menuitem', { name: '작업 중으로 이동' }))
-    await waitFor(() => expect(within(screen.getByRole('region', { name: '작업 중 열' })).getByRole('button', { name: /보드에서 진행할 작업/ })).toBeInTheDocument())
+    await user.click(screen.getByRole('menuitem', { name: '백로그로 이동' }))
+    await waitFor(() => expect(within(screen.getByRole('region', { name: '백로그 열' })).getByRole('button', { name: /보드에서 진행할 작업/ })).toBeInTheDocument())
     const write = fetcher.mock.calls.find(([, init]) => init?.method === 'PATCH')!
-    expect(JSON.parse(write[1]!.body as string)).toMatchObject({ version: 2, details: { status: 'IN_PROGRESS', plannedWeekStart: seed.plannedWeekStart }, placement: { beforeId: null } })
+    expect(JSON.parse(write[1]!.body as string)).toMatchObject({ version: 2, details: { status: 'BACKLOG', plannedWeekStart: seed.plannedWeekStart }, placement: { beforeId: null } })
     expect(write[1]!.headers).toMatchObject({ 'X-CSRF-TOKEN': 'csrf' })
   })
   it('저장 충돌 시 성공을 표시하지 않고 원래 열로 복구한다', async () => {
     setup({ fail: true }); const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'ZELLO-20 작업 메뉴' }))
-    await user.click(screen.getByRole('menuitem', { name: '작업 중으로 이동' }))
+    await user.click(screen.getByRole('menuitem', { name: '백로그로 이동' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('다른 변경이 있어요.')
-    expect(within(screen.getByRole('region', { name: '이번에 할 일 열' })).getByRole('button', { name: /보드에서 진행할 작업/ })).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: '진행 중 열' })).getByRole('button', { name: /보드에서 진행할 작업/ })).toBeInTheDocument()
     expect(screen.queryByText(/작업 위치를 저장했어요/)).not.toBeInTheDocument()
   })
   it('담당자 지정에서 팀원을 선택하고 자기 배정 단축 버튼은 제공하지 않는다', async () => {
@@ -77,10 +77,11 @@ describe('주간 작업 보드', () => {
     await user.click(await screen.findByRole('button', { name: 'ZELLO-20 작업 메뉴' }))
     await user.click(screen.getByRole('menuitem', { name: '완료로 이동' }))
     expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(false)
+    await user.type(screen.getByLabelText('패치노트 제목'), '작업 결과를 팀에 반영했어요')
     await user.click(screen.getByRole('button', { name: '완료하고 GitHub 이슈 닫기' }))
     await waitFor(() => expect(fetcher.mock.calls.some(([, init]) => init?.method === 'PATCH')).toBe(true))
     const write = fetcher.mock.calls.find(([, init]) => init?.method === 'PATCH')!
-    expect(JSON.parse(write[1]!.body as string)).toMatchObject({ details: { status: 'DONE' }, githubState: 'CLOSED' })
+    expect(JSON.parse(write[1]!.body as string)).toMatchObject({ details: { status: 'DONE' }, githubState: 'CLOSED', patchNoteTitle: '작업 결과를 팀에 반영했어요' })
   })
   it('조회 전용 멤버에게 드래그와 담당자 변경을 허용하지 않는다', async () => {
     setup({ viewer: true })
@@ -138,6 +139,39 @@ describe('키보드 조작', () => {
     await user.keyboard('{Enter}')
     await screen.findByRole('menuitem', { name: '백로그로 이동' })
     await user.keyboard('{ArrowDown}{Enter}')
-    expect(move).toHaveBeenCalledWith({ id: 'a', status: 'in_progress', beforeId: null })
+    expect(move).toHaveBeenCalledWith({ id: 'a', status: 'in_review', beforeId: null })
+  })
+})
+
+describe('카드가 많을 때', () => {
+  const card = (n: number, status: 'done' | 'backlog') => ({ id: `${status}-${n}`, key: `Z-${status}-${n}`, title: `${status} 작업 ${n}`, status, priority: 'medium' as const, repositoryId: 'repo', repositoryName: 'server', assignee: 'teammate', sourceLabel: '수시 요청', plannedWeekStart: week })
+  const actions = { onOpen: vi.fn(), onMove: vi.fn(), onAssign: vi.fn(), loadAssignees: async () => ({ items: [], hasNext: false }) }
+  it('완료 열은 최근 5개만 보여주고 나머지는 펼쳐서 본다', async () => {
+    const { TeamBoard } = await import('../src/components/team-board')
+    const user = userEvent.setup()
+    render(<TeamBoard items={Array.from({ length: 8 }, (_, n) => card(n, 'done'))} week={week} actions={actions} />)
+    const done = screen.getByRole('region', { name: '완료 열' })
+    expect(within(done).getAllByRole('article')).toHaveLength(5)
+    expect(within(done).queryByRole('button', { name: /done 작업 0$/ })).not.toBeInTheDocument()
+    expect(within(done).getByRole('button', { name: /done 작업 7$/ })).toBeInTheDocument()
+    await user.click(within(done).getByRole('button', { name: '앞서 완료한 3개 더 보기' }))
+    expect(within(done).getAllByRole('article')).toHaveLength(8)
+    await user.click(within(done).getByRole('button', { name: '최근 완료만 보기' }))
+    expect(within(done).getAllByRole('article')).toHaveLength(5)
+  })
+  it('백로그를 접으면 다음에 열어도 접힌 상태를 기억한다', async () => {
+    localStorage.clear()
+    const { TeamBoard } = await import('../src/components/team-board')
+    const user = userEvent.setup()
+    const items = [card(0, 'backlog')]
+    const first = render(<TeamBoard items={items} week={week} actions={actions} />)
+    expect(screen.getByRole('region', { name: '백로그 열' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '백로그 1' }))
+    expect(screen.queryByRole('region', { name: '백로그 열' })).not.toBeInTheDocument()
+    first.unmount()
+    render(<TeamBoard items={items} week={week} actions={actions} />)
+    expect(screen.queryByRole('region', { name: '백로그 열' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '백로그 1' })).toHaveAttribute('aria-pressed', 'false')
+    localStorage.clear()
   })
 })

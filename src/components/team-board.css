@@ -26,8 +26,8 @@
 .board-display-actions > button:hover { background: var(--control-bg); }
 .board-display-actions > button[aria-pressed="true"] { color: var(--brand); background: var(--accent-bg); }
 .board-scroll { width: 100%; overflow-x: auto; padding: 2px 2px 16px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; scroll-snap-type: x proximity; }
-.board-columns { display: grid; grid-template-columns: repeat(4, minmax(245px, 1fr)); align-items: start; gap: 12px; min-height: 480px; }
-.board-columns.with-backlog { grid-template-columns: minmax(220px, .9fr) repeat(4, minmax(245px, 1fr)); }
+.board-columns { display: grid; grid-template-columns: repeat(3, minmax(245px, 1fr)); align-items: start; gap: 12px; min-height: 480px; }
+.board-columns.with-backlog { grid-template-columns: minmax(220px, .9fr) repeat(3, minmax(245px, 1fr)); }
 .board-column { --column-color: var(--muted-foreground); padding: 14px 10px 12px; background: color-mix(in srgb, var(--surface) 58%, var(--card)); border: 1px solid transparent; border-radius: 18px; min-height: 340px; scroll-snap-align: start; transition: border-color .15s, background-color .15s; }
 .board-column-backlog { background: color-mix(in srgb, var(--surface) 30%, var(--card)); }
 .board-column-in_progress { --column-color: var(--git-amber); }
@@ -40,7 +40,14 @@
 .board-column-heading > button { margin-left: auto; }
 .board-column-count { background: var(--card); border-radius: 6px; min-width: 22px; text-align: center; color: var(--muted-foreground); font-size: 10px; padding: 3px 5px; }
 .board-column-hint { font-size: 12px; color: var(--muted-foreground); margin: 5px 4px 14px; line-height: 1.6; }
-.board-column-cards { display: flex; flex-direction: column; gap: 10px; min-height: 240px; }
+/* 카드가 많아져도 다섯 단계를 한 화면에서 보도록 열 안에서만 스크롤한다. 제목과 개수는 위에 남는다. */
+.board-column { display: flex; flex-direction: column; max-height: max(520px, calc(100dvh - 180px)); }
+.board-column-cards { display: flex; flex-direction: column; gap: 10px; min-height: 240px; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; padding: 2px; margin: -2px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+.board-column-cards > .board-card { flex-shrink: 0; }
+/* 열 스크롤 영역에 잘리지 않도록 맨 위 카드의 툴팁은 아래로 띄운다. */
+.board-column-cards > .board-card:first-of-type .board-tip::after { bottom: auto; top: calc(100% + 6px); }
+.board-column-more { flex-shrink: 0; min-height: 34px; border: 1px dashed var(--line); border-radius: 10px; background: transparent; color: var(--muted-foreground); font-size: 12px; }
+.board-column-more:hover { color: var(--brand); border-color: var(--accent-line); background: var(--accent-bg); }
 .board-card { position: relative; padding: 14px 13px 12px; background: var(--card); border: 1px solid var(--quiet-line); border-radius: 14px; min-width: 0; transition: border-color .15s, box-shadow .15s; }
 .board-card:hover, .board-card:focus-within { border-color: var(--line-strong); }
 .board-card.is-dragging { opacity: .3; border: 1px dashed var(--brand); }
@@ -141,8 +148,8 @@
   .week-heading h2 { font-size: 22px; }
   .board-toolbar { gap: 8px; }
   .board-search { max-width: none; flex-basis: calc(100% - 160px); min-width: 130px; }
-  .board-columns, .board-columns.with-backlog { grid-template-columns: repeat(5, minmax(260px, 80vw)); gap: 10px; }
-  .board-columns:not(.with-backlog) { grid-template-columns: repeat(4, minmax(260px, 80vw)); }
+  .board-columns, .board-columns.with-backlog { grid-template-columns: repeat(4, minmax(260px, 80vw)); gap: 10px; }
+  .board-columns:not(.with-backlog) { grid-template-columns: repeat(3, minmax(260px, 80vw)); }
   .board-help > span { margin-left: 0; flex-basis: 100%; }
   .meeting-summary { align-items: flex-start; flex-direction: column; }
   .meeting-summary strong { font-size: 16px; }
