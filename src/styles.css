@@ -995,7 +995,7 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .invitation-list-row strong { font-size: 12px; overflow-wrap: anywhere; }
 .invitation-list-row p { font-size: 11px; margin: 7px 0 0; color: var(--muted-foreground); }
 
-.membership-history > article { display: grid; gap: 7px; padding: 17px 0; border-bottom: 1px solid var(--line); }
+.membership-history article { display: grid; gap: 7px; padding: 17px 0; border-bottom: 1px solid var(--line); }
 .membership-history strong { font-size: 12px; font-weight: 500; }
 .membership-history small { font-size: 11px; color: var(--muted-foreground); }
 .member-leave { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 15px; padding: 20px 0; border-top: 1px solid var(--line); }
