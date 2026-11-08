@@ -34,12 +34,11 @@ function backend({ signedIn = true, status = 'PENDING', alreadyMember = false, m
 const mount = (route = path) => render(<StrictMode><MemoryRouter initialEntries={[route]}><App /></MemoryRouter></StrictMode>)
 
 describe('초대받은 사람의 참여 흐름', () => {
-  it('로그인 전에는 프로젝트를 노출하거나 조회하지 않고 로그인과 가입 사이에 초대 경로를 유지한다', async () => {
+  it('로그인 전에는 프로젝트를 노출하거나 조회하지 않고 통합 시작 화면에서 초대 경로를 유지한다', async () => {
     const fetcher = backend({ signedIn: false }); mount(); const user = userEvent.setup()
     await user.click(await screen.findByRole('link', { name: '로그인하고 초대 확인' }))
-    expect(screen.getByRole('heading', { name: 'zello에 로그인' })).toBeInTheDocument()
-    await user.click(screen.getAllByRole('link', { name: '회원가입', exact: true })[0])
-    await user.click(screen.getByRole('button', { name: 'GitHub로 시작하기' }))
+    expect(screen.getByRole('heading', { name: 'zello 시작하기' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'GitHub로 계속하기' }))
     expect(await screen.findByRole('status')).toHaveTextContent('GitHub 로그인을 준비하고 있어요.')
     expect(pendingInvitation()).toBe(path)
     expect(fetcher.mock.calls.some(([url]) => url.includes('/invitations/'))).toBe(false)

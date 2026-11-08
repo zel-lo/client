@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowRight, Bell, BookOpen, ChevronRight, CircleDot, Github, GitPullRequest, LoaderCircle, Moon, Sun } from 'lucide-react'
+import { ArrowRight, Bell, BookOpen, ChevronRight, CircleDot, Github, GitPullRequest, LoaderCircle, Moon, ShieldCheck, Sun } from 'lucide-react'
 import { BrandMark } from './brand-mark'
 import { Button } from './ui/button'
 import { useTheme } from '../hooks/use-theme'
@@ -9,7 +9,6 @@ import { invitationReturnPath, rememberInvitation, pendingInvitation } from '../
 import { beginGitHubLogin } from '../lib/session-api'
 import { useSession } from '../hooks/use-session'
 import { initialIssues, initialPullRequests, issueSources, issueStatuses } from '../data/work-items'
-import type { IssueStatus } from '../data/work-items'
 import { initialRepos } from '../data/mock'
 import './public-pages.css'
 
@@ -31,38 +30,29 @@ function Footer() {
 }
 
 function ProjectPreview() {
-  const [filter, setFilter] = useState<IssueStatus | 'all'>('all')
-  const [selected, setSelected] = useState(initialIssues[0])
-  const issues = initialIssues.filter(issue => filter === 'all' || issue.status === filter)
+  const selected = initialIssues[0]
   const repo = initialRepos.find(repo => repo.id === selected.repo)
   const linkedPr = initialPullRequests.find(pr => selected.pullRequestIds.includes(pr.id))
-
-  function selectFilter(next: IssueStatus | 'all') {
-    setFilter(next)
-    const first = initialIssues.find(issue => next === 'all' || issue.status === next)
-    if (first && next !== 'all' && selected.status !== next) setSelected(first)
-  }
-
-  return <section className="public-project-preview" aria-label="샘플 프로젝트 미리보기">
+  return <section id="sample-project-preview" className="public-project-preview" aria-label="샘플 프로젝트 미리보기" aria-describedby="sample-preview-note">
     <aside className="preview-sidebar" aria-label="미리보기 메뉴">
-      <Link to="/overview" className="preview-project-name"><span>P</span>샘플 프로젝트<ChevronRight size={13} /></Link>
-      <Link to="/inbox"><Bell size={14} />알림함</Link>
+      <span className="preview-nav-item preview-project-name"><span>P</span>샘플 프로젝트<ChevronRight size={13} /></span>
+      <span className="preview-nav-item"><Bell size={14} />알림함</span>
       <span className="preview-nav-label">프로젝트</span>
-      <Link to="/issues" className="preview-nav-current"><CircleDot size={14} />팀 작업<span>{initialIssues.length}</span></Link>
-      <Link to="/pull-requests"><GitPullRequest size={14} />코드 검토</Link>
-      <Link to="/changes"><BookOpen size={14} />변경 소식</Link>
+      <span className="preview-nav-item preview-nav-current"><CircleDot size={14} />팀 작업<span>{initialIssues.length}</span></span>
+      <span className="preview-nav-item"><GitPullRequest size={14} />코드 검토</span>
+      <span className="preview-nav-item"><BookOpen size={14} />변경 소식</span>
       <span className="preview-nav-label">저장소</span>
-      {initialRepos.map(repo => <Link key={repo.id} to="/settings?tab=repositories" className="preview-repository"><Github size={13} />{repo.name}</Link>)}
+      {initialRepos.map(repo => <span key={repo.id} className="preview-nav-item preview-repository"><Github size={13} />{repo.name}</span>)}
       <span className="preview-demo-label">미리보기 · 샘플 데이터</span>
     </aside>
     <div className="preview-workspace">
-      <div className="preview-toolbar"><span>샘플 프로젝트<ChevronRight size={12} /><strong>팀 작업</strong></span><Link to="/issues">팀 작업 열기<ArrowRight size={13} /></Link></div>
+      <div className="preview-toolbar"><span>샘플 프로젝트<ChevronRight size={12} /><strong>팀 작업</strong></span><span className="preview-only-label">화면 미리보기</span></div>
       <div className="preview-work-body">
-        <div className="preview-issue-list"><div className="preview-list-heading"><h2>팀 작업</h2><span>{initialIssues.length}</span></div><div className="preview-filters" role="group" aria-label="미리보기 작업 상태">{(['all', 'in_progress', 'in_review'] as const).map(status => <button key={status} aria-pressed={filter === status} onClick={() => selectFilter(status)}>{status === 'all' ? '전체' : issueStatuses[status]}</button>)}</div>
-          <div className="preview-rows">{issues.map(issue => <button key={issue.id} className={`preview-issue-row ${selected.id === issue.id ? 'is-selected' : ''}`} onClick={() => setSelected(issue)} aria-pressed={selected.id === issue.id}><CircleDot size={14} className={`preview-status-${issue.status}`} /><span><strong>{issue.title}</strong><small>{initialRepos.find(repo => repo.id === issue.repo)?.name} · {issue.id}</small></span><span className="preview-assignee">{issue.assignee ? issue.assignee.slice(1) : '미지정'}</span></button>)}</div>
-          <p className="preview-list-note">작업을 누르면 담당자와 진행 상황을 볼 수 있어요.</p>
+        <div className="preview-issue-list"><div className="preview-list-heading"><h2>팀 작업</h2><span>{initialIssues.length}</span></div><div className="preview-filters" aria-label="미리보기 작업 상태">{(['all', 'in_progress', 'in_review'] as const).map(status => <span key={status} className={`preview-filter ${status === 'all' ? 'is-active' : ''}`}>{status === 'all' ? '전체' : issueStatuses[status]}</span>)}</div>
+          <div className="preview-rows">{initialIssues.map(issue => <div key={issue.id} className={`preview-issue-row ${selected.id === issue.id ? 'is-selected' : ''}`}><CircleDot size={14} className={`preview-status-${issue.status}`} /><span><strong>{issue.title}</strong><small>{initialRepos.find(repo => repo.id === issue.repo)?.name} · {issue.id}</small></span><span className="preview-assignee">{issue.assignee ? issue.assignee.slice(1) : '미지정'}</span></div>)}</div>
+          <p className="preview-list-note" id="sample-preview-note">화면 구성을 미리 보는 샘플이에요. 작업은 GitHub로 시작한 뒤 사용할 수 있어요.</p>
         </div>
-        <section className="preview-detail" aria-label="선택한 작업"><span className="preview-detail-id mono">{selected.id}</span><h3>{selected.title}</h3><dl><div><dt>상태</dt><dd><CircleDot size={12} />{issueStatuses[selected.status]}</dd></div><div><dt>담당자</dt><dd>{selected.assignee || '미지정'}</dd></div><div><dt>저장소</dt><dd>{repo?.name}</dd></div><div><dt>등록</dt><dd>{selected.source ? issueSources[selected.source] : '수시 요청'}</dd></div></dl><p className="preview-detail-description">{selected.description}</p><div className="preview-linked-pr"><h4>관련 코드 변경</h4>{linkedPr ? <Link to="/pull-requests"><GitPullRequest size={14} /><span><strong>{linkedPr.title}</strong><small>{repo?.name} #{linkedPr.number}</small></span><ChevronRight size={12} /></Link> : <p>아직 연결된 코드 변경이 없어요.</p>}</div></section>
+        <section className="preview-detail" aria-label="작업 상세 미리보기"><span className="preview-detail-id mono">{selected.id}</span><h3>{selected.title}</h3><dl><div><dt>상태</dt><dd><CircleDot size={12} />{issueStatuses[selected.status]}</dd></div><div><dt>담당자</dt><dd>{selected.assignee || '미지정'}</dd></div><div><dt>저장소</dt><dd>{repo?.name}</dd></div><div><dt>등록</dt><dd>{selected.source ? issueSources[selected.source] : '수시 요청'}</dd></div></dl><p className="preview-detail-description">{selected.description}</p><div className="preview-linked-pr"><h4>관련 코드 변경</h4>{linkedPr ? <div className="preview-pr-item"><GitPullRequest size={14} /><span><strong>{linkedPr.title}</strong><small>{repo?.name} #{linkedPr.number}</small></span><ChevronRight size={12} /></div> : <p>아직 연결된 코드 변경이 없어요.</p>}</div></section>
       </div>
     </div>
   </section>
@@ -71,13 +61,14 @@ function ProjectPreview() {
 export function LandingPage() {
   const session = useSession()
   useEffect(() => { document.title = 'zello · 팀과 쉽게 일해요' }, [])
+
   return <div className="public-shell landing-page">
     <SkipLink />
-    <header className="public-header"><Brand /><nav aria-label="서비스 메뉴"><ThemeToggle />{session.status === 'loading' ? <span className="public-session-label" role="status">로그인 확인 중…</span> : session.user ? <><span className="public-session-label"><span className="public-session-dot" />{session.user.displayName}님 · 로그인됨</span><Button asChild size="sm" variant="outline"><Link to="/overview">워크스페이스로 이동</Link></Button></> : <><Link to="/login" className="public-login-link">로그인</Link><Button asChild size="sm" variant="outline"><Link to="/signup">회원가입</Link></Button></>}</nav></header>
+    <header className="public-header"><Brand /><nav aria-label="서비스 메뉴"><ThemeToggle />{session.status === 'loading' ? <span className="public-session-label" role="status">로그인 확인 중…</span> : session.user ? <><span className="public-session-label"><span className="public-session-dot" />{session.user.displayName}님 · 로그인됨</span><Button asChild size="sm" variant="outline"><Link to="/overview">워크스페이스로 이동</Link></Button></> : <Button asChild size="sm"><Link to="/login">시작하기<ArrowRight size={13} /></Link></Button>}</nav></header>
     <main id="public-main" tabIndex={-1} className="landing-main">
-      <section className="landing-intro"><div><h1>Git에 익숙하지 않아도<br />괜찮아요.</h1><p>할 일을 나누고, 어디까지 됐는지 쉽게 확인해요.<br />복잡한 GitHub 기록도 팀이 이해하기 쉽게 모아봐요.</p></div><div className="landing-actions"><Button asChild size="lg"><Link to={session.user ? '/settings?tab=repositories' : '/signup'}><Github size={17} />{session.user ? '프로젝트와 저장소 연결하기' : 'GitHub로 시작하기'}</Link></Button><Link className="public-text-link" to="/overview">샘플 프로젝트 둘러보기<ArrowRight size={14} /></Link></div></section>
+      <section className="landing-intro"><div><h1>Git에 익숙하지 않아도<br />괜찮아요.</h1><p>할 일을 나누고, 어디까지 됐는지 쉽게 확인해요.<br />복잡한 GitHub 기록도 팀이 이해하기 쉽게 모아봐요.</p></div><div className="landing-actions"><Button asChild size="lg"><Link to={session.user ? '/settings?tab=repositories' : '/login'}><Github size={17} />{session.user ? '프로젝트와 저장소 연결하기' : 'GitHub로 시작하기'}</Link></Button></div></section>
       <ProjectPreview />
-      <div className="landing-footnote"><p>회의에서 정한 일부터 담당자와 진행 상황까지, 한곳에서 확인해요.</p><Link to="/changes">무엇이 달라졌는지도 함께 살펴봐요<ArrowRight size={13} /></Link></div>
+      <div className="landing-footnote"><p>회의에서 정한 일부터 담당자와 진행 상황까지, 한곳에서 확인해요.</p></div>
     </main><Footer />
   </div>
 }
@@ -89,24 +80,23 @@ const errorMessages: Record<string, string> = {
   inactive: '사용할 수 없는 계정이에요. 계정 상태를 확인해 주세요.',
 }
 
-export function AuthPage({ signup = false }: { signup?: boolean }) {
+export function AuthPage() {
   const session = useSession()
   const navigate = useNavigate()
   const location = useLocation()
   const error = new URLSearchParams(location.search).get('error')
   const reauthorize = new URLSearchParams(location.search).get('reauth') === 'github'
   const next = invitationReturnPath(new URLSearchParams(location.search).get('next')) ?? pendingInvitation()
-  const switchPath = `${signup ? '/login' : '/signup'}${next ? `?${new URLSearchParams({ next })}` : ''}`
   const [notice, setNotice] = useState('')
   const [pending, setPending] = useState(false)
   useEffect(() => {
     if (session.status === 'ready' && session.user && !error && !reauthorize) navigate(next ?? '/overview', { replace: true })
   }, [session.status, session.user, error, reauthorize, next, navigate])
   useEffect(() => {
-    document.title = `${signup ? '회원가입' : '로그인'} · zello`
+    document.title = '시작하기 · zello'
     setNotice(error ? errorMessages[error] ?? errorMessages.failed : '')
     setPending(false)
-  }, [signup, error])
+  }, [error])
   useEffect(() => {
     const reset = () => setPending(false)
     window.addEventListener('pageshow', reset)
@@ -124,16 +114,24 @@ export function AuthPage({ signup = false }: { signup?: boolean }) {
       setNotice(cause instanceof Error ? cause.message : 'GitHub 로그인에 실패했어요. 다시 시도해 주세요.')
     }
   }
-  return <div className="public-shell auth-page">
+  return <div className="public-shell auth-page auth-unified">
     <SkipLink />
-    <header className="public-header"><Brand /><nav aria-label="서비스 메뉴"><ThemeToggle /><Link className="public-login-link" to={switchPath}>{signup ? '로그인' : '회원가입'}</Link></nav></header>
-    <main id="public-main" tabIndex={-1} className="auth-main"><section className="auth-form-content" aria-labelledby="auth-title"><h1 id="auth-title">{signup ? 'zello 시작하기' : 'zello에 로그인'}</h1><p className="auth-description">{signup ? 'GitHub 계정 하나로 팀과 함께 일해요.' : '함께하던 작업을 이어서 확인해요.'}</p><Button className="github-auth-button" size="lg" onClick={continueWithGithub} disabled={pending} aria-busy={pending}>{pending ? <LoaderCircle size={18} className="auth-spinner" /> : <Github size={18} />}<span>{pending ? 'GitHub로 이동 중' : signup ? 'GitHub로 시작하기' : 'GitHub로 로그인'}</span></Button>
-      <p className="auth-account-note">{signup ? '처음 로그인하면 계정이 만들어져요.' : '가입할 때 사용한 GitHub 계정으로 로그인해요.'}</p>
-      <p className="help-text">프로필·조직 조회와 공개·비공개 저장소 접근을 승인합니다. GitHub의 저장소 권한에는 읽기와 쓰기가 함께 포함됩니다.</p>
-      {notice && <div className="auth-notice" role="status"><p>{notice}</p></div>}
-      <div className="auth-switch-account"><span>{signup ? '이미 계정이 있나요?' : '계정이 없나요?'}</span><Link to={switchPath}>{signup ? '로그인' : '회원가입'}</Link></div>
-      <div className="auth-preview"><Link className="public-text-link" to="/overview">샘플 프로젝트 둘러보기<ArrowRight size={14} /></Link><p>로그인 다음 화면에서 팀과 저장소를 연결해요.</p></div>
-    </section></main><Footer />
+    <header className="public-header"><Brand /><nav aria-label="서비스 메뉴"><Link className="public-login-link" to="/">서비스 소개</Link><ThemeToggle /></nav></header>
+    <main id="public-main" tabIndex={-1} className="auth-main">
+      <section className="auth-form-content auth-welcome-card" aria-labelledby="auth-title">
+        <span className="auth-welcome-mark" aria-hidden="true"><BrandMark /></span>
+        <h1 id="auth-title">zello 시작하기</h1>
+        <p className="auth-description">팀의 작업부터 코드 검토까지.<br />GitHub 계정으로 한곳에서 함께해요.</p>
+        {reauthorize && <p className="auth-context-note">저장소 접근 권한을 갱신하려면 GitHub에 다시 연결해 주세요.</p>}
+        {next && <p className="auth-context-note">로그인 후 초대받은 프로젝트로 안내해 드릴게요.</p>}
+        <Button className="github-auth-button" size="lg" onClick={continueWithGithub} disabled={pending} aria-busy={pending}>
+          {pending ? <LoaderCircle size={19} className="auth-spinner" /> : <Github size={19} />}<span>{pending ? 'GitHub로 이동 중' : 'GitHub로 계속하기'}</span>{!pending && <ArrowRight size={16} />}
+        </Button>
+        <p className="auth-account-note">처음이라면 계정이 만들어지고,<br />이미 함께하고 있다면 바로 로그인돼요.</p>
+        {notice && <div className="auth-notice" role="status"><p>{notice}</p></div>}
+        <details className="auth-permissions"><summary><ShieldCheck size={14} />GitHub 연결 권한 안내<ChevronRight size={13} /></summary><p>프로필·조직과 공개·비공개 저장소에 접근합니다. GitHub의 저장소 권한에는 읽기와 쓰기가 함께 포함됩니다.</p></details>
+      </section>
+    </main><Footer />
   </div>
 }
 

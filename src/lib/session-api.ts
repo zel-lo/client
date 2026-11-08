@@ -34,7 +34,7 @@ export async function beginGitHubLogin(
   if (!response.ok) throw new Error('로그인 서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.')
   const status = await response.json() as { githubLoginEnabled: boolean }
   if (!status.githubLoginEnabled) {
-    throw new Error('GitHub 로그인을 준비하고 있어요. 샘플 프로젝트는 바로 둘러볼 수 있어요.')
+    throw new Error('GitHub 로그인을 준비하고 있어요. 잠시 후 다시 시도해 주세요.')
   }
   const configured = githubAuthUrl(configuredUrl)
   if (configuredUrl?.trim() && !configured) throw new Error('로그인 연결 주소를 확인해 주세요.')

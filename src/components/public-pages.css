@@ -16,8 +16,8 @@
 .public-text-link { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); }
 .public-project-preview { display: grid; grid-template-columns: 174px minmax(0, 1fr); border: 1px solid var(--line); border-radius: var(--panel-radius); overflow: hidden; background: var(--card); }
 .preview-sidebar { display: flex; flex-direction: column; padding: 17px 11px 15px; background: var(--sidebar); border-right: 1px solid var(--line); }
-.preview-sidebar > a { display: flex; align-items: center; gap: 8px; padding: 9px 10px; font-size: 11px; color: var(--text-secondary); border-radius: 5px; }
-.preview-sidebar > a:hover { background: var(--hover); }
+.preview-sidebar > .preview-nav-item { display: flex; align-items: center; gap: 8px; padding: 9px 10px; font-size: 11px; color: var(--text-secondary); border-radius: 5px; }
+.preview-sidebar > .preview-nav-item:hover { background: var(--hover); }
 .preview-sidebar .preview-project-name { padding: 0 3px 20px; gap: 8px; color: var(--foreground); font-weight: 550; }
 .preview-project-name > span { width: 23px; height: 23px; display: grid; place-items: center; background: var(--surface); color: var(--text-secondary); border: 1px solid var(--line); border-radius: 5px; font-size: 10px; }
 .preview-project-name > svg { margin-left: auto; color: var(--subtle-foreground); }
@@ -28,18 +28,18 @@
 .preview-demo-label { margin-top: auto; padding: 30px 10px 0; font-size: 9px; color: var(--subtle-foreground); }
 .preview-workspace { min-width: 0; }
 .preview-toolbar { height: 49px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 23px; border-bottom: 1px solid var(--line); font-size: 10px; color: var(--muted-foreground); }
-.preview-toolbar > span, .preview-toolbar > a { display: inline-flex; align-items: center; gap: 9px; }
+.preview-toolbar > span, .preview-toolbar > .preview-only-label { display: inline-flex; align-items: center; gap: 9px; }
 .preview-toolbar strong { font-weight: 500; color: var(--foreground); }
-.preview-toolbar > a:hover { color: var(--foreground); }
+.preview-toolbar > .preview-only-label:hover { color: var(--foreground); }
 .preview-work-body { display: grid; grid-template-columns: minmax(0, 1fr) 270px; min-height: 373px; }
 .preview-issue-list { min-width: 0; }
 .preview-list-heading { display: flex; align-items: center; gap: 9px; padding: 25px 23px 0; }
 .preview-list-heading h2 { font-size: 18px; font-weight: 600; letter-spacing: -.5px; }
 .preview-list-heading > span { font-size: 11px; color: var(--subtle-foreground); }
 .preview-filters { display: flex; gap: 5px; padding: 17px 23px 16px; }
-.preview-filters > button { padding: 7px 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted-foreground); font-size: 10px; }
-.preview-filters > button:hover { color: var(--foreground); }
-.preview-filters > button[aria-pressed="true"] { background: var(--accent-bg); border-color: var(--accent-line); color: var(--brand); }
+.preview-filters > .preview-filter { padding: 7px 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted-foreground); font-size: 10px; }
+.preview-filters > .preview-filter:hover { color: var(--foreground); }
+.preview-filters > .preview-filter.is-active { background: var(--accent-bg); border-color: var(--accent-line); color: var(--brand); }
 .preview-rows { border-top: 1px solid var(--line); }
 .preview-issue-row { width: 100%; display: flex; align-items: center; gap: 10px; padding: 14px 23px; text-align: left; background: transparent; border-bottom: 1px solid var(--line); }
 .preview-issue-row:hover { background: var(--sidebar); }
@@ -63,9 +63,9 @@
 .preview-detail-description { font-size: 11px; line-height: 1.85; color: var(--text-secondary); }
 .preview-linked-pr { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--line); }
 .preview-linked-pr h4 { margin: 0 0 12px; font-size: 10px; font-weight: 500; color: var(--muted-foreground); }
-.preview-linked-pr > a { display: flex; align-items: flex-start; gap: 7px; }
-.preview-linked-pr > a > svg { color: var(--git-purple); margin-top: 3px; }
-.preview-linked-pr > a > svg:last-child { margin-left: auto; color: var(--subtle-foreground); }
+.preview-linked-pr > .preview-pr-item { display: flex; align-items: flex-start; gap: 7px; }
+.preview-linked-pr > .preview-pr-item > svg { color: var(--git-purple); margin-top: 3px; }
+.preview-linked-pr > .preview-pr-item > svg:last-child { margin-left: auto; color: var(--subtle-foreground); }
 .preview-linked-pr strong { font-size: 10px; font-weight: 450; line-height: 1.7; display: block; }
 .preview-linked-pr small { color: var(--subtle-foreground); display: block; font-size: 9px; margin-top: 5px; }
 .preview-linked-pr > p { font-size: 10px; color: var(--subtle-foreground); }
@@ -78,13 +78,30 @@
 .auth-description { font-size: 13px; color: var(--muted-foreground); margin-top: 12px; line-height: 1.8; }
 .github-auth-button { width: 100%; height: 54px; border-radius: 14px; margin-top: 34px; font-size: 15px; gap: 10px; }
 .auth-account-note { margin-top: 12px; color: var(--subtle-foreground); font-size: 11px; line-height: 1.8; }
-.auth-switch-account { display: flex; gap: 8px; margin-top: 30px; font-size: 12px; color: var(--muted-foreground); }
-.auth-switch-account a { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }
-.auth-preview { border-top: 1px solid var(--line); margin-top: 31px; padding-top: 24px; }
-.auth-preview p { color: var(--subtle-foreground); font-size: 11px; margin-top: 13px; }
 .auth-notice { padding: 16px; border: 1px solid transparent; border-radius: 14px; margin-top: 18px; background: var(--sidebar); }
 .auth-notice p { font-size: 11px; line-height: 1.8; color: var(--text-secondary); }
 .auth-spinner { animation: auth-spin 1s linear infinite; }
+.auth-unified .auth-main { padding: 42px 22px 70px; }
+.auth-welcome-card { max-width: 430px; padding: 42px 38px 30px; border: 1px solid color-mix(in srgb, var(--line) 45%, transparent); border-radius: 28px; background: var(--card); box-shadow: 0 8px 36px rgb(20 30 55 / 3%); text-align: center; }
+.auth-welcome-mark { height: 64px; width: 64px; display: grid; place-items: center; margin: 0 auto 25px; border-radius: 21px; background: color-mix(in srgb, var(--brand) 7%, var(--card)); }
+.auth-welcome-mark .brand-mark { height: 32px; width: 32px; }
+.auth-welcome-card h1 { font-size: 28px; font-weight: 750; line-height: 1.5; letter-spacing: -1px; }
+.auth-welcome-card .auth-description { margin-top: 12px; font-size: 14px; line-height: 1.85; color: var(--muted-foreground); }
+.auth-welcome-card .github-auth-button { margin-top: 32px; height: 55px; border-radius: 14px; font-size: 14px; font-weight: 600; box-shadow: 0 4px 12px color-mix(in srgb, var(--brand) 14%, transparent); }
+.auth-welcome-card .github-auth-button > svg:last-child { margin-left: auto; }
+.auth-welcome-card .github-auth-button > svg:first-child { margin-right: auto; }
+.auth-welcome-card .auth-account-note { font-size: 12px; color: var(--muted-foreground); line-height: 1.85; margin-top: 17px; }
+.auth-context-note { margin-top: 18px; padding: 12px 14px; border-radius: 11px; color: var(--brand); background: color-mix(in srgb, var(--brand) 6%, var(--card)); font-size: 12px; line-height: 1.8; }
+.auth-welcome-card .auth-notice { text-align: left; background: var(--background); border-color: var(--quiet-line, var(--line)); }
+.auth-welcome-card .auth-notice p { font-size: 12px; line-height: 1.8; }
+.auth-permissions { margin-top: 28px; border-top: 1px solid var(--quiet-line, var(--line)); padding-top: 19px; text-align: left; }
+.auth-permissions summary { display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; list-style: none; font-size: 11px; color: var(--muted-foreground); }
+.auth-permissions summary::-webkit-details-marker { display: none; }
+.auth-permissions summary > svg:last-child { transition: transform .15s; }
+.auth-permissions[open] summary > svg:last-child { transform: rotate(90deg); }
+.auth-permissions > p { font-size: 11px; color: var(--muted-foreground); line-height: 1.9; padding-top: 12px; }
+.auth-unified :is(button, a, summary):focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 50%, transparent); outline-offset: 5px; }
+@media (max-width: 480px) { .auth-unified .auth-main { padding: 24px 18px 50px; } .auth-welcome-card { padding: 32px 24px 25px; border-radius: 24px; } .auth-welcome-mark { height: 58px; width: 58px; border-radius: 19px; margin-bottom: 22px; } .auth-welcome-card h1 { font-size: 26px; } .auth-welcome-card .auth-description { font-size: 13px; } }
 @keyframes auth-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .auth-spinner { animation: none; } }
 @media (max-width: 1000px) {
@@ -133,3 +150,16 @@
 .public-session-label { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted-foreground); }
 .public-session-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--git-green); }
 @media (max-width: 600px) { .public-session-label { max-width: 130px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } }
+
+
+/* The public sample is a still preview: hover feedback, without controls or navigation. */
+.public-project-preview { scroll-margin-top: 28px; cursor: default; }
+.preview-nav-item, .preview-filter, .preview-issue-row, .preview-pr-item { cursor: default; transition: background-color .15s ease, color .15s ease; }
+.preview-sidebar .preview-project-name:hover { background: transparent; }
+.preview-filter { display: inline-flex; }
+.preview-issue-row:hover { background: var(--accent-bg); }
+.preview-issue-row:hover strong { color: var(--brand); }
+.preview-pr-item { padding: 8px; margin: -8px; border-radius: 8px; }
+.preview-pr-item:hover { background: var(--hover); }
+.preview-only-label { color: var(--subtle-foreground); }
+@media (prefers-reduced-motion: reduce) { .preview-nav-item, .preview-filter, .preview-issue-row, .preview-pr-item { transition: none; } }

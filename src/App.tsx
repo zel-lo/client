@@ -159,12 +159,12 @@ export default function App() {
 }
 
 function AppRoutes() {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }) }, [pathname])
   return <Routes>
     <Route path="/" element={<LandingPage />} />
     <Route path="/login" element={<AuthPage />} />
-    <Route path="/signup" element={<AuthPage signup />} />
+    <Route path="/signup" element={<Navigate replace to={{ pathname: '/login', search }} />} />
     <Route path="/invite/:token" element={<InvitationPage />} />
     <Route path="/onboarding" element={<Onboarding />} />
     <Route path="/auth/callback" element={<AuthCallbackPage />} />
