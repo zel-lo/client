@@ -4,7 +4,7 @@ import { DemoWeeklyOverview } from './components/demo-weekly-overview'
 import { Notes } from './components/workspace-panels'
 import './workspace-panels.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AuthCallbackPage, AuthPage, LandingPage } from './components/public-pages'
+import { AuthCallbackPage, AuthPage, LandingPage, PrivacyPage } from './components/public-pages'
 import { SessionProvider, useSession } from './hooks/use-session'
 import { MembersPanel } from './components/members-panel'
 import { HelpMenu } from './components/help-menu'
@@ -150,6 +150,7 @@ function AppRoutes() {
   return <Routes>
     <Route path="/" element={<LandingPage />} />
     <Route path="/login" element={<AuthPage />} />
+    <Route path="/privacy" element={<PrivacyPage />} />
     <Route path="/signup" element={<Navigate replace to={{ pathname: '/login', search }} />} />
     <Route path="/invite/:token" element={<InvitationPage />} />
     <Route path="/onboarding" element={<Onboarding />} />
