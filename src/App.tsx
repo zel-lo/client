@@ -1,3 +1,5 @@
+import { WeeklyOverview } from './components/weekly-overview'
+import { DemoWeeklyOverview } from './components/demo-weekly-overview'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AuthCallbackPage, AuthPage, LandingPage } from './components/public-pages'
 import { SessionProvider, useSession } from './hooks/use-session'
@@ -17,7 +19,7 @@ import { listConnectedRepositories } from './lib/project-api'
 import type { ConnectedRepository } from './lib/project-api'
 import { BrandMark } from './components/brand-mark'
 import type { FormEvent, ReactNode, CSSProperties } from 'react'
-import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowRight, ArrowUpRight, Bell, BookOpen, CalendarDays,
   Check, CheckCircle2, ChevronDown, ChevronRight, CircleAlert, CircleDot,
@@ -27,15 +29,12 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { SidebarProvider, SidebarTrigger, SidebarInset } from './components/ui/sidebar'
-import { SectionCards } from './components/section-cards'
-import { ActivityTable } from './components/activity-table'
 import { Button } from './components/ui/button'
 import { InboxPanel, InboxPreview } from './components/inbox-panel'
 import { MyWorkPanel } from './components/my-work-panel'
 import { createInitialInbox } from './data/inbox'
 import type { InboxItem } from './data/inbox'
 import { WorkspaceSidebar } from './components/workspace-sidebar'
-import { ActivityChart } from './components/activity-chart'
 import { IssueEditor } from './components/issues-panel'
 import { PullRequestsPanel } from './components/pull-requests-panel'
 import { CreatePullRequest } from './components/create-pull-request'
@@ -45,10 +44,8 @@ import type { LiveIssue } from './lib/project-api'
 import { CreateLivePullRequest } from './components/create-live-pull-request'
 import type { PullRequestDraft } from './components/create-pull-request'
 import { PullRequestDetail } from './components/pull-request-detail'
-import { initialIssues, initialPullRequests, hydrateIssue, hydratePullRequest, needsMyReview, CURRENT_USER, nextRepositoryNumber, repositoryRef, issueAttention } from './data/work-items'
+import { initialIssues, initialPullRequests, hydrateIssue, hydratePullRequest, needsMyReview, CURRENT_USER, nextRepositoryNumber, repositoryRef } from './data/work-items'
 import type { Issue, PullRequest } from './data/work-items'
-import ContributionSkyline, { generateContributions } from './components/ui/contribution-skyline'
-import type { ContributionDay } from './components/ui/contribution-skyline'
 import { activities, categoryLabels, dateLabel, initialNotes, initialRepos, inPeriod, members, periods, sortedActivities, typeLabels } from './data/mock'
 import type { Activity, PatchNote, Period, Repo } from './data/mock'
 
@@ -64,8 +61,6 @@ const navItems: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/settings', label: '프로젝트 설정', icon: SlidersHorizontal },
 ]
 const eventIcons = { merge: GitMerge, commit: GitCommitHorizontal, pr: GitPullRequest, issue: CircleDot, deploy: Rocket }
-const CHART_PALETTE = { light: ['#DDE5FF', '#AEBFFF', '#6C8BFF', '#2F5BFF'], dark: ['#263557', '#3E568D', '#5876C3', '#7C9BFF'] }
-const END_MS = Date.UTC(2026, 9, 27)
 
 // Update saved demo branding and issue references while preserving local edits.
 function migrateProjectText(value: string) {
@@ -142,18 +137,6 @@ function RepoCard({ repo, activityCount, onClick }: { repo: Repo; activityCount:
     <div className="repo-card-status"><span><i className={`status-dot ${repo.build === 'failed' ? 'dot-red' : repo.build === 'unknown' ? 'dot-gray' : ''}`} />{repo.build === 'failed' ? '빌드 확인 필요' : repo.build === 'unknown' ? '아직 수집한 활동이 없어요' : '정상적으로 동기화 중'}</span><span>{activityCount}개 활동</span></div>
   </button>
 }
-function PatchPreview({ note, onRead }: { note: PatchNote; onRead: () => void }) {
-  const changes = note.activityIds.map(id => activities.find(a => a.id === id)).filter((a): a is Activity => Boolean(a))
-  return <article className="patch-preview">
-    <div className="patch-eyebrow"><span><BookOpen size={12} /> RELEASE NOTES</span><span>No. {note.id === 'week-43' ? '043' : note.version}</span></div>
-    <div className="patch-date"><span className="little-line" />{note.subtitle}</div>
-    <h3>{note.title}</h3>
-    <p className="patch-intro">{note.summary}</p>
-    <div className="patch-items">{changes.slice(0, 3).map(item => <div className="patch-mini-item" key={item.id}><span className={`category-dot category-${item.noteType}`} /><span><small>{item.noteType ? categoryLabels[item.noteType] : '변경 사항'}</small><p>{item.title}</p></span></div>)}</div>
-    <button className="patch-read" onClick={onRead}>변경 사항 읽기 <ArrowRight size={17} /></button>
-  </article>
-}
-
 export default function App() {
   return <SessionProvider><AppRoutes /></SessionProvider>
 }
@@ -212,7 +195,7 @@ function WorkspaceApp() {
   const searchParams = new URLSearchParams(location.search)
   const changesView = searchParams.get('view') === 'history' ? 'history' : 'updates'
   const settingsTab = ['general', 'members', 'repositories', 'sync'].includes(searchParams.get('tab') ?? '') ? searchParams.get('tab')! : 'general'
-  const showScope = !['/inbox', '/settings', '/repositories'].includes(location.pathname)
+  const showScope = !['/overview', '/inbox', '/settings', '/repositories'].includes(location.pathname)
   function openIssue(issue: Issue | null) { if (session.user) { navigate(issue ? '/issues' : '/issues?new=1'); return }; setEditingIssue(issue); setModal('issue') }
   function openPr(issue: Issue | null = null) { setLivePrIssue(null); if (session.user && !live.project) { navigate('/onboarding'); return }; setPrIssue(issue); setModal('pr') }
   const [period, setPeriod] = useState<Period>('week')
@@ -238,7 +221,6 @@ function WorkspaceApp() {
     return () => controller.abort()
   }, [live.project?.id, location.pathname, location.search])
   const [noteDetail, setNoteDetail] = useState<PatchNote | null>(null)
-  const [day, setDay] = useState<ContributionDay | null>(null)
   const [theme, setTheme] = useTheme()
   const [notifications, setNotifications] = useState(false)
   const [inbox, setInbox] = useStored<InboxItem[]>('gyeol.inbox.isu-bin.v1', createInitialInbox())
@@ -247,7 +229,6 @@ function WorkspaceApp() {
   const [syncing, setSyncing] = useState(false)
   const [lastSync, setLastSync] = useState('14:45')
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null)
-  const [year, setYear] = useState('2026')
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // 실패 안내는 읽을 시간이 더 필요해서 오래 둔다.
@@ -295,13 +276,9 @@ function WorkspaceApp() {
   const filteredActivities = useMemo(() => repoActivities.filter(a => inPeriod(a, period)), [repoActivities, period])
   const visibleNotes = notes.filter(n => inPeriod(n, period) && (repoFilter === 'all' || n.activityIds.some(id => activities.find(a => a.id === id)?.repo === repoFilter)))
   const visibleRepos = repos.filter(r => repoFilter === 'all' || r.id === repoFilter)
-  const merged = filteredActivities.filter(a => a.type === 'merge').length
   const scopedIssues = issues.filter(issue => repoFilter === 'all' || issue.repo === repoFilter)
   const scopedPullRequests = pullRequests.filter(pr => repoFilter === 'all' || pr.repo === repoFilter)
   const activeIssues = scopedIssues.filter(issue => issue.status !== 'done')
-  const unassigned = activeIssues.filter(issue => !issue.assignee).length
-  const unlinked = activeIssues.filter(issue => !pullRequests.some(pr => issue.pullRequestIds.includes(pr.id))).length
-  const reviewing = scopedPullRequests.filter(pr => pr.status === 'open' && pr.review === 'pending').length
   const liveScope = Boolean(session.user) && isWorkPage
   const scopeOptions = liveScope ? liveRepos.map(repo => ({ id: repo.id, name: repo.name })) : repos.map(repo => ({ id: repo.id, name: repo.name }))
   const scopeValue = liveScope ? liveRepoFilter : repoFilter
@@ -311,20 +288,6 @@ function WorkspaceApp() {
   const myWorkCount = activeIssues.filter(issue => issue.assignee === CURRENT_USER).length + (live.active ? live.authoredCount + live.reviewCount : scopedPullRequests.filter(pr => needsMyReview(pr) || pr.author === CURRENT_USER && ['open', 'draft'].includes(pr.status)).length)
   const pullRequestCount = live.active ? live.openCount : scopedPullRequests.filter(pr => ['open', 'draft'].includes(pr.status)).length
   const checkedAt = live.active && live.loadedAt ? live.loadedAt.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false }) : lastSync
-  const chartData = useMemo(() => {
-    const end = year === '2026' ? END_MS : Date.UTC(2025, 11, 31)
-    const seeds: Record<string, number> = { web: 7, api: 19, design: 25 }
-    const selectedIds = repoFilter === 'all' ? initialRepos.map(r => r.id) : [repoFilter]
-    const counts = new Map<string, number>()
-    for (const id of selectedIds) {
-      if (!seeds[id]) continue
-      for (const d of generateContributions(end, seeds[id], 371)) {
-        if (d.date.startsWith(year)) counts.set(d.date, (counts.get(d.date) ?? 0) + Math.floor(d.count * .48))
-      }
-    }
-    return generateContributions(end, 7, 371).filter(d => d.date.startsWith(year)).map(d => ({ date: d.date, count: counts.get(d.date) ?? 0 }))
-  }, [repoFilter, year])
-  const contributionTotal = chartData.reduce((n, d) => n + d.count, 0)
   const searchResults = sortedActivities.filter(a => query.trim() && `${a.title} ${a.summary} ${a.ref} ${a.author} ${repos.find(r => r.id === a.repo)?.name}`.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
   const commands: { label: string; description: string; icon: LucideIcon; run: () => void }[] = [
     ...navItems.map(item => ({ label: item.label, description: '화면으로 이동', icon: item.icon, run: () => { navigate(item.to); setModal(null); setQuery('') } })),
@@ -396,28 +359,21 @@ function WorkspaceApp() {
     setNotifications(false)
   }
   const filterControls = <div className="filter-controls">{!isWorkPage && <label className="select-wrap period-select"><CalendarDays size={14} /><select aria-label="조회 기간" value={period} onChange={e => setPeriod(e.target.value as Period)}>{Object.entries(periods).map(([value, p]) => <option key={value} value={value}>{p.range}</option>)}</select></label>}</div>
-  const subtitle = location.pathname === '/overview' ? '회의에서 정한 일부터 코드 검토와 변경 사항까지, 프로젝트의 흐름을 확인하세요.' : location.pathname === '/inbox' ? '내게 온 요청과 소식이에요. 내용을 열거나 읽음으로 표시하면 미확인 목록에서 사라집니다.' : location.pathname === '/my-work' ? '내가 맡은 작업, 요청받은 코드 검토와 내가 올린 PR을 모았어요.' : location.pathname === '/issues' ? '회의에서 정한 팀의 작업, 담당자와 연결된 PR을 함께 확인하세요.' : location.pathname === '/pull-requests' ? '어떤 작업을 해결하는 PR인지, 검토와 자동 검사 상태를 확인하세요.' : location.pathname === '/changes' ? '팀 업데이트로 결과를 공유하고, 개발 기록에서 변경 과정을 확인하세요.' : location.pathname === '/deployments' ? '빌드 결과와 서비스 배포 상태를 구분해서 확인하세요.' : '프로젝트 정보, 멤버, 연결된 저장소와 동기화 설정을 관리하세요.'
+  const subtitle = location.pathname === '/overview' ? '주간 진행 상황과 업무 담당을 한눈에 살펴보세요.' : location.pathname === '/inbox' ? '내게 온 요청과 소식이에요. 내용을 열거나 읽음으로 표시하면 미확인 목록에서 사라집니다.' : location.pathname === '/my-work' ? '내가 맡은 작업, 요청받은 코드 검토와 내가 올린 PR을 모았어요.' : location.pathname === '/issues' ? '회의에서 정한 팀의 작업, 담당자와 연결된 PR을 함께 확인하세요.' : location.pathname === '/pull-requests' ? '어떤 작업을 해결하는 PR인지, 검토와 자동 검사 상태를 확인하세요.' : location.pathname === '/changes' ? '팀 업데이트로 결과를 공유하고, 개발 기록에서 변경 과정을 확인하세요.' : location.pathname === '/deployments' ? '빌드 결과와 서비스 배포 상태를 구분해서 확인하세요.' : '프로젝트 정보, 멤버, 연결된 저장소와 동기화 설정을 관리하세요.'
 
   return <SidebarProvider className="app-shell" style={{ '--sidebar-width': '256px' } as CSSProperties}>
     <a className="skip-link" href="#main-content" onClick={e => { e.preventDefault(); document.getElementById('main-content')?.focus() }}>본문으로 이동</a>
-    <WorkspaceSidebar unreadCount={unreadCount} myWorkCount={session.user ? liveMineCount + live.authoredCount + live.reviewCount : myWorkCount} pullRequestCount={pullRequestCount} issueCount={session.user ? liveIssueCount : activeIssues.length} onSearch={() => setModal('search')} onCreate={() => openIssue(null)} currentUser={session.user} currentProjectName={live.project?.name} currentProjectId={live.project?.id} projects={live.projects} projectLoading={live.loading} onSelectProject={id => { setModal(null); setEditingIssue(null); setSelectedPr(null); setDetail(null); setNoteDetail(null); setDay(null); setRepoFilter('all'); setLiveRepoFilter('all'); live.selectProject(id) }} onLogout={() => void logout()} logoutPending={logoutPending} />
+    <WorkspaceSidebar unreadCount={unreadCount} myWorkCount={session.user ? liveMineCount + live.authoredCount + live.reviewCount : myWorkCount} pullRequestCount={pullRequestCount} issueCount={session.user ? liveIssueCount : activeIssues.length} onSearch={() => setModal('search')} onCreate={() => openIssue(null)} currentUser={session.user} currentProjectName={live.project?.name} currentProjectId={live.project?.id} projects={live.projects} projectLoading={live.loading} onSelectProject={id => { setModal(null); setEditingIssue(null); setSelectedPr(null); setDetail(null); setNoteDetail(null); setRepoFilter('all'); setLiveRepoFilter('all'); live.selectProject(id) }} onLogout={() => void logout()} logoutPending={logoutPending} />
     <SidebarInset className="app-body">
       <header className="topbar"><SidebarTrigger className="sidebar-trigger" aria-label="메뉴 열기 또는 닫기" /><div className="breadcrumb"><span className="project-mini"><BrandMark /></span><span>zello</span><ChevronRight size={12} /><strong>{heading}</strong></div>{showScope && (!liveScope || liveRepos.length > 0) && repositoryControl}<div className="topbar-actions"><button className="search-trigger" onClick={() => setModal('search')}><Search size={16} /><span>검색 및 빠른 이동</span><kbd>⌘ K</kbd></button><span className="topbar-divider" /><HelpMenu pathname={location.pathname} /><Button variant="ghost" size="icon-sm" className="theme-toggle" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} aria-label={theme === 'light' ? '어두운 테마로 전환' : '밝은 테마로 전환'} title={theme === 'light' ? 'Dark mode' : 'Light mode'}>{theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}</Button><div className="notification-anchor"><button className="icon-button notification-button" aria-label="알림" aria-expanded={notifications} onClick={() => setNotifications(v => !v)}><Bell size={18} />{unreadCount > 0 && <span className="unread-badge" aria-hidden="true">{unreadCount}</span>}</button>{notifications && <InboxPreview items={myInbox} repos={repos} onOpen={openNotification} />}</div></div></header>
       <div id="main-content" tabIndex={-1} className="main-content" data-page={location.pathname.split('/')[1] || 'overview'}>
         {session.status === 'unavailable' && <div className="connection-error" role="alert">{session.error}<button className="button" onClick={() => void session.refresh()}>로그인 상태 다시 확인</button></div>}
-        <div className="page-heading"><div><div className="page-eyebrow">{session.user && ['/issues', '/pull-requests', '/my-work', '/settings'].includes(location.pathname) ? live.project?.name ?? "프로젝트 선택" : '샘플 프로젝트'} <span className="badge badge-neutral">팀 워크스페이스</span></div><h1>{heading}<span className="heading-dot">.</span></h1><p>{subtitle}</p></div><div className="heading-actions" id="workspace-page-actions">{['/overview', '/issues'].includes(location.pathname) && !(session.user && location.pathname === '/issues') ? <button className="button button-dark" onClick={() => openIssue(null)}><Plus size={15} />이슈 만들기</button> : location.pathname === '/settings' && settingsTab === 'repositories' && !session.user ? <button className="button button-dark" onClick={() => setModal('repo')}><Plus size={15} />저장소 연결</button> : location.pathname === '/changes' && changesView === 'updates' ? <button className="button button-dark" onClick={() => setModal('note')}><Plus size={15} />패치노트 작성</button> : null}</div></div>
+        <div className="page-heading"><div><div className="page-eyebrow">{session.user && ['/overview', '/issues', '/pull-requests', '/my-work', '/settings', '/changes'].includes(location.pathname) ? live.project?.name ?? "프로젝트 선택" : '샘플 프로젝트'} <span className="badge badge-neutral">팀 워크스페이스</span></div><h1>{heading}<span className="heading-dot">.</span></h1><p>{subtitle}</p></div><div className="heading-actions" id="workspace-page-actions">{['/overview', '/issues'].includes(location.pathname) && !(session.user && location.pathname === '/issues') ? <button className="button button-dark" onClick={() => openIssue(null)}><Plus size={15} />이슈 만들기</button> : location.pathname === '/settings' && settingsTab === 'repositories' && !session.user ? <button className="button button-dark" onClick={() => setModal('repo')}><Plus size={15} />저장소 연결</button> : location.pathname === '/changes' && changesView === 'updates' ? <button className="button button-dark" onClick={() => setModal('note')}><Plus size={15} />패치노트 작성</button> : null}</div></div>
         {showScope && !(session.user && isWorkPage) && <div className="page-toolbar">{filterControls}<div className="sync-status"><span><i className="status-dot" />{checkedAt === '방금' ? '방금 확인' : `${checkedAt} 마지막 확인`}</span><button className={`icon-button ${syncing ? 'is-syncing' : ''}`} disabled={syncing} aria-label="데이터 새로고침" onClick={sync}><RefreshCw size={15} /></button></div></div>}
 
         <div className="workspace-page-content">
         <Routes>
-          <Route path="/overview" element={<>
-            <SectionCards unassigned={unassigned} unlinked={unlinked} reviewing={reviewing} merged={merged} period={periods[period].label} onNavigate={navigate} />
-            <div className="overview-grid"><section className="team-summary"><div className="section-heading"><h2>확인이 필요한 작업</h2><NavLink to="/issues" className="subtle-link">팀 작업 보기 <ArrowUpRight size={14} /></NavLink></div><p className="section-subheading">담당자, 연결된 PR과 다음 확인 사항을 함께 살펴보세요.</p><div className="team-task-list">{[...activeIssues].sort((a, b) => Number(Boolean(a.assignee)) - Number(Boolean(b.assignee))).slice(0, 4).map(issue => <button key={issue.id} onClick={() => openIssue(issue)}><span className={`task-status task-status-${issue.status}`}><CircleDot size={16} /></span><span><strong>{issue.title}</strong><small>{repositoryRef(issue.repo, issue.githubNumber, repos, issue.id)} · {issueAttention(issue, pullRequests)}</small></span><span className="task-assignee">{issue.assignee || '지정 필요'}</span><ChevronRight size={14} /></button>)}{!issues.some(issue => (repoFilter === 'all' || issue.repo === repoFilter) && issue.status !== 'done') && <Empty title="진행할 작업이 없어요" description="새 이슈를 만들어 다음 작업을 정리해 보세요." />}</div><button className="button full-width" onClick={() => openIssue(null)}><Plus size={14} />회의에서 할 일 등록</button></section><section className="weekly-section"><div className="section-heading"><h2>최신 팀 업데이트</h2><NavLink to="/patches" className="subtle-link">전체 보기 <ArrowUpRight size={14} /></NavLink></div>{visibleNotes.find(n => n.status === 'published') ? <PatchPreview note={visibleNotes.find(n => n.status === 'published')!} onRead={() => setNoteDetail(visibleNotes.find(n => n.status === 'published')!)} /> : <div className="patch-preview patch-empty"><Empty title="아직 공개된 패치노트가 없어요" description="반영된 PR을 선택해 패치노트를 작성하세요." action={<button className="button" onClick={() => setModal('note')}>패치노트 작성</button>} /></div>}</section></div>
-            <ActivityChart activities={repoActivities} period={period} onPeriod={setPeriod} />
-            <ActivityTable activities={filteredActivities} repos={repos} onSelect={setDetail} onViewAll={() => navigate('/activity')} />
-            <section className="contributions-section"><div className="section-heading"><h2>팀의 활동 <span className="section-annotation">기본 브랜치 기준 · 데모 데이터</span></h2><label className="year-select"><select aria-label="활동 연도" value={year} onChange={e => setYear(e.target.value)}><option>2026</option><option>2025</option></select></label></div><ContributionSkyline data={chartData} startDate={`${year}-01-01`} endDate={year === '2026' ? '2026-10-27' : '2025-12-31'} title={<><strong className="contribution-total">{contributionTotal.toLocaleString()}</strong><span className="contribution-total-label"> contributions</span></>} defaultView="2d" palette={CHART_PALETTE} showStats={false} locale="ko-KR" unit="개 활동" unitPlural="개 활동" onCellClick={setDay} footer="날짜를 선택하면 그날의 기록을 볼 수 있어요." className="skyline" /></section>
-            <section className="repos-section"><div className="section-heading"><h2>Repositories <span className="count-text">{visibleRepos.length}</span></h2><button className="subtle-link" onClick={() => setModal('repo')}><Plus size={14} />저장소 연결</button></div><div className="repo-grid">{visibleRepos.map(r => <RepoCard key={r.id} repo={r} activityCount={activities.filter(a => a.repo === r.id && inPeriod(a, period)).length} onClick={() => openRepo(r)} />)}</div></section>
-          </>} />
+          <Route path="/overview" element={session.user ? live.project ? <WeeklyOverview key={live.project.id} project={live.project.id} /> : live.loading ? <LoadingState layout="cards" label="프로젝트를 불러오는 중" /> : <Empty title="사이드바에서 프로젝트를 선택해 주세요" description="팀의 이번 주 진행 상황을 확인할 수 있어요." action={<Link className="button" to="/onboarding">프로젝트 연결</Link>} /> : <DemoWeeklyOverview issues={issues} pullRequests={pullRequests} onIssue={openIssue} onPr={setSelectedPr} />} />
           <Route path="/issues" element={session.user ? <LiveIssues key={live.project?.id ?? "none"} project={live.project} projectLoading={live.loading} repositoryId={liveRepositoryId} onCountChange={setLiveIssueCount} onNotify={notify} /> : <DemoTeamWork onUpdate={setIssues} issues={issues} repos={repos} pullRequests={pullRequests} repoFilter={repoFilter} onSelect={openIssue} onCreate={() => openIssue(null)} onSelectPr={setSelectedPr} onCreatePr={openPr} />} />
           <Route path="/pull-requests" element={<PullRequestsPanel pullRequests={workPullRequests} repos={repos} issues={issues} repoFilter={live.active ? 'all' : repoFilter} onSelect={setSelectedPr} onSelectIssue={openIssue} onSync={sync} syncing={syncing} onCreate={() => openPr()} live={Boolean(session.user)} needsSetup={Boolean(session.user) && !live.project && !live.loading} loading={live.loading} error={live.error} reauth={live.reauth} paging={live.active ? live.paging ?? undefined : undefined} />} />
           <Route path="/deployments" element={<section><div className="deployment-summary"><span className="deployment-symbol"><Rocket size={25} strokeWidth={1.4} /></span><div><h2>코드 반영과 서비스 배포를 나누어 봐요.</h2><p>빌드가 성공해도 서비스에 반영되기까지는 한 단계가 더 필요해요.</p></div></div><div className="deployment-table"><div className="deployment-table-head"><span>저장소 / 환경</span><span>빌드</span><span>서비스 배포</span><span>최근 확인</span></div>{visibleRepos.map(repo => <button className="deployment-row" key={repo.id} disabled={!activities.some(a => a.repo === repo.id)} title={activities.some(a => a.repo === repo.id) ? '관련 기록 보기' : '아직 수집된 기록이 없어요'} onClick={() => setDetail(activities.find(a => a.repo === repo.id && a.type === 'deploy') ?? activities.find(a => a.repo === repo.id) ?? null)}><span><Github size={18} /><span><strong>{repo.name}</strong><small>{repo.deployment}</small></span></span><span><Badge tone={repo.build === 'success' ? 'green' : repo.build === 'failed' ? 'red' : 'neutral'}>{repo.build === 'success' ? <CheckCircle2 size={12} /> : repo.build === 'failed' ? <CircleDot size={12} /> : <Clock3 size={12} />}{repo.build === 'success' ? '성공' : repo.build === 'failed' ? '실패' : '기록 없음'}</Badge></span><span>{repo.build === 'success' ? <Badge tone="green"><Check size={12} />배포 완료</Badge> : repo.build === 'failed' ? <Badge tone="orange"><Clock3 size={12} />배포 대기</Badge> : <Badge>확인 불가</Badge>}</span><span className="mono muted">{repo.updated}<ChevronRight size={14} /></span></button>)}</div>{visibleRepos.some(r => r.build === 'failed') && <div className="build-notice"><CircleDot size={19} /><div><strong>zello-design의 빌드를 확인해 주세요.</strong><p>공통 컴포넌트의 키보드 접근성 검사에서 실패했어요. 마지막으로 성공한 버전은 계속 제공되고 있습니다.</p><button className="text-button" onClick={() => setDetail(activities.find(a => a.id === 121)!)}>관련 작업 보기 <ArrowRight size={13} /></button></div></div>}<div className="section-heading deployment-history"><h2>최근 반영과 배포</h2><span className="muted small">선택한 기간의 기록</span></div>{filteredActivities.filter(a => a.type === 'deploy' || a.type === 'merge').map(a => <ActivityRow key={a.id} item={a} repos={repos} onSelect={setDetail} />)}{!filteredActivities.some(a => a.type === 'deploy' || a.type === 'merge') && <Empty title="반영 및 배포 기록이 없어요" description="다른 기간이나 저장소를 선택해 보세요." />}</section>} />
@@ -473,7 +429,7 @@ function WorkspaceApp() {
     {modal === 'note' && <CreateNoteDialog repos={repos} onClose={() => setModal(null)} onCreate={note => { setNotes(current => [note, ...current]); setModal(null); setNoteDetail(note); notify('선택한 PR 요약으로 패치노트 초안을 만들었어요.') }} />}
     {detail && <ActivityDetail activity={detail} repos={repos} onClose={() => setDetail(null)} onViewTimeline={() => { setRepoFilter(detail.repo); setDetail(null); navigate('/activity') }} />}
     {noteDetail && <NoteDetail note={notes.find(n => n.id === noteDetail.id) ?? noteDetail} repos={repos} onClose={() => setNoteDetail(null)} onSave={note => { updateNote(note); notify(note.status === 'published' ? '패치노트를 저장했어요.' : '초안을 저장했어요.') }} onCopy={notify} />}
-    {day && <Dialog title="날짜별 활동" onClose={() => setDay(null)}><div className="day-detail"><span className="eyebrow">TEAM CONTRIBUTIONS</span><h2>{day.date.replaceAll('-', '.')}</h2><p>선택한 저장소의 활동 <strong>{day.count}개</strong></p>{repoActivities.filter(a => a.date === day.date).map(a => <ActivityRow key={a.id} item={a} repos={repos} onSelect={a => { setDay(null); setDetail(a) }} />)}{!repoActivities.some(a => a.date === day.date) && <div className="day-empty"><GitCommitHorizontal size={24} /><p>{day.count ? '잔디에 표시할 활동량만 준비된 날짜예요.' : '이날에는 기록된 활동이 없어요.'}</p><span>상세 목데이터는 2026년 10월 일부 날짜에 제공됩니다.</span></div>}<p className="help-text">잔디는 시각화용 샘플이며, 상세 타임라인과 별도로 생성한 데이터입니다.</p></div></Dialog>}
+
   </SidebarProvider>
 }
 

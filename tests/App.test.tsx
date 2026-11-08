@@ -92,22 +92,18 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(stored.find((issue: { id: string }) => issue.id === 'ZELLO-46').pullRequestIds).toEqual([])
   })
 
-  it('상단에서 저장소 범위를 바꾸고 현재 화면에서 전체 저장소로 복귀한다', async () => {
+  it('전체 현황은 주간 진행률과 담당 현황을 보여주고 작업을 바로 연다', async () => {
     const user = userEvent.setup()
     mount()
-    const scope = screen.getByRole('combobox', { name: '저장소 필터' })
-    const chart = screen.getByRole('region', { name: '기간별 개발 활동 그래프' })
-    await user.selectOptions(scope, 'api')
-    expect(within(chart).getByRole('group', { name: /커밋 13개와/ })).toBeInTheDocument()
-    expect(screen.getByLabelText('저장소 필터')).toHaveValue('api')
-    await user.selectOptions(scope, 'web')
-    expect(scope).toHaveValue('web')
-    expect(within(chart).getByRole('group', { name: /커밋 15개와/ })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /^전체 현황/ })).toBeInTheDocument()
-    await user.selectOptions(scope, 'all')
-    expect(within(chart).getByRole('group', { name: /커밋 39개와/ })).toBeInTheDocument()
-    expect(screen.getByLabelText('저장소 필터')).toHaveValue('all')
-    expect(screen.queryByRole('link', { name: '빌드와 배포' })).not.toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: '이번 주 작업 완료율' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '업무 담당' })).toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: '저장소 필터' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '이수빈 업무 담당 보기' }))
+    expect(screen.getByRole('button', { name: /진행 중비어 있는 컬렉션의 첫 사용 안내/ })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: '업무 담당' })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: /수정 요청키보드로도 메뉴를 이동할 수 있도록/ }))
+    expect(screen.getByRole('dialog', { name: 'Pull request 상세' })).toBeInTheDocument()
   })
 
   it('밝은 테마와 어두운 테마를 전환하고 다시 열어도 유지한다', async () => {
@@ -123,29 +119,36 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(document.documentElement).not.toHaveClass('dark')
   })
 
-  it('활동 그래프의 기간 변경을 전체 수치에 반영하고 날짜별 상세를 제공한다', async () => {
+  it('주간 대시보드에서 검토 항목을 골라 담당자와 대기 상태를 확인한다', async () => {
     const user = userEvent.setup()
     mount()
-    const chart = screen.getByRole('region', { name: '기간별 개발 활동 그래프' })
-    expect(within(chart).getByRole('group', { name: /커밋 39개와 병합 PR 5개/ })).toBeInTheDocument()
-    await user.click(within(chart).getByRole('button', { name: '지난주', exact: true }))
-    expect(within(chart).getByRole('group', { name: /커밋 21개와 병합 PR 3개/ })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: '팀 작업 확인 현황' })).toBeInTheDocument()
-    await user.click(within(chart).getByRole('button', { name: '2026-10-19, 커밋 3개, 병합 PR 1개' }))
-    expect(within(chart).getByRole('status')).toHaveTextContent('2026.10.19')
+    const progress = screen.getByRole('progressbar', { name: '이번 주 작업 완료율' })
+    expect(progress).toHaveAttribute('aria-valuenow', '25')
+    await user.click(screen.getByRole('button', { name: '검토 기다림1' }))
+    expect(screen.getByRole('button', { name: /PR 열린 지 3일.*검색 결과를 더 빠르게/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /수정 요청.*키보드로도/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '전체2' }))
+    expect(screen.getByRole('button', { name: /수정 요청.*키보드로도/ })).toBeInTheDocument()
   })
 
-  it('저장소와 기간에 맞춰 개발 이력과 기록을 갱신한다', async () => {
+  it('개발 기록에서 저장소와 기간을 바꾸면 해당 이력을 보여준다', async () => {
     const user = userEvent.setup()
-    mount()
-    const chart = screen.getByRole('region', { name: '기간별 개발 활동 그래프' })
-    expect(within(chart).getByRole('group', { name: /커밋 39개와/ })).toBeInTheDocument()
+    mount('/activity')
     await user.selectOptions(screen.getByLabelText('저장소 필터'), 'api')
-    expect(within(chart).getByRole('group', { name: /커밋 13개와/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /컬렉션을 링크 하나로 공유할 수 있어요/ })).not.toBeInTheDocument()
     await user.selectOptions(screen.getByLabelText('조회 기간'), 'previous')
-    expect(within(chart).getByRole('group', { name: /커밋 3개와/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /로그인이 만료되면 다시 안내해 드려요/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /모바일에서도 컬렉션/ })).not.toBeInTheDocument()
+  })
+
+  it('주간 상태별 개수를 누르면 해당 상태의 작업만 보고 필터를 해제할 수 있다', async () => {
+    const user = userEvent.setup()
+    mount()
+    await user.click(screen.getByRole('link', { name: '진행 중2개' }))
+    expect(screen.getByRole('button', { name: /ZELLO-45.*비어 있는 컬렉션/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /ZELLO-41.*컬렉션을 링크/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '진행 중 필터 해제' }))
+    expect(screen.getByRole('button', { name: /ZELLO-42.*컬렉션 검색/ })).toBeInTheDocument()
   })
 
   it('타임라인을 활동 유형으로 필터링하고 배포 전 상태를 보여준다', async () => {
@@ -293,10 +296,9 @@ describe('목데이터 대시보드의 주요 사용자 흐름', () => {
     expect(within(detail).getByRole('button', { name: /zello-api#88/ })).toBeInTheDocument()
   })
 
-  it('홈의 확인 필요 항목에서 담당자·회의·PR 필터를 적용하고 초기화한다', async () => {
+  it('팀 작업에서 담당자·회의·PR 필터를 적용하고 초기화한다', async () => {
     const user = userEvent.setup()
-    mount()
-    await user.click(screen.getByRole('button', { name: /누가 맡을지 정해 주세요/ }))
+    mount('/issues?focus=unassigned')
     expect(screen.getByLabelText('작업 확인 필터')).toHaveValue('unassigned')
     expect(screen.getByRole('button', { name: /ZELLO-44.*컬렉션 공동 편집/ })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /ZELLO-42/ })).not.toBeInTheDocument()
