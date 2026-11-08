@@ -1,8 +1,7 @@
 import { PullRequestIssueLinks } from './issue-pr-links'
 import { useEffect, useState } from 'react'
 import { ArrowRight, CheckCircle2, ChevronRight, CircleDot, ExternalLink, FileText, GitBranch, GitMerge, GitPullRequest, Pencil } from 'lucide-react'
-import { activities } from '@/data/mock'
-import type { Repo } from '@/data/mock'
+import type { Repo } from '@/data/repository'
 import { repositoryRef } from '@/data/work-items'
 import type { Issue, PullRequest } from '@/data/work-items'
 import { getPullRequest, updateTeamSummary } from '../lib/project-api'
@@ -39,13 +38,8 @@ export function PullRequestDetail({ pr, repos, issues, onViewIssue, canEdit = fa
     onChanged?.()
   }
   const githubBody = detail?.body?.trim() ?? ''
-  const activity = activities.find(item => item.id === pr.activityId)
-  // 실제 PR은 상세를 열 때 서버가 GitHub에서 받아 온 값을 쓴다.
-  const stats = pr.live
-    ? detail?.changedFiles != null ? { files: detail.changedFiles, additions: detail.additions ?? 0, deletions: detail.deletions ?? 0 } : null
-    : activity ? { files: activity.files, additions: activity.additions, deletions: activity.deletions } : null
-  // 실제 PR은 zello의 팀 요약만 보여준다. GitHub 본문으로 대신 채우지 않는다.
-  const summary = pr.live ? (detail ? detail.teamSummary ?? '' : pr.summary ?? '') : pr.summary || activity?.summary || ''
+  const stats = detail?.changedFiles != null ? { files: detail.changedFiles, additions: detail.additions ?? 0, deletions: detail.deletions ?? 0 } : null
+  const summary = detail ? detail.teamSummary ?? '' : pr.summary ?? ''
   const reviewers = detail ? detail.reviewers.map(item => item.login) : pr.reviewers ?? []
 
   async function save() {
@@ -63,7 +57,7 @@ export function PullRequestDetail({ pr, repos, issues, onViewIssue, canEdit = fa
   }
   const linked = issues.filter(issue => issue.pullRequestIds.includes(pr.id))
   return <div className="detail-content pr-detail"><span className={`event-icon large event-${status === 'merged' ? 'merge' : 'pr'}`}>{status === 'merged' ? <GitMerge size={24} /> : <GitPullRequest size={24} />}</span>
-    <div className="detail-kicker"><span className="badge">{status === 'merged' ? '병합됨' : status === 'draft' ? '초안' : status === 'closed' ? '닫힘' : '검토 요청'}</span><span className="mono muted">{repositoryRef(pr.repo, pr.number, repos)}</span></div><h2>{pr.title}</h2><div className="detail-author"><strong>{pr.author}</strong><span>{pr.live ? 'GitHub 연동' : '샘플 PR'}</span>{pr.url && <a className="subtle-link" href={pr.url} target="_blank" rel="noopener noreferrer">GitHub에서 보기</a>}</div>
+    <div className="detail-kicker"><span className="badge">{status === 'merged' ? '병합됨' : status === 'draft' ? '초안' : status === 'closed' ? '닫힘' : '검토 요청'}</span><span className="mono muted">{repositoryRef(pr.repo, pr.number, repos)}</span></div><h2>{pr.title}</h2><div className="detail-author"><strong>{pr.author}</strong><span>{pr.live ? 'GitHub 연동' : 'PR'}</span>{pr.url && <a className="subtle-link" href={pr.url} target="_blank" rel="noopener noreferrer">GitHub에서 보기</a>}</div>
     <div className="pr-branch-flow"><GitBranch size={14} /><code>{pr.branch}</code><ArrowRight size={13} /><code>{pr.base}</code></div>
     <section className="detail-summary" aria-label="팀을 위한 변경 요약">
       <div className="detail-summary-head"><span className="eyebrow">팀을 위한 변경 요약</span>{pr.live && canEdit && detail && !editing && <button type="button" className="subtle-link" onClick={() => { setText(summary); setError(''); setEditing(true) }}><Pencil size={12} />{summary ? '수정' : '작성하기'}</button>}</div>
@@ -82,6 +76,6 @@ export function PullRequestDetail({ pr, repos, issues, onViewIssue, canEdit = fa
     <dl className="detail-properties"><div><dt>리뷰어</dt><dd>{reviewers.length ? reviewers.join(', ') : '지정되지 않았어요'}</dd></div><div><dt>코드 검토</dt><dd>{reviewSummary({ status, review })}</dd></div><div><dt>코드 병합</dt><dd>{status === 'merged' ? <><CheckCircle2 size={13} />기본 브랜치에 반영됨</> : '아직 병합되지 않았어요'}</dd></div></dl>
     {actions?.canReview && pr.projectId && <ReviewForm projectId={pr.projectId} pullRequestId={pr.id} onSubmitted={applyAction} />}
     {actions && pr.projectId && detail && <MergePanel projectId={pr.projectId} detail={detail} onMerged={applyAction} onRecheck={() => setReloadKey(key => key + 1)} />}
-    {pr.live && pr.projectId && detail ? <PullRequestIssueLinks projectId={pr.projectId} pullId={pr.id} repositoryId={detail.repositoryId} links={detail.linkedIssues ?? []} canWrite={canEdit} onChanged={() => { setReloadKey(key => key + 1); onChanged?.() }} /> : !pr.live && <div className="pr-linked-issues"><h3>이 변경으로 해결하는 이슈</h3>{linked.map(issue => <button className="command-item" key={issue.id} onClick={() => onViewIssue(issue)}><CircleDot size={14} /><span><small>{issue.id} · {repositoryRef(issue.repo, issue.githubNumber, repos, issue.id)} · {issue.assignee || '담당자 미지정'}</small>{issue.title}</span><ChevronRight size={14} /></button>)}{!linked.length && <p className="help-text">연결된 이슈가 없어요. 할 일 상세에서 이 PR을 연결해 주세요.</p>}</div>}{!pr.live && <p className="work-demo-note">현재 표시되는 정보는 목데이터예요.</p>}
+    {pr.live && pr.projectId && detail ? <PullRequestIssueLinks projectId={pr.projectId} pullId={pr.id} repositoryId={detail.repositoryId} links={detail.linkedIssues ?? []} canWrite={canEdit} onChanged={() => { setReloadKey(key => key + 1); onChanged?.() }} /> : !pr.live && <div className="pr-linked-issues"><h3>이 변경으로 해결하는 이슈</h3>{linked.map(issue => <button className="command-item" key={issue.id} onClick={() => onViewIssue(issue)}><CircleDot size={14} /><span><small>{issue.id} · {repositoryRef(issue.repo, issue.githubNumber, repos, issue.id)} · {issue.assignee || '담당자 미지정'}</small>{issue.title}</span><ChevronRight size={14} /></button>)}{!linked.length && <p className="help-text">연결된 이슈가 없어요. 할 일 상세에서 이 PR을 연결해 주세요.</p>}</div>}
   </div>
 }

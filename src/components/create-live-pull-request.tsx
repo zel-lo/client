@@ -32,7 +32,7 @@ export function CreateLivePullRequest({ projectId, initialIssue, onCreated, onCa
   const [error, setError] = useState('')
   // 응답을 못 받은 요청을 다시 보낼 때만 같은 키를 쓴다. 그래야 GitHub에 PR이 두 번 만들어지지 않는다.
   const requestKey = useRef(crypto.randomUUID())
-  const valid = Boolean(repoId && title.trim() && summary.trim() && head && base && head !== base)
+  const valid = Boolean(repoId && title.trim() && head && base && head !== base)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -95,7 +95,7 @@ export function CreateLivePullRequest({ projectId, initialIssue, onCreated, onCa
     {branches?.hasMore && <p className="help-text">브랜치가 많아 일부만 보여요. 목록에 없는 브랜치는 GitHub에서 직접 PR을 만들어 주세요.</p>}
     {branches && !headOptions.length && <p className="help-text">PR로 만들 수 있는 다른 브랜치가 없어요. 먼저 브랜치를 만들어 푸시해 주세요.</p>}
     {repoId && <IssuePicker projectId={projectId} repositoryId={repoId} selected={issueIds} disabled={busy} onChange={setIssueIds} />}
-    <label>팀을 위한 변경 요약<textarea required rows={3} maxLength={3000} value={summary} disabled={busy} onChange={event => setSummary(event.target.value)} placeholder="무엇을 바꿨고, 사용자가 어떤 차이를 확인할 수 있나요?" /></label>
+    <label>팀을 위한 변경 요약<textarea rows={3} maxLength={3000} value={summary} disabled={busy} onChange={event => setSummary(event.target.value)} placeholder="비워두면 PR 본문 또는 제목으로 채워요. 팀에 전할 설명을 직접 적을 수도 있어요." /></label>
     <MarkdownEditor label="GitHub PR 본문" optional value={body} onChange={setBody} disabled={busy} maxLength={60000} placeholder="리뷰어가 볼 구현 내용, 테스트 방법 등을 적어주세요. GitHub에 그대로 올라가요." />
     <fieldset className="reviewer-options" disabled={busy}><legend>리뷰어 <span className="optional">선택</span></legend>
       {!candidates && !candidateError && repoId && <p className="help-text">리뷰어 후보를 불러오는 중…</p>}

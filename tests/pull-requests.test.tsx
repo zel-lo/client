@@ -423,6 +423,20 @@ describe('실제 PR 연결', () => {
     expect(screen.queryByRole('dialog', { name: '새 Pull request' })).not.toBeInTheDocument()
   })
 
+  it('팀 요약을 비워도 PR을 만들 수 있어 서버의 기본 문구를 사용한다', async () => {
+    const fetcher = backend(); mount('/pull-requests'); const control = userEvent.setup()
+    await screen.findByRole('button', { name: /실제 PR 1/ })
+    await control.click(screen.getByRole('button', { name: 'PR 작성' }))
+    const dialog = await screen.findByRole('dialog', { name: '새 Pull request' })
+    await within(dialog).findByRole('option', { name: 'main (기본)' })
+    await control.type(within(dialog).getByLabelText('PR 제목'), '로그인 개선')
+    await control.selectOptions(within(dialog).getByLabelText('작업 브랜치'), 'feat/a')
+    expect(within(dialog).getByLabelText('팀을 위한 변경 요약')).toHaveValue('')
+    await control.click(within(dialog).getByRole('button', { name: '코드 검토 요청' }))
+    await screen.findByText(/GitHub에 PR zello-test#9을 만들었어요/)
+    expect(postedBodies(fetcher)[0].teamSummary).toBe('')
+  })
+
   it('PR 작성 시 GitHub 본문과 리뷰어를 따로 보내고, 리뷰어 지정 실패는 경고로 알린다', async () => {
     const fetcher = backend({ createWarning: 'PR은 만들었지만 리뷰어를 지정하지 못했어요.' })
     mount('/pull-requests')
