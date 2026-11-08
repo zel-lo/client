@@ -496,6 +496,7 @@ export default function ContributionSkyline({
   const engine = React.useRef<{ kick: () => void; load: () => void; retheme: () => void; tipWidth: (w: number) => void } | null>(null)
 
   const plural = unitPlural ?? unit + "s"
+  const korean = locale.startsWith("ko")
   const nf = React.useMemo(() => new Intl.NumberFormat(locale), [locale])
   const df = React.useMemo(() => new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", timeZone: "UTC" }), [locale])
   const dfy = React.useMemo(() => new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }), [locale])
@@ -504,7 +505,7 @@ export default function ContributionSkyline({
   const describe = (i: number) => {
     const c = model.cells[i]
     if (!c) return ""
-    return (c.count ? nf.format(c.count) + " " + noun(c.count) : "No " + plural) + " on " + dfl.format(dayMs(c.date))
+    return korean ? dfl.format(dayMs(c.date)) + " · " + (c.count ? nf.format(c.count) + " " + noun(c.count) : "활동 없음") : (c.count ? nf.format(c.count) + " " + noun(c.count) : "No " + plural) + " on " + dfl.format(dayMs(c.date))
   }
 
   // Everything the render loop reads, refreshed every render so the loop never closes over stale props.
@@ -1174,7 +1175,7 @@ export default function ContributionSkyline({
   ]
   const showRow = showStats && !(is3d && corners)
   const ease = "cubic-bezier(0.65, 0, 0.35, 1)"
-  const levelNames = ["No " + plural, "Light", "Moderate", "Heavy", "Heaviest"]
+  const levelNames = korean ? ["활동 없음", "활동 적음", "활동 보통", "활동 많음", "활동 매우 많음"] : ["No " + plural, "Light", "Moderate", "Heavy", "Heaviest"]
 
   const hints = ["Hover a day for details · arrow keys to explore", "Drag to orbit · double-click to reset"]
   const hint = hints[is3d && orbit ? 1 : 0]
@@ -1246,7 +1247,7 @@ export default function ContributionSkyline({
               tabIndex={0}
               role="img"
               aria-label={
-                nf.format(stats.total) + " " + noun(stats.total) + " between " + range(stats.first, stats.last, true) +
+                korean ? range(stats.first, stats.last, true) + " · " + nf.format(stats.total) + " " + noun(stats.total) + " · " + (is3d ? "3D 잔디" : "평면 잔디") + ". 방향키로 날짜별 활동을 확인하세요." : nf.format(stats.total) + " " + noun(stats.total) + " between " + range(stats.first, stats.last, true) +
                 ", shown as a " + (is3d ? "3D skyline" : "heat map") + ". Use the arrow keys to read individual days."
               }
               className="absolute top-0 left-0 block outline-none"
@@ -1301,9 +1302,9 @@ export default function ContributionSkyline({
             {active >= 0 && model.cells[active] ? (
               <>
                 <strong className="font-semibold">
-                  {model.cells[active].count ? nf.format(model.cells[active].count) + " " + noun(model.cells[active].count) : "No " + plural}
+                  {model.cells[active].count ? nf.format(model.cells[active].count) + " " + noun(model.cells[active].count) : korean ? "활동 없음" : "No " + plural}
                 </strong>
-                <span className="opacity-75"> on {dfy.format(dayMs(model.cells[active].date))}</span>
+                <span className="opacity-75">{korean ? " · " : " on "}{dfy.format(dayMs(model.cells[active].date))}</span>
               </>
             ) : (
               " "
@@ -1367,7 +1368,7 @@ export default function ContributionSkyline({
                 <button
                   key={i}
                   type="button"
-                  aria-label={"Highlight " + levelNames[i].toLowerCase() + " days"}
+                  aria-label={korean ? levelNames[i] + "인 날 강조" : "Highlight " + levelNames[i].toLowerCase() + " days"}
                   aria-pressed={legendLevel === i}
                   title={levelNames[i]}
                   onMouseEnter={() => setLegendLevel(i)}

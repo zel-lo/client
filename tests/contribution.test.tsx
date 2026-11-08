@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
+import { TeamContributions } from '../src/components/team-contributions'
 import { buildGrid, computeStats, dayMs } from '../src/components/ui/contribution-skyline'
 
 describe('연간 활동 집계', () => {
@@ -21,5 +25,18 @@ describe('연간 활동 집계', () => {
     expect(cells[0].date).toBe('2025-12-28')
     expect(cells.at(-1)?.date).toBe('2026-10-27')
     expect(computeStats(cells).total).toBe(11)
+  })
+  it('실제 빈 활동은 임의의 샘플로 채우지 않으며 평면·3D 보기와 한국어 안내를 제공한다', async () => {
+    const context = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+    try {
+      render(<MemoryRouter><TeamContributions days={[]} endDate="2026-11-08" /></MemoryRouter>)
+      expect(screen.getByRole('heading', { name: '0건의 팀 활동' })).toBeInTheDocument()
+      expect(screen.getByText(/아직 기록된 활동이 없어요/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '평면 잔디' })).toHaveAttribute('aria-pressed', 'true')
+      await userEvent.click(screen.getByRole('button', { name: '3D 잔디' }))
+      expect(screen.getByRole('button', { name: '3D 잔디' })).toHaveAttribute('aria-pressed', 'true')
+      expect(screen.getByRole('img')).toHaveAccessibleName(/3D 잔디.*방향키/)
+      expect(screen.getByRole('link', { name: '개발 기록 보기' })).toHaveAttribute('href', '/changes?view=history')
+    } finally { context.mockRestore() }
   })
 })

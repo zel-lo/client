@@ -21,6 +21,15 @@ const data: WeeklyDashboard = {
 }
 
 describe('주간 PM 대시보드', () => {
+  it('수정 요청을 우선 안내하고 실제 PR로 바로 연결한다', () => {
+    render(<MemoryRouter><WeeklyDashboardView data={{ ...data, attention: [...data.attention].reverse() }} /></MemoryRouter>)
+    expect(screen.getByRole('link', { name: '수정 요청 확인' })).toHaveAttribute('href', '/pull-requests?pr=31')
+    expect(screen.getByRole('region', { name: '팀의 다음 할 일' })).toHaveTextContent('검색 응답 개선')
+  })
+  it('과거 주차를 볼 때 현재의 다음 할 일 안내를 섞지 않는다', () => {
+    render(<MemoryRouter><WeeklyDashboardView data={{ ...data, currentWeek: '2026-11-09' }} /></MemoryRouter>)
+    expect(screen.queryByRole('region', { name: '팀의 다음 할 일' })).not.toBeInTheDocument()
+  })
   it('진행률과 상태별 작업을 표시하고 실제 작업과 PR로 연결한다', async () => {
     const user = userEvent.setup()
     render(<MemoryRouter><WeeklyDashboardView data={data} /></MemoryRouter>)
@@ -45,7 +54,9 @@ describe('주간 PM 대시보드', () => {
     render(<MemoryRouter><WeeklyDashboardView data={{ ...data, total: 0, completed: 0, percentage: 0, carriedOver: 0, completedThisWeek: 0, states: {}, attention: [], attentionCounts: { unassigned: 0, reviewAging: 0, changesRequested: 0 }, people: [], recent: [], recentTotal: 0 }} /></MemoryRouter>)
     expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
     expect(screen.getByText('이번 주에 할 작업을 정해 보세요')).toBeInTheDocument()
-    expect(screen.getByText('지금은 순조롭게 진행 중이에요')).toBeInTheDocument()
+    expect(screen.getByText('등록한 작업부터 함께 살펴봐요')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '첫 작업 등록' })).toHaveAttribute('href', '/issues?new=1')
+    expect(screen.queryByText('지금 확인이 필요한 항목은 없어요')).not.toBeInTheDocument()
     expect(screen.getByText('함께할 팀원을 초대해 보세요')).toBeInTheDocument()
     expect(screen.getByText('완료한 작업이 여기에 차곡차곡 모여요.')).toBeInTheDocument()
   })
@@ -117,7 +128,7 @@ describe('주간 PM 대시보드', () => {
     expect(fetcher).toHaveBeenCalledWith('/api/projects/1/dashboard?week=2026-10-26', expect.anything())
     expect(screen.getByRole('link', { name: /지난 주에 완료한 작업/ })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /팀에서 직접 작성한 반영 제목/ })).not.toBeInTheDocument()
-    expect(screen.getByText('선택한 주 완료와 현재 미완료 작업 기준 · 백로그 제외')).toBeInTheDocument()
+    expect(screen.getByText('선택한 주 완료와 현재 미완료 작업 기준 · 아직 시작하지 않은 할 일 제외')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '이번 주', exact: true }))
     expect(await screen.findByRole('progressbar', { name: '이번 주 작업 완료율' })).toHaveAttribute('aria-valuenow', '42')
     expect(screen.getByTestId('week-route')).toHaveTextContent('?view=weekly')

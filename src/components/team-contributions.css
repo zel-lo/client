@@ -1,0 +1,16 @@
+.team-contributions { overflow: hidden; }
+.team-contributions .weekly-card-heading { align-items: flex-start; margin-bottom: 20px; }
+.team-contributions-description { margin-top: 6px; color: var(--muted-foreground); font-size: 13px; line-height: 1.7; }
+.team-contributions-period { color: var(--muted-foreground); font-size: 12px; white-space: nowrap; padding-top: 4px; }
+.team-contributions-chart { --color-background: var(--card); --color-foreground: var(--foreground); --color-border: var(--quiet-line); border: 0; padding: 0; background: var(--card) !important; }
+.team-contributions-chart > header { margin-bottom: 18px; }
+.team-contributions-total { font-size: 25px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.8px; }
+.team-contributions-unit { margin-left: 6px; color: var(--muted-foreground); font-size: 13px; }
+.team-contributions-updating { margin-left: 12px; color: var(--muted-foreground); font-size: 12px; }
+.team-contributions-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding-top: 16px; margin-top: 18px; border-top: 1px solid var(--quiet-line); }
+.team-contributions-footer > p, .team-contributions-empty { color: var(--muted-foreground); font-size: 12px; line-height: 1.8; }
+.team-contributions-empty { margin-top: 12px; }
+.activity-count-help { color: var(--muted-foreground); font-size: 12px; line-height: 1.8; }
+.activity-count-help summary { cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.activity-count-help p { max-width: 60ch; margin-top: 8px; }
+@media (max-width: 600px) { .team-contributions .weekly-card-heading { flex-wrap: wrap; gap: 6px; } .team-contributions-total { font-size: 22px; } .team-contributions-chart > div > div:last-child { font-size: 11px; } }

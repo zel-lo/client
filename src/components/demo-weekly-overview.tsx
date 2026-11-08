@@ -4,6 +4,10 @@ import type { Issue, PullRequest } from '../data/work-items'
 import { activities, members, initialRepos } from '../data/mock'
 import type { DashboardAttention, DashboardCompleted, DashboardTask, WeeklyDashboard } from '../lib/weekly-dashboard'
 import { WeeklyDashboardView } from './weekly-overview'
+import { TeamContributions } from './team-contributions'
+import { dayMs, generateContributions } from './ui/contribution-skyline'
+
+const sampleContributions = generateContributions(dayMs('2026-10-30'), 7)
 
 /** The existing sample project uses the same view as a signed-in project. */
 export function DemoWeeklyOverview({ issues, pullRequests, onIssue, onPr }: { issues: Issue[]; pullRequests: PullRequest[]; onIssue: (issue: Issue) => void; onPr: (pr: PullRequest) => void }) {
@@ -52,5 +56,5 @@ export function DemoWeeklyOverview({ issues, pullRequests, onIssue, onPr }: { is
     completedThisWeek: completed.length, states: Object.fromEntries(['IN_PROGRESS', 'IN_REVIEW', 'DONE'].map(state => [state, scope.filter(issue => (issue.status === 'todo' ? 'IN_PROGRESS' : issue.status.toUpperCase()) === state).length])),
     attentionCounts: { unassigned: attention.filter(item => item.kind === 'UNASSIGNED').length, reviewAging: attention.filter(item => item.kind === 'REVIEW_AGING').length, changesRequested: attention.filter(item => item.kind === 'CHANGES_REQUESTED').length },
     attention, people, recent: completed.slice(0, 5), recentTotal: completed.length, fetchedAt: '2026-10-30T00:00:00' }
-  return <WeeklyDashboardView key={week} data={data} demo onWeekChange={value => setParams(current => { const next = new URLSearchParams(current); if (value === currentWeek) next.delete('week'); else next.set('week', value); return next })} onOpen={task => { if (task.type === 'ISSUE') { const issue = issues.find(item => item.id === task.id); if (issue) onIssue(issue) } else { const pr = pullRequests.find(item => item.id === task.id); if (pr) onPr(pr) } }} />
+  return <WeeklyDashboardView key={week} data={data} demo activity={<TeamContributions days={sampleContributions} endDate="2026-10-30" demo />} onWeekChange={value => setParams(current => { const next = new URLSearchParams(current); if (value === currentWeek) next.delete('week'); else next.set('week', value); return next })} onOpen={task => { if (task.type === 'ISSUE') { const issue = issues.find(item => item.id === task.id); if (issue) onIssue(issue) } else { const pr = pullRequests.find(item => item.id === task.id); if (pr) onPr(pr) } }} />
 }
