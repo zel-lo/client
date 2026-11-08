@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { initial } from '@/lib/utils'
 import { Link, useLocation } from 'react-router-dom'
-import { Bell, BookOpen, Check, ChevronDown, CircleDot, GitPullRequest, LayoutDashboard, Plus, Search, Settings, UserRound } from 'lucide-react'
+import { Bell, BookOpen, Check, ChevronDown, CircleDot, GitPullRequest, LayoutDashboard, Megaphone, Plus, Search, Settings, UserRound } from 'lucide-react'
 import { BrandMark } from './brand-mark'
 import { HELP_URL } from '../lib/tours'
 import type { LucideIcon } from 'lucide-react'
@@ -29,7 +29,7 @@ export function WorkspaceSidebar({ unreadCount, myWorkCount, issueCount, pullReq
     { to: '/overview', label: '전체 현황', icon: LayoutDashboard, selected: location.pathname === '/overview' },
     { to: '/issues', label: '팀 작업', icon: CircleDot, count: issueCount, selected: location.pathname === '/issues' },
     { to: '/pull-requests', label: '코드 검토', icon: GitPullRequest, count: pullRequestCount, selected: location.pathname === '/pull-requests' },
-    { to: '/changes', label: '변경 소식', icon: BookOpen, selected: changesActive },
+    { to: '/changes', label: '변경 소식', icon: Megaphone, selected: changesActive },
   ]
   const management: NavigationItem[] = [
     { to: '/settings', label: '프로젝트 설정', icon: Settings, selected: settingsActive },

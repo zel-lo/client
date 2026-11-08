@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowRight, Bell, BookOpen, ChevronRight, CircleDot, Github, GitPullRequest, LoaderCircle, Moon, ShieldCheck, Sun } from 'lucide-react'
+import { ArrowRight, Bell, ChevronRight, CircleDot, Github, GitPullRequest, LoaderCircle, Megaphone, Moon, ShieldCheck, Sun } from 'lucide-react'
 import { BrandMark } from './brand-mark'
 import { Button } from './ui/button'
 import { useTheme } from '../hooks/use-theme'
@@ -40,7 +40,7 @@ function ProjectPreview() {
       <span className="preview-nav-label">프로젝트</span>
       <span className="preview-nav-item preview-nav-current"><CircleDot size={14} />팀 작업<span>{initialIssues.length}</span></span>
       <span className="preview-nav-item"><GitPullRequest size={14} />코드 검토</span>
-      <span className="preview-nav-item"><BookOpen size={14} />변경 소식</span>
+      <span className="preview-nav-item"><Megaphone size={14} />변경 소식</span>
       <span className="preview-nav-label">저장소</span>
       {initialRepos.map(repo => <span key={repo.id} className="preview-nav-item preview-repository"><Github size={13} />{repo.name}</span>)}
       <span className="preview-demo-label">미리보기 · 샘플 데이터</span>

@@ -24,10 +24,10 @@ import { BrandMark } from './components/brand-mark'
 import type { FormEvent, ReactNode, CSSProperties } from 'react'
 import { Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import {
-  ArrowRight, ArrowUpRight, Bell, BookOpen, CalendarDays,
+  ArrowRight, ArrowUpRight, Bell, CalendarDays,
   Check, CheckCircle2, ChevronDown, ChevronRight, CircleAlert, CircleDot,
   Clock3, Copy, FileText, GitBranch, GitCommitHorizontal, GitMerge, GitPullRequest,
-  Github, Layers3, LayoutDashboard, Moon, Sun, Plus, RefreshCw, Rocket,
+  Github, Layers3, LayoutDashboard, Megaphone, Moon, Sun, Plus, RefreshCw, Rocket,
   Search, SlidersHorizontal, Users, X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -58,7 +58,7 @@ const navItems: { to: string; label: string; icon: LucideIcon }[] = [
   { to: '/overview', label: '전체 현황', icon: LayoutDashboard },
   { to: '/issues', label: '팀 작업', icon: CircleDot },
   { to: '/pull-requests', label: '코드 검토', icon: GitPullRequest },
-  { to: '/changes', label: '변경 소식', icon: BookOpen },
+  { to: '/changes', label: '변경 소식', icon: Megaphone },
   { to: '/changes?view=history', label: '개발 타임라인', icon: GitBranch },
   { to: '/settings?tab=repositories', label: '저장소', icon: Layers3 },
   { to: '/settings', label: '프로젝트 설정', icon: SlidersHorizontal },
