@@ -7,7 +7,10 @@ import App from '../src/App'
 import { invitationReturnPath, pendingInvitation, rememberInvitation } from '../src/lib/auth-return'
 import { preferredProject } from '../src/lib/workspace'
 
-vi.mock('../src/components/ui/contribution-skyline', () => ({ default: () => <div />, generateContributions: () => [] }))
+vi.mock('../src/components/ui/contribution-skyline', async importOriginal => {
+  const actual = await importOriginal<typeof import('../src/components/ui/contribution-skyline')>()
+  return { ...actual, default: () => <div />, generateContributions: () => [] }
+})
 const token = 'x'.repeat(43)
 const path = `/invite/${token}`
 const current = { id: '42', githubId: '123', login: 'octocat', displayName: '로그인 사용자', avatarUrl: null, email: null, theme: 'light' }

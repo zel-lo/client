@@ -55,7 +55,7 @@ export function InvitationPage() {
         : session.status === 'loading' || loading ? <p role="status">초대를 확인하고 있어요…</p>
           : session.status === 'unavailable' ? <><p role="alert">{session.error}</p><button className="button" onClick={() => void session.refresh()}>로그인 상태 다시 확인</button></>
             : !session.user ? <><p>GitHub 계정으로 로그인하면 초대한 프로젝트와 참여 권한을 확인할 수 있어요.</p><Link className="button button-dark" to={`/login?${new URLSearchParams({ next: path })}`}><Github size={16} />로그인하고 초대 확인</Link></>
-              : preview ? <><p><strong>@{preview.invitedBy}</strong> 님이 함께 작업할 공간에 초대했어요.</p><div className="invitation-role"><ShieldCheck size={18} /><strong>{roleLabels[preview.role]}</strong> 권한으로 참여</div><p className="muted small">{memberDate(preview.expiresAt)}까지 사용할 수 있는 한 번의 초대예요.</p>
+              : preview ? <><p><strong>@{preview.invitedBy}</strong> 님이 함께 작업할 공간에 초대했어요.</p><div className="invitation-role"><ShieldCheck size={18} /><strong>{roleLabels[preview.role]}</strong> 권한으로 참여</div><p className="muted small">{memberDate(preview.expiresAt)}까지 사용할 수 있어요.{!preview.reusable && ' 한 명이 한 번 사용할 수 있는 초대예요.'}</p>
                 {preview.alreadyMember ? <><p>이미 참여한 프로젝트예요. 기존 권한으로 이동합니다.</p><button className="button button-dark" onClick={() => enter(preview.projectId)}>프로젝트로 이동<ArrowRight size={15} /></button></>
                   : preview.canAccept ? <button className="button button-dark" disabled={busy} onClick={() => void accept()}>{busy ? '참여하는 중…' : '프로젝트 참여하기'}<ArrowRight size={15} /></button>
                     : <p className="connection-error" role="status">{unavailable[preview.status]} 초대한 사람에게 새 링크를 요청해 주세요.</p>}

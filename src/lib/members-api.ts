@@ -15,13 +15,13 @@ export type MembersPage = {
 export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED'
 export type Invitation = {
   id: string; role: MemberRole; expiresAt: string; createdAt: string; status: InvitationStatus
-  createdBy: string; targetLogin: string | null; acceptedByUserId: string | null
+  createdBy: string; targetLogin: string | null; acceptedByUserId: string | null; reusable?: boolean; useCount?: number
 }
 export type InvitationsPage = { items: Invitation[]; page: number; hasNext: boolean; total: number }
 export type CreatedInvitation = { invitation: Invitation; inviteUrl: string }
 export type InvitationPreview = {
   projectId: string; projectName: string; role: MemberRole; invitedBy: string; expiresAt: string
-  status: InvitationStatus; alreadyMember: boolean; canAccept: boolean
+  status: InvitationStatus; alreadyMember: boolean; canAccept: boolean; reusable?: boolean
 }
 export type History = { items: { id: string; type: string; title: string; summary: string | null; actorLogin: string | null; occurredAt: string }[]; page: number; hasNext: boolean }
 const projectPath = (id: string) => `/api/projects/${encodeURIComponent(id)}`

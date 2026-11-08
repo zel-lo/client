@@ -33,7 +33,7 @@ function backend({ failConnection = false, failInvite = false, lostCreation = fa
     if (path.endsWith('/pull-requests/sync')) return Response.json({ collected: 0 })
     if (path.endsWith('/invitations') && init?.method === 'POST') {
       if (failInvite) { failInvite = false; return Response.json({ code: 'TEMPORARY_FAILURE', message: '초대 링크를 다시 만들어 주세요.' }, { status: 503 }) }
-      return Response.json({ inviteUrl, invitation: { id: '7', role: 'MEMBER', expiresAt: '2026-11-04T00:00:00Z', status: 'PENDING' } })
+      return Response.json({ inviteUrl, invitation: { id: '7', role: 'MEMBER', reusable: true, useCount: 0, expiresAt: '2026-11-04T00:00:00Z', status: 'PENDING' } })
     }
     return new Response(null, { status: 404 })
   })
@@ -60,18 +60,19 @@ describe('프로젝트 시작부터 팀 초대까지', () => {
     expect(fetcher.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false)
     await choose(user)
     expect(await screen.findByLabelText('팀원 초대 링크')).toHaveValue(inviteUrl)
+    expect(screen.getByText(/이 링크 하나로 팀원 모두를 초대/)).toBeInTheDocument()
     const creation = fetcher.mock.calls.find(([path, init]) => path === '/api/projects' && init?.method === 'POST')!
     expect(JSON.parse(creation[1]!.body as string)).toMatchObject({ name: '우리 팀', startDate: project.startDate, endDate: project.endDate, requestKey: expect.stringMatching(/^[A-Za-z0-9-]{16,64}$/) })
     expect(fetcher.mock.calls.filter(([path, init]) => path.endsWith('/invitations') && init?.method === 'POST')).toHaveLength(1)
     expect(sessionStorage.getItem('zello.project-setup.42')).toBeNull()
     expect(JSON.stringify(localStorage)).not.toContain(inviteUrl)
-    await user.click(screen.getByRole('button', { name: '프로젝트 시작하기' }))
+    await user.click(screen.getByRole('button', { name: '첫 할 일 등록하러 가기' }))
     expect(screen.getByRole('heading', { name: '작업 보드' })).toBeInTheDocument()
     expect(preferredProject('42')).toBe('1')
   })
   it('저장소가 없는 경우 GitHub 생성 안내를 제공하고 돌아와 연결할 수 있다', async () => {
     const { fetcher } = backend(); mount(); const user = userEvent.setup(); await period(user)
-    await user.click(screen.getByRole('button', { name: /새로 시작할래요/ }))
+    await user.click(screen.getByRole('button', { name: /아직 저장소가 없어요/ }))
     expect(screen.getByRole('link', { name: 'GitHub에서 저장소 만들기' })).toHaveAttribute('href', 'https://github.com/new')
     expect(fetcher.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false)
     await user.click(screen.getByRole('button', { name: /만들었어요, 저장소 연결하기/ }))
