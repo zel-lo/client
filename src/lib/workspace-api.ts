@@ -8,7 +8,7 @@ export type Summary = { issues: Record<string, number>; mine: number; unread: nu
 export const workspaceGet = <T,>(project: string, path: string, signal?: AbortSignal) => json<T>(`/api/projects/${encodeURIComponent(project)}/${path}`, { signal })
 export const readNotification = (project: string, id: string, read: boolean) => mutate<void>(`/api/projects/${project}/notifications/${id}`, 'PATCH', { read })
 export const readAllNotifications = (project: string) => mutate<void>(`/api/projects/${project}/notifications/read-all`, 'POST')
-export const saveNote = (project: string, input: { title: string; summary: string; publish: boolean; version?: number }, id?: string) => mutate<Note>(`/api/projects/${project}/patch-notes${id ? `/${id}` : ''}`, id ? 'PATCH' : 'POST', input)
+export const saveNote = (project: string, input: { title: string; summary: string; publish: boolean; version?: number; changeIds?: string[] }, id?: string) => mutate<Note>(`/api/projects/${project}/patch-notes${id ? `/${id}` : ''}`, id ? 'PATCH' : 'POST', input)
 export const changed = () => window.dispatchEvent(new Event('zello:workspace-updated'))
 
 export const collectWorkChanges = (project: string) => mutate<void>(`/api/projects/${project}/patch-notes/collect`, 'POST')

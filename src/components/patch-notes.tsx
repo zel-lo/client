@@ -1,39 +1,91 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ArrowUpRight, ChevronLeft, ChevronRight, FileText, Plus, RefreshCw } from 'lucide-react'
 import { useWorkspaceData } from '../hooks/use-workspace-data'
-import { saveNote, changed, collectWorkChanges, saveChangeTitle } from '../lib/workspace-api'
+import { saveNote, changed, collectWorkChanges, saveChangeTitle, workspaceGet } from '../lib/workspace-api'
 import type { Note, Page, WorkChange } from '../lib/workspace-api'
 import type { Project } from '../lib/project-api'
+import { ProjectApiError } from '../lib/project-api'
 import { LoadingState } from './loading-state'
 import { MarkdownEditor, MarkdownView } from './markdown'
+import { NoteConflict } from './patch-note-conflict'
 import './patch-notes.css'
 export function Notes({ project }: { project: Project }) {
   const [page, setPage] = useState(1), [editing, setEditing] = useState<Note | 'new' | null>(null), [title, setTitle] = useState(''), [body, setBody] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('')
+  const [linkedChanges, setLinkedChanges] = useState<WorkChange[]>([])
+  const [conflict, setConflict] = useState<Note | null>(null)
+  const editingRef = useRef(editing)
+  editingRef.current = editing
   const result = useWorkspaceData<Page<Note>>(project.id, `patch-notes?page=${page}`)
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const noteId = params.get('note')
   const selected = useWorkspaceData<Note>(noteId ? project.id : '', `patch-notes/${encodeURIComponent(noteId ?? '')}`)
   const canWrite = project.role !== 'VIEWER'
-  function titleSaved(note: Note) { setEditing(current => current && current !== 'new' && current.id === note.id ? { ...current, version: note.version, changes: note.changes } : current) }
+  function titleSaved(note: Note, baseVersion: number) {
+    const current = editingRef.current
+    if (current && current !== 'new' && current.id === note.id) {
+      // A successful item edit must not silently rebase an older body draft.
+      if (current.version !== baseVersion) {
+        setConflict(note); setError('다른 팀원이 수정했어요. 최신 내용을 확인하고 편집을 이어가 주세요.')
+        return
+      }
+      setEditing(note)
+      setLinkedChanges(current => current.map(change => note.changes?.find(saved => saved.id === change.id) ?? change))
+    }
+  }
   async function collect() { setBusy(true); setError(''); try { await collectWorkChanges(project.id); setPage(1); changed() } catch(e) { setError((e as Error).message) } finally { setBusy(false) } }
-  function edit(note: Note | 'new') { setEditing(note); setTitle(note === 'new' ? '' : note.title); setBody(note === 'new' ? '' : note.summary); setError('') }
-  async function save(publish: boolean) { setBusy(true); setError(''); try { await saveNote(project.id, { title, summary: body, publish, version: editing && editing !== 'new' ? editing.version : undefined }, editing && editing !== 'new' ? editing.id : undefined); setEditing(null); changed() } catch(e) { setError((e as Error).message) } finally { setBusy(false) } }
+  function edit(note: Note | 'new') { setEditing(note); setTitle(note === 'new' ? '' : note.title); setBody(note === 'new' ? '' : note.summary); setLinkedChanges(note === 'new' ? [] : note.changes ?? []); setConflict(null); setError('') }
+  function selectChanges(changes: WorkChange[]) {
+    const existing = editing && editing !== 'new' ? editing.changes ?? [] : []
+    setLinkedChanges(changes.map(change => existing.find(saved => saved.id === change.id) ?? change))
+  }
+  async function inspectLatest() {
+    result.refresh(); selected.refresh()
+    const current = editingRef.current
+    if (!current || current === 'new') return
+    setBusy(true)
+    try {
+      const latest = await workspaceGet<Note>(project.id, `patch-notes/${encodeURIComponent(current.id)}`)
+      if (editingRef.current !== current) return
+      if (latest.version !== current.version) {
+        setConflict(latest); setError('다른 팀원이 수정했어요. 작성 중인 내용은 유지했어요.')
+      } else { setConflict(null); setError('') }
+    } catch (cause) { setError((cause as Error).message) }
+    finally { setBusy(false) }
+  }
+  async function save(publish: boolean) {
+    if (busy || conflict || tooManyLinks) return
+    setBusy(true); setError('')
+    try {
+      const saved = await saveNote(project.id, { title, summary: body, publish, version: editing && editing !== 'new' ? editing.version : undefined, ...(canLink ? { changeIds: linkedChanges.map(change => change.id) } : {}) }, editing && editing !== 'new' ? editing.id : undefined)
+      setEditing(null); setConflict(null); setParams({ note: saved.id }); changed()
+    } catch (cause) {
+      setError((cause as Error).message)
+      if (cause instanceof ProjectApiError && cause.code === 'VERSION_CONFLICT') await inspectLatest()
+    } finally { setBusy(false) }
+  }
   const notes = noteId ? selected.data ? [selected.data] : [] : result.data?.items ?? []
   // 자동으로 만들어졌지만 아직 변경이 없는 초안은 목록에서 뺀다
   const entries = noteId ? [] : notes.filter(note => !note.automatic || visibleChanges(note).length > 0)
   const loading = noteId ? selected.loading : result.loading
-  const publishBlocked = !!editing && editing !== 'new' && editing.status !== 'PUBLISHED' && !!editing.changes?.some(c => c.needsTitle && ['COMPLETED', 'MERGED'].includes(c.status))
+  const canLink = !!editing && (editing === 'new' || (!editing.automatic && editing.status === 'DRAFT'))
+  // Newly linked changes can have their own titles filled in after the draft is saved.
+  const editingChanges = canLink ? linkedChanges : editing?.changes ?? []
+  const publishBlocked = !!editing && (editing === 'new' || editing.status !== 'PUBLISHED') && editingChanges.some(c => c.needsTitle && ['COMPLETED', 'MERGED'].includes(c.status))
+  const tooManyLinks = canLink && linkedChanges.length > 100
   const failure = error || (noteId ? selected.error : result.error)
   return <section className="release-notes" aria-label="패치노트">
     {!noteId && <header className="release-toolbar"><span />{canWrite && <div className="release-actions"><button className="button" disabled={busy} onClick={() => void collect()}><RefreshCw size={14} />완료 기록 모으기</button><button className="button button-dark" disabled={busy} onClick={() => edit('new')}><Plus size={14} />팀 업데이트 작성</button></div>}</header>}
     {noteId && <Link className="release-back" to="/changes"><ArrowLeft size={14} />전체 패치노트 보기</Link>}
-    {failure && <div role="alert" className="connection-error">{failure}<button className="button" onClick={() => { result.refresh(); selected.refresh() }}>다시 시도</button></div>}
+    {failure && <div role="alert" className="connection-error">{failure}<button type="button" className="button" disabled={busy} onClick={() => void inspectLatest()}>다시 시도</button></div>}
     {editing && <form className="dialog-form release-editor" aria-label={editing === 'new' ? '새 패치노트' : '패치노트 편집'} onSubmit={e => { e.preventDefault(); void save(false) }}>
       <div className="release-editor-head"><h3>{editing === 'new' ? '새 패치노트' : '패치노트 편집'}</h3><p>완료한 변경을 묶어 팀에 전할 글이에요. 초안으로 저장한 뒤 내용을 확인하고 공개할 수 있어요.</p></div>
       <label>업데이트 제목<input required maxLength={255} value={title} disabled={busy} placeholder="예: 11월 2주차 업데이트" onChange={e => setTitle(e.target.value)} /></label>
       <MarkdownEditor label="변경 내용" value={body} onChange={setBody} disabled={busy} maxLength={20000} placeholder="이번에 바뀐 점과 팀이 알아두면 좋을 내용을 적어 주세요." />
-      <div className="form-actions">{publishBlocked && <span className="help-text">제목이 비어 있는 항목을 먼저 채워야 공개할 수 있어요.</span>}<button type="button" className="button" disabled={busy} onClick={() => setEditing(null)}>취소</button><button className="button" disabled={busy || !title.trim() || !body.trim()}>초안 저장</button><button type="button" className="button button-dark" disabled={busy || !title.trim() || !body.trim() || publishBlocked} onClick={() => void save(true)}>팀에 공개</button></div>
+      {canLink && <ChangePicker key={editing === 'new' ? 'new' : editing?.id} project={project.id} selected={linkedChanges} onChange={selectChanges} disabled={busy} />}
+      {conflict && editing !== 'new' && <NoteConflict key={conflict.version} base={editing} mine={{ title, summary: body, changes: linkedChanges }} latest={conflict} onResolve={draft => { setEditing(conflict); setTitle(draft.title); setBody(draft.summary); setLinkedChanges(draft.changes); setConflict(null); setError('') }} />}
+      {tooManyLinks && <p role="alert" className="form-error">연결할 변경 사항은 100개까지 선택할 수 있어요. 일부 연결을 해제한 뒤 저장해 주세요.</p>}
+      <div className="form-actions">{publishBlocked && <span className="help-text">초안을 저장한 뒤 포함된 변경의 제목을 채우면 공개할 수 있어요.</span>}<button type="button" className="button" disabled={busy} onClick={() => { setEditing(null); setConflict(null) }}>취소</button><button className="button" disabled={busy || !!conflict || tooManyLinks || !title.trim() || !body.trim()}>초안 저장</button><button type="button" className="button button-dark" disabled={busy || !!conflict || tooManyLinks || !title.trim() || !body.trim() || publishBlocked} onClick={() => void save(true)}>팀에 공개</button></div>
     </form>}
     {loading && !notes.length ? <LoadingState /> : <>
       {noteId ? notes.map(note => <ReleaseEntry key={note.id} note={note} project={project.id} canWrite={canWrite} busy={busy} onEdit={() => edit(note)} onSaved={titleSaved} />)
@@ -43,6 +95,25 @@ export function Notes({ project }: { project: Project }) {
 
     {!noteId && result.data && (page > 1 || result.data.hasNext) && <nav className="connection-pagination" aria-label="패치노트 페이지"><button className="button" disabled={page === 1 || loading} onClick={() => setPage(value => value - 1)}><ChevronLeft size={14} />이전</button><span>{page} 페이지</span><button className="button" disabled={!result.data.hasNext || loading} onClick={() => setPage(value => value + 1)}>다음<ChevronRight size={14} /></button></nav>}
   </section>
+}
+function ChangePicker({ project, selected, onChange, disabled }: { project: string; selected: WorkChange[]; onChange: (changes: WorkChange[]) => void; disabled: boolean }) {
+  const [page, setPage] = useState(1), [search, setSearch] = useState('')
+  const result = useWorkspaceData<Page<WorkChange>>(project, `patch-note-changes?page=${page}&search=${encodeURIComponent(search)}`)
+  function toggle(change: WorkChange) { onChange(selected.some(item => item.id === change.id) ? selected.filter(item => item.id !== change.id) : [...selected, change]) }
+  return <fieldset className="release-change-picker" disabled={disabled}>
+    <legend>변경 사항 연결 <span>{selected.length}/100개 선택</span></legend>
+    <p className="help-text">완료한 작업과 병합된 PR을 골라 함께 소개해 주세요. 주간 업데이트의 원본 기록도 유지돼요.</p>
+    {selected.length > 0 && <ul className="release-selected-changes" aria-label="연결할 변경 사항">{selected.map(change => <li key={change.id}><span>{change.title}</span><button type="button" className="button" onClick={() => toggle(change)} aria-label={`${change.title} 연결 해제`}>연결 해제</button></li>)}</ul>}
+    <label>변경 사항 검색<input type="search" value={search} maxLength={255} placeholder="변경 제목으로 검색" onChange={event => { setSearch(event.target.value); setPage(1) }} /></label>
+    {result.error ? <p role="alert" className="form-error">{result.error} <button type="button" className="button" onClick={result.refresh}>다시 불러오기</button></p> : result.loading ? <p role="status" className="help-text">연결할 변경 사항을 불러오는 중…</p> : <>
+      {!result.data?.items.length && <p className="help-text">{search ? '검색한 변경 사항이 없어요.' : '연결할 완료 기록이 없어요. 작업을 완료하거나 코드 검토에서 병합된 PR을 가져와 주세요.'}</p>}
+      <div className="release-change-options">{result.data?.items.map(change => {
+        const checked = selected.some(item => item.id === change.id)
+        return <label className="release-change-option" key={change.id}><input type="checkbox" checked={checked} disabled={!checked && selected.length >= 100} onChange={() => toggle(change)} /><span><strong>{change.title}</strong><small>{change.issueId ? '완료한 작업' : '병합된 PR'} · {change.occurredAt.slice(0, 10)}{change.needsTitle && ' · 반영 제목 작성 필요'}</small></span><Link to={change.issueId ? `/issues?issue=${change.issueId}` : `/pull-requests?pr=${change.pullRequestId}`} target="_blank" rel="noopener noreferrer" aria-label={`${change.title} 원본 보기`}>원본 보기<ArrowUpRight size={12} /></Link></label>
+      })}</div>
+    </>}
+    {(page > 1 || result.data?.hasNext) && <nav className="connection-pagination" aria-label="연결할 변경 사항 페이지"><button type="button" className="button" disabled={page === 1 || result.loading} onClick={() => setPage(value => value - 1)}>이전</button><span>{page} 페이지</span><button type="button" className="button" disabled={!result.data?.hasNext || result.loading} onClick={() => setPage(value => value + 1)}>다음</button></nav>}
+  </fieldset>
 }
 function noteDate(note: Note) {
   const value = note.publishedAt ?? note.createdAt ?? note.changes?.map(change => change.occurredAt).sort().at(-1)
@@ -72,7 +143,7 @@ function NoteCard({ note }: { note: Note }) {
     <ChevronRight size={18} className="release-card-arrow" />
   </Link>
 }
-function ReleaseEntry({ note, project, canWrite, busy, onEdit, onSaved }: { note: Note; project: string; canWrite: boolean; busy: boolean; onEdit: () => void; onSaved: (note: Note) => void }) {
+function ReleaseEntry({ note, project, canWrite, busy, onEdit, onSaved }: { note: Note; project: string; canWrite: boolean; busy: boolean; onEdit: () => void; onSaved: (note: Note, baseVersion: number) => void }) {
   const date = noteDate(note)
   const count = visibleChanges(note).length
   return <article className="release-detail" id={`note-${note.id}`}>
@@ -88,7 +159,7 @@ function ReleaseEntry({ note, project, canWrite, busy, onEdit, onSaved }: { note
     <NoteChanges project={project} note={note} canWrite={canWrite} onSaved={onSaved} />
   </article>
 }
-function NoteChanges({ project, note, canWrite, onSaved }: { project: string; note: Note; canWrite: boolean; onSaved: (note: Note) => void }) {
+function NoteChanges({ project, note, canWrite, onSaved }: { project: string; note: Note; canWrite: boolean; onSaved: (note: Note, baseVersion: number) => void }) {
   const categories = { FEATURE: '새 기능', IMPROVE: '개선 사항', FIX: '오류 수정' }
   const states = { COMPLETED: '작업 완료', MERGED: 'PR 병합', REOPENED: '다시 진행 중', ARCHIVED: '보관됨', CONSOLIDATED: '연결 작업으로 통합됨' }
   const changes = visibleChanges(note)
@@ -108,12 +179,12 @@ function NoteChanges({ project, note, canWrite, onSaved }: { project: string; no
     </li>)}</ul>
   </section>
 }
-function ChangeTitleEditor({ project, note, change, onSaved }: { project: string; note: Note; change: WorkChange; onSaved: (note: Note) => void }) {
+function ChangeTitleEditor({ project, note, change, onSaved }: { project: string; note: Note; change: WorkChange; onSaved: (note: Note, baseVersion: number) => void }) {
   const [editing, setEditing] = useState(false), [title, setTitle] = useState(''), [busy, setBusy] = useState(false), [error, setError] = useState('')
   async function save() {
     if (!title.trim() || busy) return
     setBusy(true); setError('')
-    try { const saved = await saveChangeTitle(project, note.id, change.id, title.trim(), note.version); onSaved(saved); setEditing(false); changed() }
+    try { const saved = await saveChangeTitle(project, note.id, change.id, title.trim(), note.version); onSaved(saved, note.version); setEditing(false); changed() }
     catch (cause) { setError((cause as Error).message) }
     finally { setBusy(false) }
   }
