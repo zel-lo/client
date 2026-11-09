@@ -11,6 +11,7 @@ export type Member = {
 export type MembersPage = {
   items: Member[]; total: number; page: number; hasNext: boolean; projectName: string; projectVersion: number
   ownerUserId: string; currentMemberVersion: number; canInvite: boolean; canInviteAdmin: boolean
+  canLeave?: boolean; leaveArchivesProject?: boolean
 }
 export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'REVOKED' | 'EXPIRED'
 export type Invitation = {
@@ -37,7 +38,7 @@ async function mutatePreview(token: string, signal?: AbortSignal) {
 export const acceptInvitation = (token: string) => mutate<{ project: Project; alreadyMember: boolean }>('/api/invitations/accept', 'POST', { token })
 export const changeMemberRole = (id: string, member: Member, role: MemberRole) => mutate<Member>(`${projectPath(id)}/members/${encodeURIComponent(member.userId)}`, 'PATCH', { role, version: member.version })
 export const removeMember = (id: string, member: Member) => mutate<void>(`${projectPath(id)}/members/${encodeURIComponent(member.userId)}?version=${member.version}`, 'DELETE')
-export const leaveProject = (id: string, version: number) => mutate<void>(`${projectPath(id)}/membership?version=${version}`, 'DELETE')
+export const leaveProject = (id: string, version: number, archive = false) => mutate<void>(`${projectPath(id)}/membership?version=${version}${archive ? '&archive=true' : ''}`, 'DELETE')
 export const transferProject = (id: string, member: Member, projectVersion: number) => mutate<void>(`${projectPath(id)}/ownership`, 'POST', { userId: member.userId, projectVersion, memberVersion: member.version })
 export const membershipHistory = (id: string, page = 1, signal?: AbortSignal) => json<History>(`${projectPath(id)}/membership-history?page=${page}&size=20`, { signal })
 export const updateProject = (id: string, version: number, name: string, description: string) => mutate<Project>(projectPath(id), 'PATCH', { version, name, description })
