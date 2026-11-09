@@ -177,3 +177,5 @@
 .board-move-panel .pr-checklist { max-height: 300px; overflow-y: auto; }
 .board-move-panel .pr-checklist small { display: block; }
 .board-move-recommend { margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: var(--git-green-bg); color: var(--git-green); font-size: 10px; font-weight: 600; }
+
+.meeting-mode-tooltip { max-width: 240px; padding: 10px 12px; line-height: 1.6; text-align: left; text-wrap: wrap; word-break: keep-all; }

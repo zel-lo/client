@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { Archive, ArrowUpRight, ChevronLeft, ChevronRight, CircleDot, Github, Plus, RefreshCw, X } from 'lucide-react'
+import { Archive, ArrowUpRight, ChevronLeft, ChevronRight, CircleDot, Github, Plus, RefreshCw, RotateCcw, X } from 'lucide-react'
 import { archiveIssue, createIssue, getIssue, listAssignees, listConnectedRepositories, listIssues, publishIssue, restoreIssue, syncIssues, updateIssue, ProjectApiError } from '../lib/project-api'
 import type { ConnectedRepository, IssueDetails, IssuePage, LiveIssue, Project } from '../lib/project-api'
 import { TeamBoard, WeekNavigation, WorkViewToggle } from './team-board'
@@ -268,7 +268,7 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
       <select aria-label="담당자 필터" disabled={busy} value={assigneeFilter} onChange={event => { setAssigneeFilter(event.target.value); setPage(1); if (focusUnassigned) setParams(current => { const next = new URLSearchParams(current); next.delete('focus'); return next }) }}><option value="all">모든 담당자</option><option value="unassigned">담당자 미지정</option>{knownAssignees.map(login => <option key={login} value={login!}>{login}</option>)}</select>
       <select aria-label="작업 목록" disabled={busy} value={archived ? 'archived' : 'active'} onChange={event => { setArchived(event.target.value === 'archived'); setPage(1) }}><option value="active">진행·완료한 작업</option><option value="archived">보관한 작업</option></select>
       {!mineOnly && <label className="inline-checkbox"><input type="checkbox" checked={mine} disabled={busy} onChange={event => { setMine(event.target.checked); setPage(1) }} />내 작업만</label>}
-      {(queryInput || status || assigneeFilter !== 'all' || mine !== mineOnly || params.get('focus') === 'unassigned') && <button type="button" className="subtle-link" disabled={busy} onClick={() => { setQueryInput(''); setStatus(''); setAssigneeFilter('all'); setMine(mineOnly); setPage(1); setParams(current => { const next = new URLSearchParams(current); next.delete('focus'); return next }) }}>필터 초기화</button>}
+      {(queryInput || status || assigneeFilter !== 'all' || mine !== mineOnly || params.get('focus') === 'unassigned') && <button type="button" className="filter-reset" disabled={busy} onClick={() => { setQueryInput(''); setStatus(''); setAssigneeFilter('all'); setMine(mineOnly); setPage(1); setParams(current => { const next = new URLSearchParams(current); next.delete('focus'); return next }) }}><RotateCcw size={13} />필터 초기화</button>}
       {loading && result && <span className="board-refresh-status" role="status"><RefreshCw size={12} className="board-saving" />작업을 갱신하고 있어요</span>}
     </div>
     {loading && !result ? <LoadingState layout={view} label="저장한 작업을 불러오는 중" /> : result && <>

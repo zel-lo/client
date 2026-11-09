@@ -7,6 +7,15 @@
 .member-settings .member-list-columns { display: grid; grid-template-columns: minmax(0, 1fr) var(--member-role-width); align-items: center; gap: 18px; padding: 12px 22px; background: var(--control-bg); border-bottom: 1px solid var(--quiet-line); color: var(--muted-foreground); font-size: 12px; }
 .member-settings .has-management .member-list-columns { grid-template-columns: minmax(0, 1fr) var(--member-role-width) var(--member-actions-width); }
 .member-settings .member-list-columns > span:last-child { text-align: right; }
+.member-settings .member-role-heading { display: inline-flex; align-items: center; justify-content: flex-end; gap: 4px; }
+.member-settings .member-permission-trigger { display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 999px; background: transparent; color: var(--primary, var(--foreground)); cursor: help; }
+.member-settings .member-permission-trigger:hover, .member-settings .member-permission-trigger:focus-visible { color: var(--foreground); background: var(--card); }
+.member-permission-tooltip { max-width: 260px; padding: 14px 16px; text-align: left; text-wrap: wrap; word-break: keep-all; }
+.member-permission-tooltip dl { display: grid; gap: 8px; margin: 0; }
+.member-permission-tooltip dl > div { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; }
+.member-permission-tooltip dt { font-weight: 600; }
+.member-permission-tooltip dd { margin: 0; opacity: .8; }
+.member-permission-tooltip p { margin: 10px 0 0; padding-top: 10px; border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); opacity: .8; line-height: 1.6; }
 .member-settings .live-member-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) var(--member-role-width); align-items: center; gap: 18px; padding: 18px 22px; }
 .member-settings .has-management .live-member-row { grid-template-columns: 36px minmax(0, 1fr) var(--member-role-width) var(--member-actions-width); }
 .member-settings .live-member-row > .badge { justify-self: end; }
@@ -14,34 +23,33 @@
 .member-settings .member-row-actions:empty { display: none; }
 .member-settings .member-row-actions > :is(button, .button) { font-size: 12px; white-space: nowrap; }
 .member-settings .member-row-actions > .button { min-height: 34px; padding: 7px 12px; }
-.member-settings .members-invite-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 24px; align-items: start; }
-.member-settings .members-invite-layout:not(:has(.member-invitation-form)) { grid-template-columns: minmax(0, 1fr); }
+.member-settings .members-invite-layout { display: grid; }
+.member-settings .members-invite-layout:empty { display: none; }
 .member-settings .member-invitation-form { padding: 26px; }
-.member-settings .member-invitation-form h3, .member-settings .member-permissions h3 { font-size: 15px; font-weight: 600; line-height: 1.6; }
+.member-settings .member-invitation-form h3 { font-size: 15px; font-weight: 600; line-height: 1.6; }
 .member-settings .member-invitation-form .help-text { font-size: 13px; line-height: 1.8; }
 .member-settings .member-invitation-form form { gap: 20px; }
 .member-settings .member-invitation-form form > button { justify-self: end; }
 .member-settings .member-form-columns { gap: 20px; }
+.member-settings .member-invitation-form form { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+.member-settings .member-invitation-form .created-invitation { margin-top: 20px; }
 .member-settings .member-form-columns select, .member-settings .member-invitation-form input { font-weight: 400; font-size: 14px; }
-.member-settings .member-permissions { padding: 22px; border-radius: 16px; background: var(--control-bg); }
-.member-settings .member-permissions h3 { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
-.member-settings .member-permissions dl { display: grid; gap: 16px; margin: 0; }
-.member-settings .member-permissions dt { margin-bottom: 4px; font-size: 13px; font-weight: 600; color: var(--foreground); }
-.member-settings .member-permissions dd { margin: 0; font-size: 13px; color: var(--text-secondary); line-height: 1.7; }
-.member-settings .member-permissions > p { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--quiet-line); font-size: 12px; color: var(--muted-foreground); line-height: 1.8; }
-.member-settings .members-records-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
+.member-settings .members-records-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: stretch; }
+.member-settings .members-records-grid > section { display: flex; flex-direction: column; }
+.member-settings .member-record-scroll { max-height: 320px; overflow-y: auto; overscroll-behavior: contain; margin-right: -8px; padding-right: 8px; scrollbar-gutter: stable; }
+.member-settings .member-record-scroll:focus-visible { outline: 2px solid var(--ring, currentColor); outline-offset: 2px; border-radius: 8px; }
+.member-settings .members-records-grid .connection-pagination { margin-top: auto; padding-top: 16px; }
 .member-settings .members-records-grid:empty { display: none; }
 .member-settings .members-records-grid > section { padding: 24px; }
 .member-settings .members-records-grid h3 { font-size: 15px; line-height: 1.6; }
 .member-settings .invitation-list-row { gap: 10px; padding: 18px 0; }
 .member-settings .invitation-list-row > div { min-width: 140px; }
-.member-settings .invitation-list-row:last-child, .member-settings .membership-history > article:last-child { border-bottom: 0; padding-bottom: 0; }
+.member-settings .invitation-list-row:last-child, .member-settings .membership-history article:last-child { border-bottom: 0; padding-bottom: 0; }
 .member-settings .member-leave { margin-top: 8px; padding-bottom: 0; align-items: start; }
 .member-settings .member-leave .help-text { max-width: 68ch; line-height: 1.8; }
 @media (max-width: 1000px) {
   .member-settings { --member-actions-width: 250px; --member-role-width: 72px; }
   .member-settings .members-invite-layout { grid-template-columns: minmax(0, 1fr); }
-  .member-settings .member-permissions dl { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
   .member-settings .members-records-grid { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 767px) {
@@ -52,7 +60,7 @@
   .member-settings .has-management .member-list-columns > span:last-child { display: none; }
   .member-settings .live-member-row, .member-settings .has-management .live-member-row { grid-template-columns: 36px minmax(0, 1fr) var(--member-role-width); padding: 16px; gap: 12px; }
   .member-settings .member-row-actions { grid-column: 2 / -1; justify-content: flex-start; gap: 14px; }
-  .member-settings .member-permissions dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .member-settings .member-invitation-form, .member-settings .members-records-grid > section { padding: 20px; }
+  .member-settings .member-invitation-form form { grid-template-columns: minmax(0, 1fr); }
   .member-settings .member-invitation-form form > button { justify-self: stretch; }
 }
