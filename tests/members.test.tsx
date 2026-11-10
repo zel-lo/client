@@ -54,10 +54,10 @@ describe('실제 프로젝트의 멤버와 권한', () => {
     expect(fetcher.mock.calls.some(([path]) => path.includes('/invitations'))).toBe(false)
     expect(screen.getByRole('button', { name: '프로젝트 나가기' })).toBeEnabled()
   })
-  it('소유자는 나갈 수 없고 확인을 취소하면 내보내기 요청을 보내지 않는다', async () => {
+  it('소유자도 나가기 버튼을 누를 수 있고 확인을 취소하면 내보내기 요청을 보내지 않는다', async () => {
     const fetcher = backend(); mount(); const user = userEvent.setup()
     await user.click(await screen.findByRole('button', { name: 'teammate 내보내기' }))
-    expect(screen.getByRole('button', { name: '프로젝트 나가기' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '프로젝트 나가기' })).toBeEnabled()
     const dialog = screen.getByRole('dialog', { name: '멤버 내보내기' })
     expect(dialog).toHaveFocus()
     await user.click(within(dialog).getByRole('button', { name: '취소', exact: true }))
@@ -112,10 +112,57 @@ describe('실제 프로젝트의 멤버와 권한', () => {
     expect(fetcher.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false)
   })
   it('검색 결과에 소유자만 표시되어도 서버가 허용하지 않으면 보관하고 나갈 수 없다', async () => {
-    backend({ ...page, items: [owner], total: 1, canLeave: false, leaveArchivesProject: false }); mount()
-    expect(await screen.findByRole('button', { name: '프로젝트 나가기' })).toBeDisabled()
-    expect(screen.getByText(/다른 멤버에게 소유권을 이전한 뒤/)).toBeInTheDocument()
+    const fetcher = backend({ ...page, items: [owner], total: 1, canLeave: false, leaveArchivesProject: false }); mount()
+    await userEvent.setup().click(await screen.findByRole('button', { name: '프로젝트 나가기' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('다른 멤버에게 소유권을 이전한 뒤')
+    expect(within(screen.getByRole('dialog')).getByRole('button', { name: '소유권 이전 확인' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: '프로젝트 보관하고 나가기' })).not.toBeInTheDocument()
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false)
+  })
+  it('나가기에서 다음 페이지의 새 소유자를 선택하고 이전 후 최신 버전으로 탈퇴를 따로 확인한다', async () => {
+    const fetcher = backend(), original = fetcher.getMockImplementation()!
+    let transferred = false
+    fetcher.mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path.endsWith('/ownership')) { transferred = true; return new Response(null, { status: 204 }) }
+      if (path.includes('/members?')) {
+        if (transferred) return Response.json({ ...page, canInviteAdmin: false, canLeave: true, currentMemberVersion: 9, items: [{ ...owner, role: 'ADMIN' }, { ...member, role: 'OWNER' }] })
+        const next = new URL(path, 'http://test').searchParams.get('page') === '2'
+        return Response.json({ ...page, canLeave: false, items: next ? [member] : [owner], hasNext: !next })
+      }
+      return original(path, init)
+    })
+    const onLeft = vi.fn(); mount(onLeft); const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: '프로젝트 나가기' }))
+    let dialog = screen.getByRole('dialog', { name: '프로젝트 나가기' })
+    await within(dialog).findByRole('option', { name: '팀원 (@teammate)' })
+    await user.selectOptions(within(dialog).getByRole('combobox', { name: '새 소유자' }), '2')
+    await user.click(within(dialog).getByRole('button', { name: '소유권 이전 확인' }))
+    expect(transferred).toBe(false)
+    dialog = screen.getByRole('dialog', { name: '프로젝트 소유권 이전' })
+    expect(dialog).toHaveTextContent('소유권을 되돌리려면 새 소유자의 이전이 필요해요.')
+    await user.click(within(dialog).getByRole('button', { name: '프로젝트 소유권 이전' }))
+    dialog = await screen.findByRole('dialog', { name: '프로젝트 나가기' })
+    expect(fetcher).toHaveBeenCalledWith('/api/projects/9/ownership', expect.objectContaining({ method: 'POST', body: JSON.stringify({ userId: '2', projectVersion: 8, memberVersion: 4 }) }))
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false)
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: '프로젝트 나가기' })).toBeEnabled())
+    await user.click(within(dialog).getByRole('button', { name: '프로젝트 나가기' }))
+    await waitFor(() => expect(onLeft).toHaveBeenCalledOnce())
+    expect(fetcher).toHaveBeenCalledWith('/api/projects/9/membership?version=9', expect.objectContaining({ method: 'DELETE' }))
+  })
+  it('소유권 이전이 충돌하면 탈퇴하지 않고 최신 목록을 확인한다', async () => {
+    const fetcher = backend({ ...page, canLeave: false }), original = fetcher.getMockImplementation()!
+    fetcher.mockImplementation(async (path: string, init?: RequestInit) => path.endsWith('/ownership')
+      ? Response.json({ code: 'MEMBERSHIP_CHANGED', message: '멤버 정보가 변경됐어요.' }, { status: 409 }) : original(path, init))
+    mount(); const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: '프로젝트 나가기' }))
+    const dialog = screen.getByRole('dialog')
+    await within(dialog).findByRole('option', { name: '팀원 (@teammate)' })
+    await user.selectOptions(within(dialog).getByRole('combobox', { name: '새 소유자' }), '2')
+    await user.click(within(dialog).getByRole('button', { name: '소유권 이전 확인' }))
+    await user.click(within(dialog).getByRole('button', { name: '프로젝트 소유권 이전' }))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('멤버 정보가 변경됐어요.')
+    expect(within(dialog).getByRole('button', { name: '프로젝트 소유권 이전' })).toBeDisabled()
+    expect(fetcher.mock.calls.some(([, init]) => init?.method === 'DELETE')).toBe(false)
   })
   it('확인 중 새 멤버가 들어오면 보관을 재시도하지 않고 최신 멤버 목록을 확인한다', async () => {
     const fetcher = backend({ ...page, items: [owner], total: 1, canLeave: true, leaveArchivesProject: true })

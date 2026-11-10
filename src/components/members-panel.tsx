@@ -11,7 +11,7 @@ import { ProjectApiError } from '../lib/project-api'
 import { projectsChanged } from '../lib/workspace'
 
 const invitationLabels = { PENDING: '참여 대기', ACCEPTED: '참여 완료', REVOKED: '취소됨', EXPIRED: '만료됨' }
-type Action = { type: 'role' | 'remove' | 'transfer'; member: Member } | { type: 'leave' }
+type Action = { type: 'role' | 'remove'; member: Member } | { type: 'transfer'; member: Member; beforeLeave?: boolean } | { type: 'leave' }
 
 export function MembersPanel({ projectId, onLeft }: { projectId: string; onLeft: () => void }) {
   const [data, setData] = useState<MembersPage | null>(null)
@@ -125,8 +125,20 @@ export function MembersPanel({ projectId, onLeft }: { projectId: string; onLeft:
     try {
       if (action.type === 'role') await changeMemberRole(projectId, action.member, nextRole)
       else if (action.type === 'remove') await removeMember(projectId, action.member)
-      else if (action.type === 'transfer') { await transferProject(projectId, action.member, data.projectVersion); setCreated(null) }
-      else { await leaveProject(projectId, data.currentMemberVersion, data.leaveArchivesProject === true); setAction(null); projectsChanged(); onLeft(); return }
+      else if (action.type === 'transfer') {
+        await transferProject(projectId, action.member, data.projectVersion); setCreated(null)
+        if (action.beforeLeave) {
+          // 이전 성공 뒤에는 최신 멤버 버전으로 별도의 나가기 확인을 받는다.
+          setAction(null); setNotice('소유권을 이전했어요. 프로젝트 나가기를 확인해 주세요.')
+          try { setData(await listMembers(projectId, query, page)); setAction({ type: 'leave' }) }
+          catch { setNotice('소유권을 이전했어요. 최신 멤버 정보를 불러온 뒤 프로젝트를 나가 주세요.') }
+          projectsChanged(); refresh(); return
+        }
+      }
+      else {
+        if (!(data.canLeave ?? !data.canInviteAdmin)) return
+        await leaveProject(projectId, data.currentMemberVersion, data.leaveArchivesProject === true); setAction(null); projectsChanged(); onLeft(); return
+      }
       setAction(null); setNotice('멤버 정보를 변경했어요.'); projectsChanged(); refresh()
     } catch (cause) {
       setActionError(cause instanceof Error ? cause.message : '요청을 처리하지 못했어요.')
@@ -135,6 +147,7 @@ export function MembersPanel({ projectId, onLeft }: { projectId: string; onLeft:
   }
   const hasMemberActions = data?.items.some(member => member.canChangeRole || member.canRemove || member.canTransferTo)
   const leaveTitle = data?.leaveArchivesProject ? '프로젝트 보관하고 나가기' : '프로젝트 나가기'
+  const transferBeforeLeave = action?.type === 'leave' && !!data && !(data.canLeave ?? !data.canInviteAdmin)
   const actionTitle = action?.type === 'role' ? '멤버 권한 변경' : action?.type === 'remove' ? '멤버 내보내기' : action?.type === 'transfer' ? '프로젝트 소유권 이전' : leaveTitle
 
   return <section className="members-panel member-settings" aria-label="프로젝트 멤버 관리">
@@ -174,7 +187,7 @@ export function MembersPanel({ projectId, onLeft }: { projectId: string; onLeft:
       </section>}
       {data.canInvite && history && <section className="membership-history"><h3>멤버 관리 이력</h3>{history.items.length > 0 && <div className="member-record-scroll" tabIndex={0} aria-label="멤버 관리 이력 목록">{history.items.map(item => <article key={item.id}><strong>{item.title}</strong><small>@{item.actorLogin ?? '알 수 없음'} · {memberDate(item.occurredAt)}</small></article>)}</div>}{!history.items.length && <p className="help-text">아직 관리 이력이 없어요.</p>}{(historyPage > 1 || history.hasNext) && <div className="connection-pagination"><button aria-label="이전 이력" className="button" disabled={historyPage === 1} onClick={() => setHistoryPage(value => value - 1)}><ChevronLeft size={14} />이전</button><span>{historyPage} 페이지</span><button aria-label="다음 이력" className="button" disabled={!history.hasNext} onClick={() => setHistoryPage(value => value + 1)}>다음<ChevronRight size={14} /></button></div>}</section>}
       </div>
-      <div className="member-leave"><p className="help-text">{data.leaveArchivesProject ? '나만 남은 프로젝트예요. 프로젝트를 보관하고 나갈 수 있으며 기존 작업 기록과 GitHub 저장소는 삭제하지 않아요.' : data.canInviteAdmin ? '다른 멤버에게 소유권을 이전한 뒤 프로젝트를 나갈 수 있어요.' : '프로젝트를 나가도 기존 작업 기록은 유지돼요. 다시 참여하려면 새로운 초대가 필요해요.'}</p><button className="subtle-link danger-text" disabled={busy || loading || !(data.canLeave ?? !data.canInviteAdmin)} onClick={() => openAction({ type: 'leave' })}>{leaveTitle}</button></div>
+      <div className="member-leave"><p className="help-text">{data.leaveArchivesProject ? '나만 남은 프로젝트예요. 프로젝트를 보관하고 나갈 수 있으며 기존 작업 기록과 GitHub 저장소는 삭제하지 않아요.' : data.canInviteAdmin ? '다른 멤버에게 소유권을 이전한 뒤 프로젝트를 나갈 수 있어요.' : '프로젝트를 나가도 기존 작업 기록은 유지돼요. 다시 참여하려면 새로운 초대가 필요해요.'}</p><button className="subtle-link danger-text" disabled={busy || loading} onClick={() => openAction({ type: 'leave' })}>{leaveTitle}</button></div>
     </>}
     {!data && !loading && <Link className="subtle-link" to="/issues">내 프로젝트로 돌아가기</Link>}
     {action && <div className="dialog-backdrop" onMouseDown={event => { if (!busy && event.target === event.currentTarget) setAction(null) }}><div className="dialog member-action-dialog" role="dialog" aria-modal="true" aria-labelledby="member-action-title" ref={modal} tabIndex={-1}>
@@ -183,12 +196,47 @@ export function MembersPanel({ projectId, onLeft }: { projectId: string; onLeft:
         {action.type === 'role' ? <><p>@{action.member.login} 님의 프로젝트 권한을 변경합니다.</p><label>변경할 권한<select value={nextRole} disabled={busy} onChange={event => setNextRole(event.target.value as MemberRole)}><option value="MEMBER">멤버</option><option value="VIEWER">조회자</option>{data?.canInviteAdmin && <option value="ADMIN">관리자</option>}</select></label></>
           : action.type === 'remove' ? <p>@{action.member.login} 님을 내보내면 이 프로젝트에 접근할 수 없어요. 다시 참여하려면 새로운 초대가 필요합니다.</p>
             : action.type === 'transfer' ? <p>@{action.member.login} 님이 새 소유자가 됩니다. 나는 관리자로 남으며, 소유권을 되돌리려면 새 소유자의 이전이 필요해요. 내가 발급한 미사용 초대도 취소됩니다.</p>
-              : data?.leaveArchivesProject ? <p>나만 남은 프로젝트를 보관하고 나갑니다. 프로젝트가 목록에서 사라지고 기존 초대 링크로는 참여할 수 없게 됩니다. 작업 기록은 보관하며 GitHub 저장소는 삭제하거나 변경하지 않습니다.</p>
+              : transferBeforeLeave ? <OwnerLeaveTransfer projectId={projectId} onSelect={member => openAction({ type: 'transfer', member, beforeLeave: true })} onCancel={() => setAction(null)} />
+                : data?.leaveArchivesProject ? <p>나만 남은 프로젝트를 보관하고 나갑니다. 프로젝트가 목록에서 사라지고 기존 초대 링크로는 참여할 수 없게 됩니다. 작업 기록은 보관하며 GitHub 저장소는 삭제하거나 변경하지 않습니다.</p>
                 : <p>프로젝트에서 나가면 이 공간을 볼 수 없어요. 내가 발급한 미사용 초대가 취소되며, 다시 참여하려면 새로운 초대가 필요합니다.</p>}
         {actionError && <p className="connection-error" role="alert">{actionError}</p>}
         {stale && <button className="button" disabled={busy} onClick={() => { setAction(null); refresh() }}>최신 목록 다시 확인</button>}
-        <div className="form-actions"><button className="button" disabled={busy} onClick={() => setAction(null)}>취소</button><button className={`button ${action.type === 'role' ? 'button-dark' : 'button-danger'}`} disabled={busy || stale || action.type === 'role' && nextRole === action.member.role} onClick={() => void confirmAction()}>{busy ? '처리 중…' : actionTitle}</button></div>
+        {!transferBeforeLeave && <div className="form-actions"><button className="button" disabled={busy} onClick={() => setAction(null)}>취소</button><button className={`button ${action.type === 'role' ? 'button-dark' : 'button-danger'}`} disabled={busy || stale || action.type === 'role' && nextRole === action.member.role} onClick={() => void confirmAction()}>{busy ? '처리 중…' : actionTitle}</button></div>}
       </div>
     </div></div>}
   </section>
+}
+
+function OwnerLeaveTransfer({ projectId, onSelect, onCancel }: { projectId: string; onSelect: (member: Member) => void; onCancel: () => void }) {
+  const [members, setMembers] = useState<Member[]>([])
+  const [selected, setSelected] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [revision, setRevision] = useState(0)
+  useEffect(() => {
+    const controller = new AbortController()
+    setLoading(true); setError('')
+    void (async () => {
+      const candidates: Member[] = []
+      let page = 1
+      while (!controller.signal.aborted) {
+        const result = await listMembers(projectId, '', page++, controller.signal)
+        candidates.push(...result.items.filter(member => member.canTransferTo))
+        if (!result.hasNext) break
+      }
+      if (!controller.signal.aborted) setMembers(candidates)
+    })().catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : '멤버를 불러오지 못했어요.') })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    return () => controller.abort()
+  }, [projectId, revision])
+  const target = members.find(member => member.userId === selected)
+  return <>
+    <p>프로젝트 소유자는 다른 멤버에게 소유권을 이전한 뒤 나갈 수 있어요. 먼저 새 소유자를 선택해 주세요.</p>
+    <label>새 소유자<select value={selected} disabled={loading || !!error} onChange={event => setSelected(event.target.value)}><option value="">멤버를 선택해 주세요</option>{members.map(member => <option key={member.userId} value={member.userId}>{member.displayName} (@{member.login})</option>)}</select></label>
+    {loading && <p role="status">멤버를 불러오는 중…</p>}
+    {error && <p className="connection-error" role="alert">{error}<button className="button" onClick={() => setRevision(value => value + 1)}>멤버 다시 불러오기</button></p>}
+    {!loading && !error && !members.length && <p className="help-text">이전할 수 있는 멤버가 없어요. 멤버 목록에서 팀원의 참여 상태를 확인해 주세요.</p>}
+    <p className="help-text">소유권 이전과 프로젝트 나가기는 각각 확인 후 실행해요.</p>
+    <div className="form-actions"><button className="button" onClick={onCancel}>취소</button><button className="button button-dark" disabled={loading || !!error || !target} onClick={() => { if (target) onSelect(target) }}>소유권 이전 확인</button></div>
+  </>
 }
