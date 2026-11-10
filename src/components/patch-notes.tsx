@@ -87,7 +87,7 @@ export function Notes({ project }: { project: Project }) {
       {tooManyLinks && <p role="alert" className="form-error">연결할 변경 사항은 100개까지 선택할 수 있어요. 일부 연결을 해제한 뒤 저장해 주세요.</p>}
       <div className="form-actions">{publishBlocked && <span className="help-text">초안을 저장한 뒤 포함된 변경의 제목을 채우면 공개할 수 있어요.</span>}<button type="button" className="button" disabled={busy} onClick={() => { setEditing(null); setConflict(null) }}>취소</button><button className="button" disabled={busy || !!conflict || tooManyLinks || !title.trim() || !body.trim()}>초안 저장</button><button type="button" className="button button-dark" disabled={busy || !!conflict || tooManyLinks || !title.trim() || !body.trim() || publishBlocked} onClick={() => void save(true)}>팀에 공개</button></div>
     </form>}
-    {loading && !notes.length ? <LoadingState /> : <>
+    {loading && !notes.length ? <LoadingState layout={noteId ? 'detail' : 'notes'} label="패치노트를 불러오는 중" /> : <>
       {noteId ? notes.map(note => <ReleaseEntry key={note.id} note={note} project={project.id} canWrite={canWrite} busy={busy} onEdit={() => edit(note)} onSaved={titleSaved} />)
         : <div className="release-card-list">{entries.map(note => <NoteCard key={note.id} note={note} />)}</div>}
       {!(noteId ? notes : entries).length && !failure && <div className="release-empty"><FileText size={28} /><h3>첫 번째 변화를 기다리고 있어요</h3><p>작업을 완료하거나 검토한 코드를 반영하면 여기에 변경 내용이 모여요. 여러 변경을 묶어 팀 업데이트(패치노트)로 공유할 수 있어요.</p></div>}

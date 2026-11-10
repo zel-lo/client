@@ -1,56 +1,126 @@
-/* Skeletons match the content footprint; no layout swap on background refresh. */
-.zello-skeleton { background: var(--control-bg); animation: zello-skeleton-pulse 1.65s ease-in-out infinite; }
-@keyframes zello-skeleton-pulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
-.loading-state { width: 100%; min-width: 0; }
-.board-skeleton-grid { display: grid; grid-template-columns: minmax(220px, .9fr) repeat(3, minmax(245px, 1fr)); gap: 12px; min-height: 480px; overflow: hidden; }
-.board-skeleton-column { border-radius: 18px; padding: 17px 10px; background: color-mix(in srgb, var(--surface) 58%, var(--card)); }
-.skeleton-column-title { width: 100px; height: 16px; margin: 0 4px 25px; }
-.skeleton-work-card { border: 1px solid var(--quiet-line); border-radius: 14px; background: var(--card); padding: 15px; margin-bottom: 10px; }
-.skeleton-reference { width: 80px; height: 10px; }
-.skeleton-title { width: 86%; height: 14px; margin: 13px 0 9px; }
-.skeleton-title.short { width: 58%; margin-top: 0; }
-.skeleton-caption { width: 100%; height: 28px; margin-top: 16px; }
-.skeleton-avatar { width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; }
-.skeleton-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; }
-.skeleton-table { border: 1px solid var(--quiet-line); border-radius: 14px; overflow: hidden; }
-.skeleton-table-row { display: flex; gap: 16px; align-items: center; min-height: 76px; padding: 15px 20px; }
+/* 스켈레톤은 실제 화면과 같은 자리에 같은 모양으로 그린다. 갱신 중에는 기존 화면을 유지한다. */
+:root {
+  --skeleton-base: color-mix(in srgb, var(--muted-foreground) 12%, var(--card));
+  --skeleton-shine: color-mix(in srgb, var(--muted-foreground) 4%, var(--card));
+}
+/* 화면 기준으로 고정한 그라데이션이라 모든 막대가 한 물결로 반짝인다 */
+.zello-skeleton {
+  background: linear-gradient(100deg, var(--skeleton-base) 42%, var(--skeleton-shine) 50%, var(--skeleton-base) 58%) var(--skeleton-base);
+  background-size: 200% 100%;
+  background-attachment: fixed;
+  border-radius: 6px;
+  animation: zello-skeleton-shimmer 1.8s linear infinite;
+}
+@keyframes zello-skeleton-shimmer { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+/* 짧게 끝나는 로딩에서는 깜빡이지 않도록 살짝 늦게 나타난다 */
+.loading-state { width: 100%; min-width: 0; animation: zello-skeleton-in .3s ease .12s both; }
+@keyframes zello-skeleton-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* 공통 조각 */
+.skeleton-line { height: 10px; border-radius: 5px; }
+.skeleton-line.strong { height: 14px; border-radius: 7px; }
+.skeleton-line + .skeleton-line { margin-top: 9px; }
+.skeleton-lines { flex: 1; min-width: 0; }
+.sk-w-30 { width: 30%; } .sk-w-40 { width: 40%; } .sk-w-60 { width: 60%; } .sk-w-80 { width: 80%; }
+.skeleton-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
+.skeleton-icon { width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0; }
+.skeleton-icon.large { width: 40px; height: 40px; border-radius: 12px; }
+.skeleton-avatar { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; }
+.skeleton-pill { width: 64px; height: 26px; border-radius: 8px; flex-shrink: 0; }
+.skeleton-pill.tiny { width: 22px; height: 18px; border-radius: 6px; }
+.skeleton-row { display: flex; align-items: center; gap: 14px; }
+.skeleton-panel { padding: 26px; border: 1px solid var(--quiet-line); border-radius: var(--panel-radius); background: var(--card); }
+.skeleton-panel > .skeleton-line.strong:first-child { margin-bottom: 22px; }
+
+/* 팀 작업 보드 */
+.board-skeleton-grid { display: grid; grid-template-columns: minmax(220px, .9fr) repeat(3, minmax(245px, 1fr)); align-items: start; gap: 12px; min-height: 480px; overflow: hidden; }
+.board-skeleton-column { border-radius: 18px; padding: 16px 10px 12px; background: color-mix(in srgb, var(--surface) 58%, var(--card)); }
+.skeleton-column-head { display: flex; align-items: center; gap: 8px; margin: 0 4px; }
+.board-skeleton-column > .skeleton-line { margin: 12px 4px 16px; }
+.sk-w-col { width: 64px; } .sk-w-hint { width: 62%; }
+.skeleton-work-card { border: 1px solid var(--quiet-line); border-radius: 14px; background: var(--card); padding: 15px 14px 13px; margin-bottom: 10px; }
+.skeleton-work-card > .skeleton-line.strong { margin-top: 14px; }
+.skeleton-card-top { display: flex; align-items: center; justify-content: space-between; }
+.sk-w-repo { width: 96px; } .sk-w-key { width: 56px; } .sk-w-source { width: 52px; } .sk-w-name { width: 48px; }
+.skeleton-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--quiet-line); }
+.skeleton-card-footer > span, .skeleton-person { display: flex; align-items: center; gap: 7px; }
+.skeleton-card-footer .skeleton-line + .skeleton-line { margin-top: 0; }
+
+/* 목록 */
+.skeleton-table { border: 1px solid var(--quiet-line); border-radius: 14px; overflow: hidden; background: var(--card); }
+.skeleton-table-row { display: flex; gap: 16px; align-items: center; min-height: 78px; padding: 16px 20px; }
 .skeleton-table-row + .skeleton-table-row { border-top: 1px solid var(--quiet-line); }
-.skeleton-table-row > div:nth-child(2) { flex: 1; }
-.skeleton-table-row .skeleton-title { margin-top: 0; max-width: 380px; }
-.skeleton-badge { width: 60px; height: 23px; }
-.skeleton-detail-block { height: 130px; width: 100%; margin: 24px 0; }
-.skeleton-detail-field { height: 48px; width: 100%; margin-top: 18px; }
-.skeleton-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-.assignee-options .skeleton-table { border: 0; }
+.skeleton-table-row .skeleton-lines { max-width: 460px; }
+.skeleton-table-row .skeleton-pill { margin-left: auto; }
+.skeleton-person .skeleton-line + .skeleton-line { margin-top: 0; }
+
+/* 변경 소식 카드 */
+.skeleton-notes { display: grid; gap: 12px; }
+.skeleton-pill.small { width: 54px; height: 22px; border-radius: 6px; }
+.skeleton-note > .skeleton-line.strong { margin-top: 16px; }
+.skeleton-note > .skeleton-chips { margin: 16px 0 0; }
+
+/* 상세 · 카드 */
+.skeleton-detail > .skeleton-line { margin: 0; }
+.skeleton-heading { width: 70%; height: 22px; border-radius: 8px; margin: 14px 0 12px; }
+.skeleton-detail-block { height: 120px; width: 100%; margin: 24px 0 8px; border-radius: 14px; }
+.skeleton-detail-field { margin-top: 20px; }
+.skeleton-field { height: 46px; width: 100%; margin-top: 9px; border-radius: 12px; }
+.skeleton-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+.skeleton-cards .skeleton-panel > .skeleton-row { margin-bottom: 18px; }
+
+/* 팀원 선택 목록 안에서는 가볍게 */
+.assignee-options .skeleton-table { border: 0; background: transparent; }
 .assignee-options .skeleton-table-row { padding: 9px; min-height: 48px; }
-.assignee-options .skeleton-badge { display: none; }
+.assignee-options :is(.skeleton-pill, .skeleton-person) { display: none; }
+
+/* 설정 */
 .settings-skeleton, .dashboard-skeleton { display: grid; gap: 24px; }
 .settings-skeleton-panel { padding: 28px; border: 1px solid var(--quiet-line); border-radius: var(--panel-radius); background: var(--card); }
+.skeleton-column-title { width: 120px; height: 16px; border-radius: 7px; }
 .settings-skeleton-panel > .skeleton-column-title { margin: 0 0 24px; }
 .settings-skeleton-field { display: grid; grid-template-columns: 144px minmax(0, 1fr); gap: 24px; align-items: start; margin-bottom: 24px; }
-.settings-skeleton-field > .skeleton-reference { margin-top: 16px; }
-.skeleton-settings-input { height: 50px; }
-.skeleton-settings-textarea { height: 100px; }
+.skeleton-reference { width: 80px; height: 10px; border-radius: 5px; }
+.settings-skeleton-field > .skeleton-reference { margin-top: 18px; }
+.skeleton-title { width: 86%; height: 14px; border-radius: 7px; margin: 12px 0 0; }
+.skeleton-settings-input { height: 48px; border-radius: 12px; }
+.skeleton-settings-textarea { height: 100px; border-radius: 12px; }
 .skeleton-settings-footer { display: flex; justify-content: flex-end; padding-top: 20px; border-top: 1px solid var(--quiet-line); }
-.skeleton-settings-button { height: 44px; width: 100px; }
+.skeleton-settings-button { height: 44px; width: 100px; border-radius: 12px; }
 .skeleton-period-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
-.skeleton-dashboard-toolbar { display: flex; justify-content: space-between; min-height: 42px; align-items: center; }
-.skeleton-dashboard-next { padding: 24px; border: 1px solid var(--quiet-line); border-radius: var(--panel-radius); }
-.skeleton-dashboard-next .skeleton-title { max-width: 440px; }
-.skeleton-dashboard-progress { height: 300px; border-radius: var(--panel-radius); }
-.skeleton-dashboard-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 24px; }
+
+/* 전체 현황 */
+.skeleton-dashboard-toolbar { display: flex; justify-content: space-between; align-items: center; min-height: 40px; }
+.sk-w-picker { width: 220px; height: 32px; } .sk-w-refresh { width: 64px; }
+.skeleton-progress { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 32px; }
+.sk-w-heading { width: 120px; } .sk-w-label { width: 56px; }
+.skeleton-number { width: 120px; height: 56px; border-radius: 12px; margin: 22px 0; }
+.skeleton-bar { height: 12px; border-radius: 6px; }
+.skeleton-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 22px; }
+.skeleton-count { width: 40px; height: 22px; border-radius: 7px; margin-top: 10px; }
+.skeleton-highlights { display: grid; align-content: center; gap: 32px; padding-left: 32px; border-left: 1px solid var(--quiet-line); }
+.skeleton-highlights .skeleton-row { align-items: flex-start; }
+.skeleton-highlights .skeleton-lines > * + * { margin-top: 10px; }
+.skeleton-dashboard-grid { display: grid; grid-template-columns: 1.15fr 1fr; gap: 24px; align-items: start; }
+.skeleton-chips { display: flex; gap: 6px; margin-bottom: 18px; }
+.dashboard-skeleton .skeleton-panel > .skeleton-row { padding: 16px 0; border-top: 1px solid var(--quiet-line); }
+
+/* 활동 */
 .skeleton-activity-grid { display: grid; grid-template-columns: repeat(52, minmax(8px, 1fr)); gap: 4px; overflow: hidden; padding: 12px 0; }
 .skeleton-activity-grid > div { display: grid; gap: 4px; }
 .skeleton-activity-cell { aspect-ratio: 1; border-radius: 2px; }
 
 @media (max-width: 760px) {
   .board-skeleton-grid { grid-template-columns: repeat(4, minmax(260px, 80vw)); }
-  .settings-skeleton-panel { padding: 20px; }
+  .settings-skeleton-panel, .skeleton-panel { padding: 20px; }
   .settings-skeleton-field { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .settings-skeleton-field > .skeleton-reference { margin-top: 0; }
   .skeleton-period-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .skeleton-dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+  .skeleton-progress, .skeleton-dashboard-grid { grid-template-columns: minmax(0, 1fr); }
+  .skeleton-highlights { padding: 22px 0 0; border-left: 0; border-top: 1px solid var(--quiet-line); grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .skeleton-table-row .skeleton-person { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .zello-skeleton { animation: none; }
+  .zello-skeleton { animation: none; background: var(--skeleton-base); }
+  .loading-state { animation: none; }
 }
