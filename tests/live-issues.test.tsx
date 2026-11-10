@@ -102,6 +102,22 @@ describe('실제 팀 작업', () => {
     expect(fetcher.mock.calls.some(([path]) => path.endsWith('/publish'))).toBe(false)
   })
 
+  it('작업 상세는 불러오는 동안 연 드로어 안에서 내용만 바뀐다', async () => {
+    const { fetcher, mount } = backend({ saved: [{ ...issue, status: 'BACKLOG' }] }); mount(); const user = userEvent.setup()
+    const original = fetcher.getMockImplementation()!
+    fetcher.mockImplementation(async (input: string, init?: RequestInit) => {
+      if (input === '/api/projects/1/issues/20' && !init?.method) await new Promise(resolve => setTimeout(resolve, 30))
+      return original(input, init)
+    })
+    await user.click(await within(await screen.findByRole('region', { name: '할 일 열' })).findByRole('button', { name: /로그인 개선/ }))
+    const drawer = screen.getByRole('dialog', { name: '작업 상세' })
+    expect(within(drawer).getByRole('status', { name: '작업 상세를 불러오는 중' })).toBeInTheDocument()
+    expect(await within(drawer).findByRole('textbox', { name: '작업 제목' })).toHaveValue('로그인 개선')
+    // 같은 드로어가 유지되어 다시 열리는 애니메이션이 생기지 않는다
+    expect(screen.getByRole('dialog', { name: '작업 상세' })).toBe(drawer)
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+  })
+
   it('조회 전용 작업에서도 설명·완료 조건·회의 내용의 마크다운을 미리 볼 수 있다', async () => {
     const { fetcher, mount } = backend({ viewer: true, saved: [{ ...issue, description: '**기존 설명**', acceptanceCriteria: '- [x] 확인 완료', meetingContext: '## 회의 결정\n기존 동작을 유지해요.' }] }); mount()
     const user = userEvent.setup()

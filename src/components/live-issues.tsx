@@ -105,6 +105,7 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
   const [knownAssignees, setKnownAssignees] = useState<string[]>(() => assigneeFilter !== 'all' && assigneeFilter !== 'unassigned' ? [assigneeFilter] : [])
   const request = useRef<AbortController | null>(null)
   const detailRequest = useRef<AbortController | null>(null)
+  const [detailBusy, setDetailBusy] = useState(false)
   const mutating = useRef(false)
   const mounted = useRef(true)
   const scope = useRef(project?.id); scope.current = project?.id
@@ -296,8 +297,17 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
         <div className="form-actions"><button type="button" className="button" disabled={!!busyId} onClick={() => setPendingMove(null)}>취소</button><button className="button button-dark" disabled={!!busyId || (pendingMove.status === 'done' && !patchNoteTitle.trim())}>{busyId ? '저장 중…' : pendingMove.status === 'done' ? pendingMove.published ? '완료하고 GitHub 이슈 닫기' : '완료하고 변경 내용 저장' : 'GitHub 이슈 다시 열고 이동'}</button></div>
       </form>
     </IssueDialog>}
-    {opening && !editing && <IssueDialog busy={false} drawer onClose={() => { detailRequest.current?.abort(); setOpening(false) }}><div className="dialog-form"><LoadingState layout="detail" label="작업 상세를 불러오는 중" /></div></IssueDialog>}
-    {editing && <IssueEditor projectId={project.id} issue={editing === 'new' ? null : editing} initialWeek={week} period={project} onActivate={issue => { setEditing(null); setFlow({ kind: 'activate', issue, move: { id: issue.id, status: 'in_progress', beforeId: null } }) }} repositories={repositories} canWrite={canWrite} onClose={() => setEditing(null)} onChanged={item => { setEditing(item); setPage(1); setRevision(value => value + 1) }}
+    {(opening || (editing && editing !== 'new')) && <IssueDialog drawer busy={detailBusy} onClose={() => { detailRequest.current?.abort(); setOpening(false); setEditing(null); setDetailBusy(false) }}>
+      {editing && editing !== 'new' ? <IssueEditor key={editing.id} onBusyChange={setDetailBusy} projectId={project.id} issue={editing} initialWeek={week} period={project} onActivate={issue => { setEditing(null); setFlow({ kind: 'activate', issue, move: { id: issue.id, status: 'in_progress', beforeId: null } }) }} repositories={repositories} canWrite={canWrite} onClose={() => setEditing(null)} onChanged={item => { setEditing(item); setPage(1); setRevision(value => value + 1) }}
+      onCreated={item => {
+        // 새 작업은 등록하면 창을 닫고 목록을 다시 불러와 카드를 바로 보여준다.
+        setEditing(null); setPage(1); setRevision(value => value + 1)
+        const tell = onNotify ?? ((message: string) => setNotice(message))
+        tell(`${item.key} 작업을 할 일로 저장했어요.`)
+      }}
+      onCreateFailed={message => onNotify?.(message, 'error')} onArchived={() => { setEditing(null); setPage(1); setRevision(value => value + 1); setNotice(archived ? '작업을 복원했어요.' : '작업을 보관했어요. GitHub 원본은 유지됩니다.') }} /> : <div className="dialog-form"><LoadingState layout="detail" label="작업 상세를 불러오는 중" /></div>}
+    </IssueDialog>}
+    {editing === 'new' && <IssueEditor projectId={project.id} issue={null} initialWeek={week} period={project} onActivate={issue => { setEditing(null); setFlow({ kind: 'activate', issue, move: { id: issue.id, status: 'in_progress', beforeId: null } }) }} repositories={repositories} canWrite={canWrite} onClose={() => setEditing(null)} onChanged={item => { setEditing(item); setPage(1); setRevision(value => value + 1) }}
       onCreated={item => {
         // 새 작업은 등록하면 창을 닫고 목록을 다시 불러와 카드를 바로 보여준다.
         setEditing(null); setPage(1); setRevision(value => value + 1)
@@ -314,8 +324,8 @@ function lastRepository(projectId: string, repositories: ConnectedRepository[]) 
   try { const id = localStorage.getItem(lastRepoKey(projectId)); return repositories.some(repo => repo.id === id) ? id : null } catch { return null }
 }
 
-function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, period, onClose, onChanged, onCreated, onCreateFailed, onArchived, onActivate }: {
-  projectId: string; issue: LiveIssue | null; initialWeek: string; period: Project; repositories: ConnectedRepository[]; canWrite: boolean
+function IssueEditor({ onBusyChange, projectId, issue, repositories, canWrite, initialWeek, period, onClose, onChanged, onCreated, onCreateFailed, onArchived, onActivate }: {
+  onBusyChange?: (busy: boolean) => void; projectId: string; issue: LiveIssue | null; initialWeek: string; period: Project; repositories: ConnectedRepository[]; canWrite: boolean
   onClose: () => void; onChanged: (issue: LiveIssue) => void; onArchived: () => void; onActivate: (issue: LiveIssue) => void
   onCreated: (issue: LiveIssue) => void; onCreateFailed: (message: string) => void
 }) {
@@ -390,7 +400,8 @@ function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, pe
     {meeting && <MarkdownEditor label="회의에서 정한 내용" maxLength={10000} disabled={disabled} value={form.meetingContext} onChange={meetingContext => setForm({ ...form, meetingContext })} placeholder="논의 배경과 결정 내용을 팀에 남겨주세요." />}
     {issue && issue.status !== 'BACKLOG' && <div className="issue-fields"><label>작업 상태<select value={form.status} disabled={disabled} onChange={event => { const value = event.target.value as IssueDetails['status']; setForm({ ...form, status: value }); if (issue?.publishStatus === 'PUBLISHED') setGithubState(value === 'DONE' ? 'CLOSED' : 'OPEN') }}>{Object.entries(states).filter(([value]) => value !== 'TODO').map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label></div>}
   </>
-  return <IssueDialog onClose={onClose} busy={busy} drawer={!!issue} title={issue ? undefined : '새 작업 등록'}><form className="dialog-form issue-editor-form" onSubmit={event => void submit(event)}>
+  useEffect(() => { onBusyChange?.(busy) }, [busy, onBusyChange])
+  const content = <form className="dialog-form issue-editor-form" onSubmit={event => void submit(event)}>
     {!issue && <ActionContext title="할 일에 먼저 저장해요" destination="zello">담당자와 GitHub 이슈는 진행을 시작할 때 정해요. 자세한 내용은 나중에 채워도 돼요.</ActionContext>}
     {issue && <h2>{issue.title}</h2>}
     {issue && <div className="issue-meta">
@@ -426,5 +437,7 @@ function IssueEditor({ projectId, issue, repositories, canWrite, initialWeek, pe
     {issue && canWrite && !issue.archived && issue.status === 'BACKLOG' && <div className="issue-publication"><p>{dirty ? '수정한 내용을 먼저 저장해 주세요.' : issue.lastPublishError || '담당자를 배정하고 GitHub 이슈를 준비하면 진행 중으로 옮겨요.'}</p><button className="button button-dark" type="button" disabled={busy || !!dirty || stale} onClick={() => onActivate(issue)}>담당자 배정하고 진행하기</button></div>}
     {issue && canWrite && !issue.archived && issue.status !== 'BACKLOG' && issue.publishStatus !== 'PUBLISHED' && <div className="issue-publication"><p>{dirty ? '수정한 내용을 먼저 저장한 다음 발행해 주세요.' : issue.lastPublishError || '저장한 제목·설명·완료 조건·담당자로 GitHub에 이슈를 발행해요.'}</p><button className="button" type="button" disabled={busy || !!dirty} onClick={() => void publish()}><Github size={14} />{unresolved ? '이전 발행 결과 확인' : '저장한 작업 GitHub에 발행'}</button></div>}
     <div className="form-actions issue-editor-actions">{issue && canWrite && <div className="issue-archive">{confirmArchive && !issue.archived ? <><p>이 작업을 보관할까요? GitHub 이슈는 유지되며 보관 목록에서 복원할 수 있어요.</p><button className="button" type="button" disabled={busy} onClick={() => void archive()}>보관하기</button><button className="button" type="button" onClick={() => setConfirmArchive(false)}>취소</button></> : <button className="subtle-link" type="button" disabled={busy} onClick={() => issue.archived ? void archive() : setConfirmArchive(true)}><Archive size={13} />{issue.archived ? '작업 복원' : '작업 보관'}</button>}</div>}<button type="button" className="button" disabled={busy} onClick={onClose}>{issue ? '닫기' : '취소'}</button>{canWrite && !issue?.archived && !unresolved && <button className="button button-dark" type="submit" disabled={!valid || busy || stale}>{busy ? '저장 중…' : issue ? '변경 사항 저장' : '할 일로 저장'}</button>}</div>
-  </form></IssueDialog>
+  </form>
+  // 작업 상세는 바깥에서 연 드로어 안에 들어가고, 새 작업은 자체 모달로 연다
+  return issue ? content : <IssueDialog onClose={onClose} busy={busy} title="새 작업 등록">{content}</IssueDialog>
 }
