@@ -26,6 +26,6 @@ export function TeamContributions({ days, loading = false, error = '', onRetry, 
         footer="날짜에 마우스를 올리거나 방향키로 하루의 활동 수를 확인하세요." className="team-contributions-chart" />
       {total === 0 && <p className="team-contributions-empty">아직 기록된 활동이 없어요. 작업을 진행하면 이곳에 팀의 발자취가 쌓여요.</p>}
     </>}
-    <div className="team-contributions-footer"><p>{demo ? '화면을 둘러보기 위한 샘플 활동이에요.' : 'zello에 남긴 팀 활동이에요. GitHub 커밋 수와는 달라요.'}</p><details className="activity-count-help"><summary>집계 기준</summary><p>작업 완료·담당자 배정·팀원 초대·업데이트 공개 등 zello에 저장된 활동을 세어요. 하루는 세계 표준시(UTC) 기준으로 구분해, 한국 시간으로 오전 9시에 날짜가 바뀌어요.</p></details><Link to="/changes?view=history" className="weekly-text-link">개발 기록 보기<ArrowUpRight size={14} /></Link></div>
+    <div className="team-contributions-footer"><div className="team-contributions-note"><p>{demo ? '화면을 둘러보기 위한 샘플 활동이에요.' : 'zello에 남긴 팀 활동이에요. GitHub 커밋 수와는 달라요.'}</p><details className="activity-count-help"><summary>집계 기준</summary><p>작업 완료·담당자 배정·팀원 초대·업데이트 공개 등 zello에 저장된 활동을 세어요. 하루는 세계 표준시(UTC) 기준으로 구분해, 한국 시간으로 오전 9시에 날짜가 바뀌어요.</p></details></div><Link to="/changes?view=history" className="weekly-text-link">개발 기록 보기<ArrowUpRight size={14} /></Link></div>
   </section>
 }
