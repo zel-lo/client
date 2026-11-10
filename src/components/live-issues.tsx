@@ -16,6 +16,7 @@ import type { IssueStatus } from '../data/work-items'
 import { startOfWeek, validWeek, projectWeeks, weekLabel } from '../lib/work-weeks'
 import { useWorkWeek } from '../hooks/use-work-week'
 import { LoadingState } from './loading-state'
+import { listMembers } from '../lib/members-api'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table'
 
 const states: Record<IssueDetails['status'], string> = { BACKLOG: '할 일', TODO: '진행 중', IN_PROGRESS: '진행 중', IN_REVIEW: '검토 중', DONE: '완료' }
@@ -102,7 +103,9 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
   const [mine, setMine] = useState(mineOnly)
   const [page, setPage] = useState(1)
   const [assigneeFilter, setAssigneeFilter] = useState(() => params.get('assignee') ?? 'all')
-  const [knownAssignees, setKnownAssignees] = useState<string[]>(() => assigneeFilter !== 'all' && assigneeFilter !== 'unassigned' ? [assigneeFilter] : [])
+  const [members, setMembers] = useState<{ projectId: string; logins: string[] } | null>(null)
+  const [membersError, setMembersError] = useState('')
+  const [membersRevision, setMembersRevision] = useState(0)
   const request = useRef<AbortController | null>(null)
   const detailRequest = useRef<AbortController | null>(null)
   const [detailBusy, setDetailBusy] = useState(false)
@@ -131,6 +134,23 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
     return () => clearTimeout(timer)
   }, [queryInput])
   useEffect(() => {
+    if (!project) return
+    const projectId = project.id
+    const controller = new AbortController()
+    setMembersError('')
+    void (async () => {
+      const logins: string[] = []
+      let page = 1
+      while (!controller.signal.aborted) {
+        const result = await listMembers(projectId, '', page++, controller.signal)
+        logins.push(...result.items.map(member => member.login))
+        if (!result.hasNext) break
+      }
+      if (!controller.signal.aborted) setMembers({ projectId, logins })
+    })().catch(cause => { if (!controller.signal.aborted) setMembersError(cause instanceof Error ? cause.message : '담당자 목록을 불러오지 못했어요.') })
+    return () => controller.abort()
+  }, [project?.id, membersRevision])
+  useEffect(() => {
     const updated = () => { setPage(1); setRevision(value => value + 1) }
     const failed = (event: Event) => { const detail = (event as CustomEvent<{ projectId: string; message: string }>).detail; if (detail.projectId === scope.current) setError(detail.message) }
     window.addEventListener('zello:issues-updated', updated)
@@ -149,7 +169,6 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
       if (controller.signal.aborted || currentKey.current !== key) return
       setResult(previous => view === 'board' && page > 1 && previous ? { ...issues, items: [...new Map([...previous.items, ...issues.items].map(item => [item.id, item])).values()] } : issues)
       setRepositories(repos)
-      setKnownAssignees(current => [...new Set([...current, ...issues.items.map(item => item.assignee).filter((login): login is string => !!login)])])
     }).catch(cause => {
       if (!controller.signal.aborted && currentKey.current === key) {
         // Permission/authentication failures must not leave a protected cached board visible.
@@ -257,6 +276,11 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
     }
     return change(move.id, { status: move.status }, { beforeId: move.beforeId })
   }, onAssign: (id, login) => { const item = result?.items.find(item => item.id === id); if (item?.status === 'BACKLOG' && login) { setFlow({ kind: 'activate', issue: item, move: { id, status: 'in_progress', beforeId: null }, initialAssignee: login }); return } return change(id, { assignee: login }) }, loadAssignees: loadPeople, onReference: id => { navigate(`/pull-requests?pr=${encodeURIComponent(id)}`) } }
+  const knownAssignees = [...new Set([
+    ...(members?.projectId === project?.id ? members?.logins ?? [] : []),
+    ...(result?.items.map(item => item.assignee).filter((login): login is string => !!login) ?? []),
+    ...(assigneeFilter !== 'all' && assigneeFilter !== 'unassigned' ? [assigneeFilter] : []),
+  ])].sort((a, b) => a.localeCompare(b))
   return <section className="live-issues" aria-busy={loading} aria-label={mineOnly ? '실제 맡은 작업' : '실제 팀 작업'}>
     {headerActionsHost ? <><h2 className="sr-only">팀의 작업 <span>{result?.total ?? 0}</span></h2>{createPortal(<div className="issue-actions"><button className="button" disabled={syncing || busy || loading} onClick={() => void sync()}><RefreshCw size={14} className={syncing ? 'board-saving' : ''} />{syncing ? 'GitHub 확인 중…' : 'GitHub 이슈 가져오기'}</button>{canWrite && <button className="button button-dark" disabled={busy} onClick={() => { setError(''); setEditing('new') }}><Plus size={14} />새 작업 등록</button>}</div>, headerActionsHost)}</> : <div className="section-heading"><h2>{mineOnly ? '내가 맡은 작업' : '팀의 작업'} <span className="count-text">{result?.total ?? '—'}</span></h2><div className="issue-actions"><button className="button" disabled={syncing || busy || loading} onClick={() => void sync()}><RefreshCw size={14} className={syncing ? 'board-saving' : ''} />{syncing ? 'GitHub 확인 중…' : 'GitHub 이슈 가져오기'}</button>{canWrite && <button className="button button-dark" disabled={busy} onClick={() => { setError(''); setEditing('new') }}><Plus size={14} />새 작업 등록</button>}</div></div>}
     {error && <div className="connection-error" role="alert">{error}{reauth ? <Link to="/login?reauth=github">GitHub 다시 로그인</Link> : <button className="button" disabled={loading || busy} onClick={() => { setPage(1); setRevision(value => value + 1) }}>다시 불러오기</button>}</div>}
@@ -272,6 +296,7 @@ export function LiveIssues({ project, projectLoading = false, mineOnly = false, 
       {(queryInput || status || assigneeFilter !== 'all' || mine !== mineOnly || params.get('focus') === 'unassigned') && <button type="button" className="filter-reset" disabled={busy} onClick={() => { setQueryInput(''); setStatus(''); setAssigneeFilter('all'); setMine(mineOnly); setPage(1); setParams(current => { const next = new URLSearchParams(current); next.delete('focus'); return next }) }}><RotateCcw size={13} />필터 초기화</button>}
       {loading && result && <span className="board-refresh-status" role="status"><RefreshCw size={12} className="board-saving" />작업을 갱신하고 있어요</span>}
     </div>
+    {membersError && <p className="form-error" role="alert">담당자 목록을 불러오지 못했어요. {membersError}<button type="button" className="subtle-link" onClick={() => setMembersRevision(value => value + 1)}>담당자 다시 불러오기</button></p>}
     {loading && !result ? <LoadingState layout={view} label="저장한 작업을 불러오는 중" /> : result && <>
       {view === 'board' ? <TeamBoard items={boardItems} week={week} actions={actions} canWrite={canWrite} busyId={busyId} disabled={loading || syncing} onCreate={() => setEditing('new')} /> : <div className="data-frame"><Table><TableHeader><TableRow><TableHead>작업 / 등록 경로</TableHead><TableHead>상태</TableHead><TableHead>담당자</TableHead><TableHead>우선순위</TableHead><TableHead>이슈 → PR</TableHead><TableHead>GitHub 발행</TableHead></TableRow></TableHeader><TableBody>{filtered.map(issue => <TableRow key={issue.id}>
         <TableCell><button className="issue-title" disabled={busy} onClick={() => void open(issue)}><CircleDot size={15} /><span>{issue.title}<small>{issue.number ? `${issue.repositoryOwner}/${issue.repositoryName}#${issue.number}` : issue.key} · {sources[issue.source]}{issue.meetingDate ? ` · ${issue.meetingDate}` : ''}</small></span></button></TableCell>
