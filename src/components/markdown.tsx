@@ -55,8 +55,8 @@ export function applyFormat(value: string, start: number, end: number, key: stri
 }
 
 /** GitHub의 검토 요청 만들기 칸처럼 작성/미리보기 탭과 서식 도구를 둔 마크다운 입력. */
-export function MarkdownEditor({ label, value, onChange, disabled = false, placeholder, maxLength, optional = false, rows = 6 }: {
-  label: string; value: string; onChange: (value: string) => void; disabled?: boolean; placeholder?: string; maxLength?: number; optional?: boolean; rows?: number;
+export function MarkdownEditor({ label, value, onChange, disabled = false, placeholder, maxLength, optional = false, required = false, rows = 6 }: {
+  label: string; value: string; onChange: (value: string) => void; disabled?: boolean; placeholder?: string; maxLength?: number; optional?: boolean; required?: boolean; rows?: number;
 }) {
   const id = useId()
   const textarea = useRef<HTMLTextAreaElement>(null)
@@ -79,7 +79,7 @@ export function MarkdownEditor({ label, value, onChange, disabled = false, place
 
   return <div className={`markdown-editor${rows <= 4 ? ' is-compact' : ''}`}>
     <div className="markdown-editor-head">
-      <label htmlFor={id}>{label}{optional && <span className="optional" aria-hidden="true">선택</span>}</label>
+      <label htmlFor={id}>{label}{optional && <span className="optional" aria-hidden="true">선택</span>}{required && <span className="field-required" aria-hidden="true">필수</span>}</label>
       <div className="markdown-tabs" role="tablist" aria-label={`${label} 보기 방식`}>
         <button type="button" role="tab" aria-selected={tab === 'write'} onClick={() => setTab('write')}>작성</button>
         <button type="button" role="tab" aria-selected={tab === 'preview'} onClick={() => setTab('preview')}>미리보기</button>
@@ -88,7 +88,7 @@ export function MarkdownEditor({ label, value, onChange, disabled = false, place
     <div className="markdown-frame">
       {tab === 'write' && <div className="markdown-toolbar" role="toolbar" aria-label={`${label} 서식`}>{actions.map(({ key, label: name, icon: Icon, shortcut: keyName }) =>
         <button key={key} type="button" disabled={disabled} title={keyName ? `${name} (Ctrl+${keyName.toUpperCase()})` : name} aria-label={name} onClick={() => format(key)}><Icon size={14} /></button>)}</div>}
-      <textarea id={id} ref={textarea} hidden={tab !== 'write'} rows={rows} value={value} disabled={disabled} maxLength={maxLength} placeholder={placeholder}
+      <textarea id={id} ref={textarea} hidden={tab !== 'write'} rows={rows} value={value} disabled={disabled} required={required} maxLength={maxLength} placeholder={placeholder}
         onChange={event => onChange(event.target.value)} onKeyDown={shortcut} />
       {tab === 'preview' && <div className="markdown-preview">{value.trim() ? <MarkdownView source={value} /> : <p className="muted">미리 볼 내용이 없어요.</p>}</div>}
     </div>

@@ -38,3 +38,14 @@
 @media (max-width: 1000px) { .workflow-help ol { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .action-context { flex-wrap: wrap; padding: 15px; } .action-destination { margin-left: 30px; } .workflow-help ol { grid-template-columns: 1fr; gap: 16px; } }
 @media (prefers-reduced-motion: reduce) { .inline-explanation > summary > svg, .workflow-help > summary > svg { transition: none; } }
+
+/* 새 작업 등록: 필수 칸만 먼저 보이고 나머지는 접어 둔다 */
+.issue-quick-fields { margin-top: 20px; }
+.issue-more { margin-top: 24px; border-top: 1px solid var(--quiet-line); }
+.issue-more > summary { display: flex; align-items: center; gap: 8px; padding: 18px 0 2px; list-style: none; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text-secondary); }
+.issue-more > summary::-webkit-details-marker { display: none; }
+.issue-more > summary::before { content: ''; width: 7px; height: 7px; margin: 0 3px 0 2px; border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor; transform: rotate(-45deg); transition: transform .15s; }
+.issue-more[open] > summary::before { transform: rotate(45deg); }
+.issue-more > summary:hover { color: var(--foreground); }
+.issue-more > summary > span { padding: 2px 7px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--muted-foreground); background: var(--control-bg); }
+.issue-more > :not(summary) { margin-top: 20px; }

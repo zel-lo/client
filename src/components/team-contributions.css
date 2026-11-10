@@ -7,10 +7,13 @@
 .team-contributions-total { font-size: 25px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.8px; }
 .team-contributions-unit { margin-left: 6px; color: var(--muted-foreground); font-size: 13px; }
 .team-contributions-updating { margin-left: 12px; color: var(--muted-foreground); font-size: 12px; }
-.team-contributions-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding-top: 16px; margin-top: 18px; border-top: 1px solid var(--quiet-line); }
-.team-contributions-footer > p, .team-contributions-empty { color: var(--muted-foreground); font-size: 12px; line-height: 1.8; }
+.team-contributions-footer { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 10px; padding-top: 16px; margin-top: 18px; border-top: 1px solid var(--quiet-line); }
+.team-contributions-note > p, .team-contributions-empty { color: var(--muted-foreground); font-size: 12px; line-height: 1.8; }
 .team-contributions-empty { margin-top: 12px; }
-.activity-count-help { color: var(--muted-foreground); font-size: 12px; line-height: 1.8; }
-.activity-count-help summary { cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
-.activity-count-help p { max-width: 60ch; margin-top: 8px; }
+/* 집계 기준은 설명 문장 아래에 두어 펼쳐도 왼쪽 칸 안에서만 늘어난다 */
+.team-contributions-note { flex: 1; min-width: 0; }
+.activity-count-help { margin-top: 2px; color: var(--muted-foreground); font-size: 12px; line-height: 1.8; }
+.activity-count-help summary { width: fit-content; cursor: pointer; }
+.activity-count-help summary:hover { color: var(--foreground); }
+.activity-count-help p { max-width: 60ch; margin-top: 6px; }
 @media (max-width: 600px) { .team-contributions .weekly-card-heading { flex-wrap: wrap; gap: 6px; } .team-contributions-total { font-size: 22px; } .team-contributions-chart > div > div:last-child { font-size: 11px; } }

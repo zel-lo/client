@@ -169,9 +169,6 @@ function BoardColumn({ state, items, week, canWrite, busyId, disabled, actions, 
 }
 
 const DONE_VISIBLE = 5
-const BACKLOG_PREF = 'zello:board-show-backlog'
-function readBacklogPref() { try { return localStorage.getItem(BACKLOG_PREF) !== 'false' } catch { return true } }
-function writeBacklogPref(value: boolean) { try { localStorage.setItem(BACKLOG_PREF, String(value)) } catch { /* 저장소를 쓸 수 없으면 이번 화면에서만 유지한다. */ } }
 
 const collisionDetection: CollisionDetection = args => {
   const collisions = pointerWithin(args)
@@ -188,8 +185,9 @@ export function TeamBoard({ items: sourceItems, week, actions, canWrite = true, 
   const [activeId, setActiveId] = useState<string | null>(null)
   const [meeting, setMeeting] = useState(false)
   const [attentionOnly, setAttentionOnly] = useState(false)
-  const [showBacklog, setShowBacklog] = useState(readBacklogPref)
-  function toggleBacklog() { setShowBacklog(value => { writeBacklogPref(!value); return !value }) }
+  // 할 일 열은 화면을 열 때마다 펼친 상태로 시작한다
+  const [showBacklog, setShowBacklog] = useState(true)
+  function toggleBacklog() { setShowBacklog(value => !value) }
   const id = useId()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
   const attention = items.filter(item => item.status !== 'done' && (item.attention?.tone === 'danger' || item.attention?.tone === 'warning' || !item.assignee))

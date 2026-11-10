@@ -52,6 +52,10 @@ describe('실제 팀 작업', () => {
     await user.click(screen.getByRole('button', { name: '새 작업 등록' }))
     const dialog = screen.getByRole('dialog', { name: '새 작업 등록' })
     await user.type(within(dialog).getByRole('textbox', { name: '작업 제목' }), '회의에서 정한 일')
+    // 설명은 필수라 쓰기 전에는 저장할 수 없다
+    expect(within(dialog).getByRole('button', { name: '할 일로 저장' })).toBeDisabled()
+    await user.type(within(dialog).getByRole('textbox', { name: '설명' }), '회의에서 정한 배경')
+    await user.click(within(dialog).getByText('완료 조건·회의 내용 더 입력하기'))
     await user.type(within(dialog).getByRole('textbox', { name: '완료 조건' }), '사용자가 확인할 결과')
     await user.click(within(dialog).getByRole('button', { name: '할 일로 저장' }))
     await waitFor(() => expect(notify).toHaveBeenCalledWith('Z-unique 작업을 할 일로 저장했어요.'))
@@ -68,6 +72,10 @@ describe('실제 팀 작업', () => {
     await user.click(await screen.findByRole('button', { name: '새 작업 등록' }))
     const dialog = screen.getByRole('dialog', { name: '새 작업 등록' })
     await user.type(within(dialog).getByRole('textbox', { name: '작업 제목' }), '미리 볼 작업')
+    // 선택 입력은 접혀 있다가 펼쳐서 쓴다
+    expect(within(dialog).getByRole('textbox', { name: '설명' })).toBeVisible()
+    expect(within(dialog).getByRole('textbox', { name: '완료 조건' })).not.toBeVisible()
+    await user.click(within(dialog).getByText('완료 조건·회의 내용 더 입력하기'))
     const description = '## 작업 배경\n**빠른 검색**과 `응답 시간`을 확인해요.'
     const criteria = '- [x] 목록 표시\n- [ ] 검색 결과 확인'
     const descriptionInput = within(dialog).getByRole('textbox', { name: '설명' })
@@ -92,6 +100,22 @@ describe('실제 팀 작업', () => {
     const sent = fetcher.mock.calls.find(([path, init]) => path === '/api/projects/1/issues' && init?.method === 'POST')!
     expect(JSON.parse(sent[1]!.body as string).details).toMatchObject({ description, acceptanceCriteria: criteria })
     expect(fetcher.mock.calls.some(([path]) => path.endsWith('/publish'))).toBe(false)
+  })
+
+  it('작업 상세는 불러오는 동안 연 드로어 안에서 내용만 바뀐다', async () => {
+    const { fetcher, mount } = backend({ saved: [{ ...issue, status: 'BACKLOG' }] }); mount(); const user = userEvent.setup()
+    const original = fetcher.getMockImplementation()!
+    fetcher.mockImplementation(async (input: string, init?: RequestInit) => {
+      if (input === '/api/projects/1/issues/20' && !init?.method) await new Promise(resolve => setTimeout(resolve, 30))
+      return original(input, init)
+    })
+    await user.click(await within(await screen.findByRole('region', { name: '할 일 열' })).findByRole('button', { name: /로그인 개선/ }))
+    const drawer = screen.getByRole('dialog', { name: '작업 상세' })
+    expect(within(drawer).getByRole('status', { name: '작업 상세를 불러오는 중' })).toBeInTheDocument()
+    expect(await within(drawer).findByRole('textbox', { name: '작업 제목' })).toHaveValue('로그인 개선')
+    // 같은 드로어가 유지되어 다시 열리는 애니메이션이 생기지 않는다
+    expect(screen.getByRole('dialog', { name: '작업 상세' })).toBe(drawer)
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
   })
 
   it('조회 전용 작업에서도 설명·완료 조건·회의 내용의 마크다운을 미리 볼 수 있다', async () => {
