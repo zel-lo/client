@@ -321,7 +321,7 @@ function WorkspaceApp() {
     try {
       const result = await live.sync()
       setLastSync('방금')
-      notify(`GitHub에서 PR ${result.collected}개를 가져왔어요.${result.skippedRepositories ? ` 접근할 수 없는 저장소 ${result.skippedRepositories}개는 건너뛰었어요.` : ''}`)
+      notify(`${result.collected ? `연결된 저장소의 PR ${result.collected}개(열림·종료 포함)의 최신 상태를 확인했어요.` : '확인할 GitHub PR이 없어요.'}${result.skippedRepositories ? ` 접근할 수 없는 저장소 ${result.skippedRepositories}개는 건너뛰었어요.` : ''}`)
     } catch (cause) {
       notify(cause instanceof Error ? cause.message : 'PR을 가져오지 못했어요.')
     } finally {

@@ -45,6 +45,7 @@ export type NewPullRequest = {
   repositoryId: string; title: string; headBranch: string; baseBranch: string; teamSummary: string; body: string; draft: boolean
   requestKey: string; reviewers: string[]; issueIds?: string[]
 }
+/** collected는 기존 PR을 포함해 이번에 확인한 전체 수이며 신규 추가 수가 아니다. */
 export type PullRequestSync ={ collected: number; skippedRepositories: number; syncedAt: string }
 
 export class ProjectApiError extends Error {

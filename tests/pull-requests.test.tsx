@@ -36,14 +36,14 @@ const page = (items: PullRequestItem[], path = ''): PullRequestPage => {
 const connectedRepo = { id: '40', projectId: '7', githubRepositoryId: '30', installationId: null, owner: 'sinheyy', name: 'zello-test', htmlUrl: 'https://github.com/sinheyy/zello-test', description: null, language: null, defaultBranch: 'main', privateRepository: false, status: 'CONNECTED', initialSyncCompleted: false }
 type CreateFailure = { status: number; code: string; message: string }
 
-function backend({ projects = [project], everything = [pull('1', 1), pull('2', 2, { author: { login: 'other', avatarUrl: null }, draft: true }), pull('3', 3, { state: 'MERGED', mergedAt: '2026-10-30T00:00:00Z' })], mine = [pull('1', 1)], requested = [pull('4', 4, { author: { login: 'teammate', avatarUrl: null } })], failure = '', createFailures = [] as CreateFailure[], detailBody = 'GitHub에 적은 본문\n두 번째 줄', detailStats = { changedFiles: 4, additions: 1200, deletions: 35 } as Partial<PullRequestItem>, createWarning = '', detailActions = undefined as PullRequestItem['actions'], mergeFailure = '' } = {}) {
+function backend({ syncCollected = 3, projects = [project], everything = [pull('1', 1), pull('2', 2, { author: { login: 'other', avatarUrl: null }, draft: true }), pull('3', 3, { state: 'MERGED', mergedAt: '2026-10-30T00:00:00Z' })], mine = [pull('1', 1)], requested = [pull('4', 4, { author: { login: 'teammate', avatarUrl: null } })], failure = '', createFailures = [] as CreateFailure[], detailBody = 'GitHub에 적은 본문\n두 번째 줄', detailStats = { changedFiles: 4, additions: 1200, deletions: 35 } as Partial<PullRequestItem>, createWarning = '', detailActions = undefined as PullRequestItem['actions'], mergeFailure = '' } = {}) {
   const fetcher = vi.fn(async (path: string, init?: RequestInit) => {
     if (path === '/api/me') return Response.json(user)
     if (path === '/api/projects') return Response.json(projects)
     if (path === '/api/auth/csrf') return Response.json({ headerName: 'X-CSRF-TOKEN', token: 'csrf-value' })
     if (path.endsWith('/pull-requests/sync') && init?.method === 'POST') {
       if (failure) return Response.json({ code: 'GITHUB_ACCESS_RESTRICTED', message: failure }, { status: 403 })
-      return Response.json({ collected: 3, skippedRepositories: 0, syncedAt: '2026-10-31T08:00:00Z' })
+      return Response.json({ collected: syncCollected, skippedRepositories: 0, syncedAt: '2026-10-31T08:00:00Z' })
     }
     if (path === '/api/projects/7/repositories') return Response.json([connectedRepo])
     if (path.endsWith('/repositories/40/reviewer-candidates')) return Response.json({ users: [{ login: 'teammate', avatarUrl: null }, { login: 'designer', avatarUrl: null }], hasMore: false })
@@ -371,12 +371,25 @@ describe('실제 PR 연결', () => {
     expect(await screen.findByText('요청받은 코드 검토가 없어요')).toBeInTheDocument()
   })
 
+  it.each([0, 1])('새로 추가한 PR이 없어도 확인한 수(%i)를 신규 추가로 안내하지 않는다', async count => {
+    backend({ syncCollected: count, everything: count ? [pull('1', 1, { state: 'MERGED' })] : [], mine: [], requested: [] })
+    mount('/pull-requests')
+    const user = userEvent.setup()
+    const button = await screen.findByRole('button', { name: 'GitHub PR 가져오기' })
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await user.click(button)
+      expect(await screen.findByText(count ? /PR 1개\(열림·종료 포함\)의 최신 상태를 확인했어요/ : '확인할 GitHub PR이 없어요.')).toBeInTheDocument()
+      await waitFor(() => expect(button).toBeEnabled())
+      expect(screen.queryByText(/개를 가져왔어요/)).not.toBeInTheDocument()
+    }
+  })
+
   it('새로고침은 CSRF와 함께 수집을 요청한 뒤 목록을 다시 불러온다', async () => {
     const fetcher = backend()
     mount('/pull-requests')
     await screen.findByRole('button', { name: /실제 PR 1/ })
     await userEvent.setup().click(screen.getByRole('button', { name: 'GitHub PR 가져오기' }))
-    expect(await screen.findByText(/GitHub에서 PR 3개를 가져왔어요/)).toBeInTheDocument()
+    expect(await screen.findByText(/PR 3개\(열림·종료 포함\)의 최신 상태를 확인했어요/)).toBeInTheDocument()
     expect(fetcher).toHaveBeenCalledWith('/api/projects/7/pull-requests/sync', expect.objectContaining({
       method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': 'csrf-value' },
     }))

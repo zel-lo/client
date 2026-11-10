@@ -100,15 +100,19 @@ describe('출시용 워크스페이스의 실제 데이터 연결', () => {
   })
 
   it('이슈와 PR을 실제로 가져오며 한쪽이 실패해도 성공한 결과를 따로 안내한다', async () => {
+    let synchronized = false
     const fetcher = backend((path, init) => {
-      if (init?.method === 'POST' && path.endsWith('/issues/sync')) return Response.json({ collected: 4, skippedRepositories: 1, hasMore: true })
+      if (path.endsWith('/sync-runs')) return Response.json(page(synchronized ? [{ id: '1', repository: 'team/client', scope: 'ISSUES', status: 'SUCCESS', processed: 4, finishedAt: '2026-11-08T12:00:00', error: null }] : []))
+      if (init?.method === 'POST' && path.endsWith('/issues/sync')) { synchronized = true; return Response.json({ collected: 4, skippedRepositories: 1, hasMore: true }) }
       if (init?.method === 'POST' && path.endsWith('/pull-requests/sync')) return Response.json({ message: 'GitHub 접근 권한을 확인해 주세요.' }, { status: 403 })
     })
     const user = userEvent.setup()
     mount('/settings?tab=sync')
+    expect(screen.queryByRole('button', { name: /새로고침/ })).not.toBeInTheDocument()
     await user.click(await screen.findByRole('button', { name: 'GitHub 최신 상태 가져오기' }))
     expect(await screen.findByRole('status')).toHaveTextContent('이슈 4개 확인 · 접근하지 못한 저장소 1개 · 남은 이슈')
     expect(await screen.findByRole('alert')).toHaveTextContent('PR: GitHub 접근 권한을 확인해 주세요.')
+    expect(await screen.findByText('완료 · 4개 처리')).toBeInTheDocument()
     expect(fetcher.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(2)
     expect(screen.queryByText(/데모 데이터/)).not.toBeInTheDocument()
   })
