@@ -67,9 +67,9 @@ export function SyncPanel({ project }: { project: string }) {
   const statuses: Record<string, string> = { SUCCESS: '완료', SUCCEEDED: '완료', COMPLETED: '완료', FAILED: '실패', PENDING: '대기 중', RUNNING: '확인 중', PARTIAL: '일부 확인' }
   return <section className="live-records sync-panel" aria-label="데이터 동기화">
     <div className="sync-intro"><span className="sync-intro-icon"><RefreshCw size={24} /></span><div><h2>팀의 GitHub 소식을 최신으로</h2><p>연결된 저장소의 이슈와 PR, 검토 상태를 가져와요.<br />GitHub에서 바뀐 내용이 보이지 않을 때 여기서 확인하세요.</p></div><button className="button button-dark" disabled={busy} onClick={() => void sync()}><RefreshCw size={15} className={busy ? 'is-syncing' : ''} />{busy ? 'GitHub에서 가져오는 중…' : 'GitHub 최신 상태 가져오기'}</button></div>
-    <p className="sync-source-note"><Clock3 size={14} />현재는 필요할 때 직접 가져오는 방식이에요. 화면의 새로고침은 저장된 기록을 다시 조회해요.</p>
+    <p className="sync-source-note"><Clock3 size={14} />버튼을 누르면 GitHub 최신 상태를 가져오고 수집 기록도 함께 갱신해요.</p>
     {message && <p className="connection-notice" role="status">{message}</p>}{error && <p className="connection-error" role="alert">{error}</p>}
-    <div className="section-heading"><h2>최근 이슈 수집 기록</h2><button className="button" disabled={runs.loading || busy} onClick={runs.refresh}>기록 새로고침</button></div><Failure error={runs.error} retry={runs.refresh} />
+    <div className="section-heading"><h2>최근 이슈 수집 기록</h2></div><Failure error={runs.error} retry={runs.refresh} />
     {runs.loading && !runs.data ? <LoadingState rows={3} label="수집 기록을 확인하는 중" /> : runs.data && <>{runs.data.items.length ? <div className="live-record-list">{runs.data.items.map(run => <article className="live-record-item" key={run.id}><span className="live-record-icon"><GitPullRequest size={18} /></span><div className="live-record-copy"><strong>{run.repository}</strong><p>{statuses[run.status] ?? '상태 확인 필요'} · {run.processed}개 처리</p><small>{displayDate(run.finishedAt)}</small>{run.error && <p className="sync-run-error">{run.error}</p>}</div></article>)}</div> : <div className="empty-state"><RefreshCw size={26} /><h3>아직 가져온 기록이 없어요</h3><p>저장소를 연결한 뒤 위의 버튼으로 팀의 변경 사항을 가져오세요.</p><Link className="button" to="/settings?tab=repositories">연결된 저장소 확인<ArrowRight size={14} /></Link></div>}</>}
   </section>
 }
