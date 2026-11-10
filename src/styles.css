@@ -955,8 +955,13 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .live-issues .work-filters label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
 .live-issues .work-filters .inline-checkbox { flex-direction: row; align-items: center; padding-bottom: 9px; }
 .issue-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.issue-publication, .issue-archive { padding-top: 18px; margin-top: 8px; border-top: 1px solid var(--line); }
-.issue-publication p, .issue-archive p { font-size: 13px; line-height: 1.6; }
+/* 작업 상세의 다음 단계는 저장 버튼 위 카드로, 보관은 버튼 줄 왼쪽에 둔다 */
+.issue-publication { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 16px; margin-top: 24px; padding: 16px 18px; border-radius: 14px; background: var(--accent-bg); }
+.issue-publication p { flex: 1 1 220px; margin: 0; font-size: 13px; line-height: 1.6; color: var(--text-secondary); }
+.issue-publication .button { flex-shrink: 0; }
+.issue-editor-actions { position: sticky; bottom: 0; z-index: 3; margin-top: 24px; padding: 16px 0; background: var(--card); }
+.issue-editor-actions .issue-archive { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-right: auto; }
+.issue-archive p { margin: 0; font-size: 12px; line-height: 1.6; color: var(--muted-foreground); }
 @media (max-width: 700px) { .live-issues .section-heading { align-items: flex-start; gap: 14px; flex-direction: column; } .onboarding-page { padding: 28px 16px 60px; } }
 .live-issues .work-filters { display: flex; margin: 20px 0; }
 .live-issues .work-filters > label { flex: 0 1 180px; }
@@ -1105,6 +1110,7 @@ input[type='checkbox'] { width: 14px; height: 14px; accent-color: var(--primary)
 .dark .board-column-empty { border-color: #43516B; background: rgb(13 18 28 / .14); }
 .dark .board-popover, .dark .dialog, .dark .drawer { background: var(--panel-surface); border-color: var(--raised-edge); box-shadow: 0 16px 48px rgb(0 0 0 / .32); }
 .dark .dialog-header { background: var(--panel-surface); border-bottom-color: var(--panel-edge); }
+.dark .issue-editor-actions { background: var(--panel-surface); }
 .dark .data-frame [data-slot="table-header"] { background: #242E3F; }
 .dark .data-frame [data-slot="table-row"] { border-color: #344157; }
 .dark .data-frame [data-slot="table-body"] [data-slot="table-row"]:hover { background: #273348; }

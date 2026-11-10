@@ -52,6 +52,10 @@ describe('실제 팀 작업', () => {
     await user.click(screen.getByRole('button', { name: '새 작업 등록' }))
     const dialog = screen.getByRole('dialog', { name: '새 작업 등록' })
     await user.type(within(dialog).getByRole('textbox', { name: '작업 제목' }), '회의에서 정한 일')
+    // 설명은 필수라 쓰기 전에는 저장할 수 없다
+    expect(within(dialog).getByRole('button', { name: '할 일로 저장' })).toBeDisabled()
+    await user.type(within(dialog).getByRole('textbox', { name: '설명' }), '회의에서 정한 배경')
+    await user.click(within(dialog).getByText('완료 조건·회의 내용 더 입력하기'))
     await user.type(within(dialog).getByRole('textbox', { name: '완료 조건' }), '사용자가 확인할 결과')
     await user.click(within(dialog).getByRole('button', { name: '할 일로 저장' }))
     await waitFor(() => expect(notify).toHaveBeenCalledWith('Z-unique 작업을 할 일로 저장했어요.'))
@@ -68,6 +72,10 @@ describe('실제 팀 작업', () => {
     await user.click(await screen.findByRole('button', { name: '새 작업 등록' }))
     const dialog = screen.getByRole('dialog', { name: '새 작업 등록' })
     await user.type(within(dialog).getByRole('textbox', { name: '작업 제목' }), '미리 볼 작업')
+    // 선택 입력은 접혀 있다가 펼쳐서 쓴다
+    expect(within(dialog).getByRole('textbox', { name: '설명' })).toBeVisible()
+    expect(within(dialog).getByRole('textbox', { name: '완료 조건' })).not.toBeVisible()
+    await user.click(within(dialog).getByText('완료 조건·회의 내용 더 입력하기'))
     const description = '## 작업 배경\n**빠른 검색**과 `응답 시간`을 확인해요.'
     const criteria = '- [x] 목록 표시\n- [ ] 검색 결과 확인'
     const descriptionInput = within(dialog).getByRole('textbox', { name: '설명' })
