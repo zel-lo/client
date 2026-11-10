@@ -13,6 +13,7 @@ function backend({ viewer = false, conflict = false, saved = [] as LiveIssue[], 
   const fetcher = vi.fn(async (input: string, init?: RequestInit) => {
     if (input === '/api/auth/csrf') return Response.json({ headerName: 'X-CSRF-TOKEN', token: 'test-csrf' })
     if (input === '/api/projects/1/repositories') return Response.json([{ id: '10', owner: 'team', name: 'server', projectId: '1' }])
+    if (input.includes('/members?')) return Response.json({ items: [{ login: 'team-member' }], page: 1, hasNext: false })
     if (input.includes('/assignees?')) return Response.json({ items: [{ login: 'team-member', id: 8 }], page: 1, hasNext: false })
     if (input === '/api/projects/1/issues' && init?.method === 'POST') { rows = [{ ...issue, ...JSON.parse(init.body as string).details }]; return Response.json(rows[0], { status: 201 }) }
     if (input === '/api/projects/1/issues/20' && init?.method === 'PATCH') {

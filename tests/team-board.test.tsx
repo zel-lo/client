@@ -16,6 +16,7 @@ function setup({ fail = false, published = false, viewer = false, deferList = fa
   const fetcher = vi.fn(async (path: string, init?: RequestInit) => {
     if (path === '/api/auth/csrf') return Response.json({ headerName: 'X-CSRF-TOKEN', token: 'csrf' })
     if (path.endsWith('/repositories')) return Response.json([{ id: '10', name: 'server', owner: 'team' }])
+    if (path.includes('/members?')) return Response.json({ items: [{ login: 'teammate' }], hasNext: false })
     if (path.includes('/assignees?')) return Response.json({ items: [{ id: 8, login: 'teammate' }], page: 1, hasNext: false })
     if (path === '/api/projects/1/issues/20' && init?.method === 'PATCH') {
       if (fail) return Response.json({ code: 'ISSUE_CHANGED', message: '다른 변경이 있어요.' }, { status: 409 })
