@@ -159,7 +159,7 @@ describe('카드가 많을 때', () => {
     await user.click(within(done).getByRole('button', { name: '최근 완료만 보기' }))
     expect(within(done).getAllByRole('article')).toHaveLength(5)
   })
-  it('할 일을 접으면 다음에 열어도 접힌 상태를 기억한다', async () => {
+  it('할 일은 접어도 다음에 열면 다시 펼친 상태로 시작한다', async () => {
     localStorage.clear()
     const { TeamBoard } = await import('../src/components/team-board')
     const user = userEvent.setup()
@@ -170,8 +170,8 @@ describe('카드가 많을 때', () => {
     expect(screen.queryByRole('region', { name: '할 일 열' })).not.toBeInTheDocument()
     first.unmount()
     render(<TeamBoard items={items} week={week} actions={actions} />)
-    expect(screen.queryByRole('region', { name: '할 일 열' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '할 일 1' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('region', { name: '할 일 열' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '할 일 1' })).toHaveAttribute('aria-pressed', 'true')
     localStorage.clear()
   })
 })
