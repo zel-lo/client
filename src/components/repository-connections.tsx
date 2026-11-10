@@ -2,7 +2,7 @@ import { LoadingState } from './loading-state'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, ExternalLink, Github, Plus, RefreshCw, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ExternalLink, Github, RefreshCw, X } from 'lucide-react'
 import {
   connectRepository, createProject, disconnectRepository, githubAuthorization, listAvailableRepositories,
   listConnectedRepositories, listGitHubAccounts, ProjectApiError, syncPullRequests, syncIssues,
@@ -227,7 +227,7 @@ export function RepositoryConnections({ project: currentProject, onboarding = fa
           {!loadingOptions && !options.items.length && !error && <p className="help-text">접근 가능한 저장소가 없어요. 다른 계정을 선택하거나 GitHub 로그인 권한을 확인해 주세요.</p>}
           {search && <p className="help-text">현재 페이지에서 {visible.length}개를 찾았어요.</p>}
           <Pagination page={repositoryPage} hasNext={options.hasNext} disabled={busy || loadingOptions} onChange={setRepositoryPage} label="저장소" />
-          <button className="button button-dark" disabled={busy || loadingConnected || loadingOptions || !selected.some(selectable)}><Plus size={14} />{busy ? '처리 중…' : '선택한 저장소 연결'}</button>
+          <button className="button button-dark" disabled={busy || loadingConnected || loadingOptions || !selected.some(selectable)}>{busy ? '처리 중…' : '선택한 저장소 연결'}</button>
           {progress && <p role="status">{progress}</p>}
         </form>
         {!!failures.length && <div className="connection-error" role="alert"><strong>연결하지 못한 저장소</strong><ul>{failures.map(item => <li key={item.id}>{item.name}: {item.message}</li>)}</ul></div>}
