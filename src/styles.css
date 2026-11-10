@@ -457,7 +457,8 @@ h1 { font-size: 29px; line-height: 1.4; font-weight: 700; letter-spacing: -.9px;
 .dialog-wide { width: 680px; }
 .dialog-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 26px; background: var(--card); border-bottom: 1px solid var(--quiet-line); position: sticky; top: 0; z-index: 2; }
 .eyebrow { font-size: 10px; letter-spacing: .5px; color: var(--muted-foreground); font-weight: 500; }
-.dialog-header .eyebrow { color: var(--foreground); font-size: 12px; letter-spacing: 0; }
+/* 드로어 상단의 화면 이름(작업 상세·PR 상세 등) */
+.dialog-header .eyebrow { color: var(--foreground); font-size: 16px; font-weight: 650; letter-spacing: -.2px; }
 .dialog-form { padding: 28px 30px 30px; }
 .dialog-form h2 { font-size: 25px; font-weight: 700; line-height: 1.5; letter-spacing: -.7px; }
 .dialog-form > p { font-size: 12px; color: var(--muted-foreground); line-height: 1.9; margin: 10px 0 23px; }

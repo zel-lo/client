@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { changeIssuePullRequest, getIssue, listIssues, listPullRequests } from '../lib/project-api'
 import type { LiveIssue, LinkedIssue, PullRequestItem } from '../lib/project-api'
@@ -65,13 +65,13 @@ export function IssuePullRequestLinks({ projectId, issue, canWrite, disabled, on
     finally { setBusy(false); onBusyChange(false) }
   }
   const links = issue.pullRequests ?? []
-  return <section className="issue-pr-links" aria-label="연결된 PR"><h3>이 작업의 코드 검토</h3>
-    {links.map(pull => <div className="linked-work-row" key={pull.id}><Link className="reference-link" to={`/pull-requests?pr=${encodeURIComponent(pull.id)}`}>#{pull.number} · {pull.title}</Link><span className="badge">{pull.state === 'MERGED' ? '병합됨' : pull.state === 'CLOSED' ? '닫힘' : pull.draft ? '초안' : pull.reviewDecision === 'CHANGES_REQUESTED' ? '수정 요청' : '검토 중'}</span>{canWrite && <button type="button" className="subtle-link" disabled={disabled || busy} onClick={() => void change(pull.id, false)}>연결 해제</button>}</div>)}
-    {!links.length && <p className="help-text">아직 연결된 검토 요청이 없어요.</p>}
-    {canWrite && !issue.archived && <div className="linked-work-actions"><button type="button" className="button" disabled={disabled || busy} onClick={() => setChoosing(value => !value)}>기존 검토 요청 연결</button>{!disabled && <Link className="button" to={`/pull-requests?createForIssue=${encodeURIComponent(issue.id)}`}>이 작업으로 검토 요청 만들기</Link>}</div>}
-    {choosing && <div className="linked-work-actions"><select aria-label="연결할 PR" value={pullId} disabled={disabled || busy || loading} onChange={event => setPullId(event.target.value)}><option value="">{loading ? 'PR을 불러오는 중…' : 'PR 선택'}</option>{items.filter(p => p.repositoryId === issue.repositoryId && !links.some(link => link.id === p.id)).map(p => <option key={p.id} value={p.id}>#{p.number} · {p.title}</option>)}</select><button type="button" className="button" disabled={disabled || busy || !pullId} onClick={() => void change(pullId, true)}>선택한 PR 연결</button>{(page > 1 || more) && <><button aria-label="이전 PR" type="button" className="button" disabled={loading || page === 1} onClick={() => setPage(value => value - 1)}><ChevronLeft size={14} />이전</button><button aria-label="다음 PR" type="button" className="button" disabled={loading || !more} onClick={() => setPage(value => value + 1)}>다음<ChevronRight size={14} /></button></>}</div>}
+  return <section className="issue-pr-links" aria-label="연결된 PR"><div className="issue-pr-links-head"><h3>이 작업의 코드 검토<span className="issue-pr-links-count">{links.length}</span></h3>{canWrite && !issue.archived && !choosing && <button type="button" className="button" disabled={disabled || busy} onClick={() => setChoosing(true)}><Plus size={14} />기존 검토 요청 연결</button>}</div>
+    {links.map(pull => <div className="linked-work-row" key={pull.id}><Link className="linked-work-title" to={`/pull-requests?pr=${encodeURIComponent(pull.id)}`}><span className="linked-work-key">#{pull.number}</span><span>{pull.title}</span></Link><span className="badge">{pull.state === 'MERGED' ? '병합됨' : pull.state === 'CLOSED' ? '닫힘' : pull.draft ? '초안' : pull.reviewDecision === 'CHANGES_REQUESTED' ? '수정 요청' : '검토 중'}</span>{canWrite && <button type="button" className="subtle-link" disabled={disabled || busy} onClick={() => void change(pull.id, false)}>연결 해제</button>}</div>)}
+    {!links.length && <p className="linked-work-empty">아직 연결된 검토 요청이 없어요.</p>}
+    {canWrite && !issue.archived && !disabled && !choosing && <Link className="linked-work-create" to={`/pull-requests?createForIssue=${encodeURIComponent(issue.id)}`}><Plus size={13} />이 작업으로 검토 요청 만들기</Link>}
+    {choosing && <div className="linked-work-picker"><select aria-label="연결할 PR" value={pullId} disabled={disabled || busy || loading} onChange={event => setPullId(event.target.value)}><option value="">{loading ? 'PR을 불러오는 중…' : 'PR 선택'}</option>{items.filter(p => p.repositoryId === issue.repositoryId && !links.some(link => link.id === p.id)).map(p => <option key={p.id} value={p.id}>#{p.number} · {p.title}</option>)}</select><div className="linked-work-actions">{(page > 1 || more) && <><button aria-label="이전 PR" type="button" className="button" disabled={loading || page === 1} onClick={() => setPage(value => value - 1)}><ChevronLeft size={14} />이전</button><button aria-label="다음 PR" type="button" className="button" disabled={loading || !more} onClick={() => setPage(value => value + 1)}>다음<ChevronRight size={14} /></button></>}<button type="button" className="button" disabled={busy} onClick={() => { setChoosing(false); setPullId('') }}>취소</button><button type="button" className="button button-dark" disabled={disabled || busy || !pullId} onClick={() => void change(pullId, true)}>선택한 PR 연결</button></div></div>}
     {error && <p className="form-error" role="alert">{error}</p>}
-    <p className="help-text">연결하면 PR의 초안·검토·병합 상태에 따라 작업 상태가 갱신돼요. 기존 검토 요청 연결·해제는 zello에 저장돼요.</p>
+    <p className="linked-work-help">연결하면 PR의 초안·검토·병합 상태에 따라 작업 상태가 갱신돼요. 연결·해제는 zello에 저장돼요.</p>
   </section>
 }
 
@@ -93,12 +93,11 @@ export function PullRequestIssueLinks({ projectId, pullId, repositoryId, links, 
     } catch (cause) { setError(cause instanceof Error ? cause.message : '연결을 저장하지 못했어요.') }
     finally { onChanged(); setBusy(false) }
   }
-  return <section className="issue-pr-links" aria-label="연결된 이슈"><h3>이 변경으로 해결하는 이슈</h3>
-    {links.map(issue => <div className="linked-work-row" key={issue.id}><Link className="reference-link" to={`/issues?issue=${encodeURIComponent(issue.id)}`}>{issue.key}{issue.number ? ` · #${issue.number}` : ''} · {issue.title}</Link>{issue.archived && <span className="badge">보관됨</span>}{canWrite && <button type="button" className="subtle-link" disabled={busy} onClick={() => void change([issue.id], false)}>연결 해제</button>}</div>)}
-    {!links.length && <p className="help-text">연결된 이슈가 없어요.</p>}
-    {canWrite && <button type="button" className="button" disabled={busy} onClick={() => setChoosing(value => !value)}>이슈 연결</button>}
-    {choosing && <><IssuePicker projectId={projectId} repositoryId={repositoryId} selected={selected} onChange={setSelected} disabled={busy} /><button type="button" className="button" disabled={busy || !selected.length} onClick={() => void change(selected, true)}>선택한 이슈 연결</button></>}
+  return <section className="issue-pr-links" aria-label="연결된 이슈"><div className="issue-pr-links-head"><h3>이 변경으로 해결하는 이슈<span className="issue-pr-links-count">{links.length}</span></h3>{canWrite && !choosing && <button type="button" className="button" disabled={busy} onClick={() => setChoosing(true)}><Plus size={14} />이슈 연결</button>}</div>
+    {links.map(issue => <div className="linked-work-row" key={issue.id}><Link className="linked-work-title" to={`/issues?issue=${encodeURIComponent(issue.id)}`}><span className="linked-work-key">{issue.key}{issue.number ? ` · #${issue.number}` : ''}</span><span>{issue.title}</span></Link>{issue.archived && <span className="badge">보관됨</span>}{canWrite && <button type="button" className="subtle-link" disabled={busy} onClick={() => void change([issue.id], false)}>연결 해제</button>}</div>)}
+    {!links.length && <p className="linked-work-empty">아직 연결된 이슈가 없어요.</p>}
+    {choosing && <div className="linked-work-picker"><IssuePicker projectId={projectId} repositoryId={repositoryId} selected={selected} onChange={setSelected} disabled={busy} /><div className="linked-work-actions"><button type="button" className="button" disabled={busy} onClick={() => { setChoosing(false); setSelected([]) }}>취소</button><button type="button" className="button button-dark" disabled={busy || !selected.length} onClick={() => void change(selected, true)}>선택한 이슈 연결</button></div></div>}
     {error && <p className="form-error" role="alert">{error}</p>}
-    <p className="help-text">기존 검토 요청 연결·해제는 zello에 저장돼요. GitHub 본문의 자동 닫기 참조는 GitHub에서 수정해 주세요.</p>
+    <p className="linked-work-help">연결·해제는 zello에 저장돼요. PR 본문의 자동 닫기 참조(Closes #번호)는 GitHub에서 수정해 주세요.</p>
   </section>
 }

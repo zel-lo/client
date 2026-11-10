@@ -1,6 +1,6 @@
 import { PullRequestIssueLinks } from './issue-pr-links'
 import { useEffect, useState } from 'react'
-import { ArrowRight, CheckCircle2, ChevronRight, CircleDot, ExternalLink, FileText, GitBranch, GitMerge, GitPullRequest, Pencil } from 'lucide-react'
+import { ArrowRight, ArrowUpRight, CheckCircle2, ChevronRight, CircleDot, ExternalLink, FileText, GitBranch, GitMerge, GitPullRequest, Github, Pencil } from 'lucide-react'
 import type { Repo } from '@/data/repository'
 import { repositoryRef } from '@/data/work-items'
 import type { Issue, PullRequest } from '@/data/work-items'
@@ -56,8 +56,11 @@ export function PullRequestDetail({ pr, repos, issues, onViewIssue, canEdit = fa
     } finally { setSaving(false) }
   }
   const linked = issues.filter(issue => issue.pullRequestIds.includes(pr.id))
-  return <div className="detail-content pr-detail"><span className={`event-icon large event-${status === 'merged' ? 'merge' : 'pr'}`}>{status === 'merged' ? <GitMerge size={24} /> : <GitPullRequest size={24} />}</span>
-    <div className="detail-kicker"><span className="badge">{status === 'merged' ? '병합됨' : status === 'draft' ? '초안' : status === 'closed' ? '닫힘' : '검토 요청'}</span><span className="mono muted">{repositoryRef(pr.repo, pr.number, repos)}</span></div><h2>{pr.title}</h2><div className="detail-author"><strong>{pr.author}</strong><span>{pr.live ? 'GitHub 연동' : 'PR'}</span>{pr.url && <a className="subtle-link" href={pr.url} target="_blank" rel="noopener noreferrer">GitHub에서 보기</a>}</div>
+  return <div className="detail-content pr-detail"><h2>{pr.title}</h2>
+    <div className="issue-meta">
+      <div className="issue-meta-info"><span className={`pr-state pr-state-${status}`}>{status === 'merged' ? <GitMerge size={13} /> : <GitPullRequest size={13} />}{status === 'merged' ? '병합됨' : status === 'draft' ? '초안' : status === 'closed' ? '닫힘' : '검토 요청'}</span><span className="issue-meta-ref">{repositoryRef(pr.repo, pr.number, repos)}</span><span className="issue-meta-ref">{pr.author}</span></div>
+      {pr.url && <a className="button issue-meta-link" href={pr.url} target="_blank" rel="noopener noreferrer"><Github size={14} />GitHub에서 보기<ArrowUpRight size={13} /></a>}
+    </div>
     <div className="pr-branch-flow"><GitBranch size={14} /><code>{pr.branch}</code><ArrowRight size={13} /><code>{pr.base}</code></div>
     <section className="detail-summary" aria-label="팀에 전할 변경 요약">
       <div className="detail-summary-head"><span className="eyebrow">팀에 전할 변경 요약</span>{pr.live && canEdit && detail && !editing && <button type="button" className="subtle-link" onClick={() => { setText(summary); setError(''); setEditing(true) }}><Pencil size={12} />{summary ? '수정' : '작성하기'}</button>}</div>
